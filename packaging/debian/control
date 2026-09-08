@@ -1,0 +1,23 @@
+Source: sddm-authelia-passkey
+Section: admin
+Priority: optional
+Maintainer: sddm-authelia-passkey contributors <noreply@example.invalid>
+Build-Depends: debhelper-compat (= 13), golang-go (>= 2:1.24~), gcc, libpam0g-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/example/sddm-authelia-passkey
+Rules-Requires-Root: no
+
+Package: sddm-authelia-passkey
+Architecture: amd64
+Depends: ${shlibs:Depends}, ${misc:Depends}, sddm, libpam-modules, systemd
+Recommends: sddm-theme-debian-breeze
+Description: Passwordless SDDM login via Authelia OIDC Device Authorization + Passkey
+ Lets a configured local user log into SDDM/Plasma by approving a
+ device-authorization request on their phone (WebAuthn/Passkey user
+ verification through Authelia), with the existing password login always
+ kept as a fallback. Includes an optional KWallet auto-unlock component,
+ off by default, using systemd-creds for at-rest secret protection.
+ .
+ Supported platform: Debian 13 (Trixie), SDDM 0.21.x, KDE Plasma 6,
+ systemd 257+, Authelia 4.39+. Other platforms are unsupported/
+ experimental - see /usr/share/doc/sddm-authelia-passkey/installation.md.

@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install PAM headers
+        run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
+
+      - name: Build broker
+        run: |
+          cd src/broker
+          go build ./...
+
+      - name: Build kwallet-secretd
+        run: |
+          cd src/kwallet-secretd
+          go build ./...
+
+      - name: Build PAM module (hardened)
+        run: make -C src/pam verify-hardening

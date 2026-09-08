@@ -1,0 +1,5 @@
+sddm-authelia-passkey (0.1.0-1) unstable; urgency=medium
+
+  * Initial packaging.
+
+ -- sddm-authelia-passkey contributors <noreply@example.invalid>  Wed, 09 Sep 2026 00:26:49 +0200

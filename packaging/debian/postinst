@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+    echo "sddm-authelia-passkey: installed. PAM integration is NOT automatic."
+    echo "Next steps:"
+    echo "  1. Edit /etc/sddm-authelia-passkey/config.conf (see config.conf.example)"
+    echo "  2. sudo /usr/share/sddm-authelia-passkey/preflight.sh"
+    echo "  3. sudo /usr/share/sddm-authelia-passkey/enable-pam.sh"
+    echo "  4. sudo systemctl enable --now sddm-authelia-passkey-broker.service"
+    echo "See /usr/share/doc/sddm-authelia-passkey/installation.md for the full guide."
+fi
+
+#DEBHELPER#
+
+exit 0

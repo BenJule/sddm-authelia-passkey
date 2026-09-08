@@ -1,0 +1,150 @@
+--- a/Main.qml
++++ b/Main.qml
+@@ -529,4 +529,147 @@
+         interval: 3000
+         onTriggered: notificationMessage = ""
+     }
++
++    // --- Authelia Passkey passwordless login (additive only) -----------
++    // Talks only to the local broker's HTTP API (127.0.0.1:7899) and to
++    // the existing `sddm` context object's login()/loginFailed/
++    // loginSucceeded, exactly like the rest of this theme already does.
++    // Does not modify any existing element above; purely a new sibling
++    // of the root Item's other top-level children.
++    QQC2.Button {
++        id: passkeyLoginButton
++        text: "Login with Passkey"
++        anchors.top: parent.top
++        anchors.right: parent.right
++        anchors.margins: 24
++        onClicked: passkeyOverlay.open()
++    }
++
++    QQC2.Popup {
++        id: passkeyOverlay
++        modal: true
++        focus: true
++        anchors.centerIn: parent
++        width: 360
++        height: 480
++        closePolicy: QQC2.Popup.NoAutoClose
++
++        property string sessionId: ""
++
++        function startFlow() {
++            var username = usernameField.text
++            if (username.length === 0) {
++                statusLabel.text = "Enter your username first"
++                return
++            }
++            statusLabel.text = "Starting device authorization..."
++            qrImage.source = ""
++            urlLabel.text = ""
++            var xhr = new XMLHttpRequest()
++            xhr.open("POST", "http://127.0.0.1:7899/start?username=" + encodeURIComponent(username))
++            xhr.onreadystatechange = function() {
++                if (xhr.readyState !== XMLHttpRequest.DONE) return
++                if (xhr.status !== 200) {
++                    statusLabel.text = "Broker unreachable (" + xhr.status + ")"
++                    return
++                }
++                passkeyOverlay.sessionId = JSON.parse(xhr.responseText).session_id
++                pollTimer.start()
++            }
++            xhr.send()
++        }
++
++        function poll() {
++            if (sessionId === "") return
++            var xhr = new XMLHttpRequest()
++            xhr.open("GET", "http://127.0.0.1:7899/status?session_id=" + sessionId)
++            xhr.onreadystatechange = function() {
++                if (xhr.readyState !== XMLHttpRequest.DONE) return
++                if (xhr.status !== 200) return
++                var resp = JSON.parse(xhr.responseText)
++                if (resp.qr_path) qrImage.source = "file://" + resp.qr_path
++                if (resp.verification_uri_complete) urlLabel.text = resp.verification_uri_complete
++                if (resp.status === "approved") {
++                    pollTimer.stop()
++                    statusLabel.text = "Approved - signing in..."
++                    sddm.login(usernameField.text, "", 0)
++                } else if (resp.status === "denied" || resp.status === "error") {
++                    pollTimer.stop()
++                    statusLabel.text = "Failed: " + (resp.error || resp.status)
++                } else {
++                    statusLabel.text = "Confirm on your device: " + (resp.user_code || "")
++                }
++            }
++            xhr.send()
++        }
++
++        function cancelFlow() {
++            pollTimer.stop()
++            sessionId = ""
++            close()
++        }
++
++        onOpened: {
++            usernameField.text = ""
++            statusLabel.text = ""
++            qrImage.source = ""
++            urlLabel.text = ""
++        }
++
++        Timer { id: pollTimer; interval: 2000; repeat: true; onTriggered: passkeyOverlay.poll() }
++
++        ColumnLayout {
++            anchors.fill: parent
++            spacing: 12
++            QQC2.TextField {
++                id: usernameField
++                Layout.fillWidth: true
++                placeholderText: "Username"
++                onAccepted: passkeyOverlay.startFlow()
++            }
++            QQC2.Button {
++                text: "Start"
++                Layout.alignment: Qt.AlignHCenter
++                onClicked: passkeyOverlay.startFlow()
++            }
++            Image {
++                id: qrImage
++                Layout.alignment: Qt.AlignHCenter
++                Layout.preferredWidth: 260
++                Layout.preferredHeight: 260
++                fillMode: Image.PreserveAspectFit
++                smooth: false
++                visible: source != ""
++            }
++            Text {
++                id: urlLabel
++                color: "#a0a0a0"
++                font.pixelSize: 10
++                wrapMode: Text.WrapAnywhere
++                Layout.fillWidth: true
++                horizontalAlignment: Text.AlignHCenter
++            }
++            Text {
++                id: statusLabel
++                Layout.fillWidth: true
++                wrapMode: Text.WordWrap
++                horizontalAlignment: Text.AlignHCenter
++            }
++            QQC2.Button {
++                text: "Cancel"
++                Layout.alignment: Qt.AlignHCenter
++                onClicked: passkeyOverlay.cancelFlow()
++            }
++        }
++    }
++
++    Connections {
++        target: sddm
++        function onLoginFailed() {
++            passkeyOverlay.cancelFlow()
++        }
++        function onLoginSucceeded() {
++            passkeyOverlay.close()
++        }
++    }
+ }
