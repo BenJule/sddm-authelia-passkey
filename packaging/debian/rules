@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export GOFLAGS = -mod=mod
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cd src/broker && go build -o broker .
+	cd src/kwallet-secretd && go build -o kwallet-secretd .
+	$(MAKE) -C src/pam
+
+override_dh_auto_test:
+	cd src/broker && go test ./...
+	cd src/kwallet-secretd && go test ./...
+
+override_dh_auto_install:
+	install -D -m 0755 src/broker/broker debian/sddm-authelia-passkey/usr/lib/sddm-authelia-passkey/broker
+	install -D -m 0755 src/kwallet-secretd/kwallet-secretd debian/sddm-authelia-passkey/usr/lib/sddm-authelia-passkey/kwallet-secretd
+	install -D -m 0644 src/pam/pam_authelia_passkey.so debian/sddm-authelia-passkey/usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
+	install -D -m 0644 systemd/sddm-authelia-passkey-broker.service debian/sddm-authelia-passkey/lib/systemd/system/sddm-authelia-passkey-broker.service
+	install -D -m 0644 systemd/sddm-authelia-passkey-kwallet-secretd.service debian/sddm-authelia-passkey/lib/systemd/system/sddm-authelia-passkey-kwallet-secretd.service
+	install -D -m 0644 config/examples/config.conf.example debian/sddm-authelia-passkey/etc/sddm-authelia-passkey/config.conf.example
+	install -D -m 0755 scripts/preflight.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/preflight.sh
+	install -D -m 0755 scripts/postflight.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/postflight.sh
+	install -D -m 0755 scripts/enable-pam.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/enable-pam.sh
+	install -D -m 0755 scripts/rollback.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/rollback.sh
+	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/Main.qml.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/Main.qml.patch
+	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch
+
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
