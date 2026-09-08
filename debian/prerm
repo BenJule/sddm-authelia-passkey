@@ -1,0 +1,17 @@
+#!/bin/sh
+# Runs while package files are still present. Restores /etc/pam.d/sddm
+# from the backup enable-pam.sh made, so `apt remove` never leaves a
+# dangling reference to a PAM module that's about to disappear - found
+# the hard way in a real package-removal test (see docs/rollback.md).
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    if [ -x /usr/share/sddm-authelia-passkey/rollback.sh ]; then
+        /usr/share/sddm-authelia-passkey/rollback.sh || \
+            echo "sddm-authelia-passkey: automatic PAM rollback failed - check /etc/pam.d/sddm manually before rebooting/restarting SDDM" >&2
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0

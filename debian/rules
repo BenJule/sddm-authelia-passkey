@@ -3,12 +3,20 @@
 export DH_VERBOSE = 1
 export GOFLAGS = -mod=mod
 
+# -trimpath: strip the local build path (e.g. the builder's home
+# directory) that Go otherwise embeds for stack traces.
+# -buildmode=pie + external linker + -Wl,-z,relro,-z,now: match the same
+# PIE/full-RELRO/BIND_NOW hardening already required of src/pam's C
+# module (see src/pam/Makefile) - Go's internal linker alone produces a
+# PIE binary with only partial RELRO (no BIND_NOW) by default.
+GO_HARDENING_FLAGS := -trimpath -buildmode=pie -ldflags "-linkmode=external -extldflags=-Wl,-z,relro,-z,now"
+
 %:
-	dh $@
+	dh $@ --no-automatic-dbgsym
 
 override_dh_auto_build:
-	cd src/broker && go build -o broker .
-	cd src/kwallet-secretd && go build -o kwallet-secretd .
+	cd src/broker && go build $(GO_HARDENING_FLAGS) -o broker .
+	cd src/kwallet-secretd && go build $(GO_HARDENING_FLAGS) -o kwallet-secretd .
 	$(MAKE) -C src/pam
 
 override_dh_auto_test:
@@ -19,8 +27,8 @@ override_dh_auto_install:
 	install -D -m 0755 src/broker/broker debian/sddm-authelia-passkey/usr/lib/sddm-authelia-passkey/broker
 	install -D -m 0755 src/kwallet-secretd/kwallet-secretd debian/sddm-authelia-passkey/usr/lib/sddm-authelia-passkey/kwallet-secretd
 	install -D -m 0644 src/pam/pam_authelia_passkey.so debian/sddm-authelia-passkey/usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
-	install -D -m 0644 systemd/sddm-authelia-passkey-broker.service debian/sddm-authelia-passkey/lib/systemd/system/sddm-authelia-passkey-broker.service
-	install -D -m 0644 systemd/sddm-authelia-passkey-kwallet-secretd.service debian/sddm-authelia-passkey/lib/systemd/system/sddm-authelia-passkey-kwallet-secretd.service
+	install -D -m 0644 systemd/sddm-authelia-passkey-broker.service debian/sddm-authelia-passkey/usr/lib/systemd/system/sddm-authelia-passkey-broker.service
+	install -D -m 0644 systemd/sddm-authelia-passkey-kwallet-secretd.service debian/sddm-authelia-passkey/usr/lib/systemd/system/sddm-authelia-passkey-kwallet-secretd.service
 	install -D -m 0644 config/examples/config.conf.example debian/sddm-authelia-passkey/etc/sddm-authelia-passkey/config.conf.example
 	install -D -m 0755 scripts/preflight.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/preflight.sh
 	install -D -m 0755 scripts/postflight.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/postflight.sh
@@ -29,5 +37,13 @@ override_dh_auto_install:
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/Main.qml.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/Main.qml.patch
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch
 
+override_dh_installdocs:
+	dh_installdocs docs/*.md README.md
+
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
+
+override_dh_dwz:
+	# Go binaries carry compressed .debug_abbrev sections dwz cannot
+	# process, and the PAM module has no separate debug info for it to
+	# multifile-optimize against - skip dwz entirely for this package.
