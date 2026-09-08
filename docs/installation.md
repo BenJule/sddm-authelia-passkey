@@ -43,7 +43,7 @@ name in your version, this changes between releases.
 ## Steps
 
 1. `scripts/preflight.sh` (read-only, safe to re-run)
-2. Build: `cd src/broker && go build -o broker .`, likewise for
+2. Build: `cd src/broker && go build -trimpath -o broker .`, likewise for
    `src/kwallet-secretd`, and `make -C src/pam`.
 3. `sudo scripts/install.sh` - installs binaries/units, writes an example
    config if none exists, then calls `scripts/enable-pam.sh`.
