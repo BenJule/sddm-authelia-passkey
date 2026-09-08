@@ -1,0 +1,42 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck (warning level and above)
+        run: shellcheck -S warning scripts/*.sh tests/integration/*.sh
+
+  go-vet-strict:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: cd src/broker && go vet ./...
+      - run: cd src/kwallet-secretd && go vet ./...
+
+  c-hardening:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libpam0g-dev
+      - name: compiler warnings as errors + verify RELRO/BIND_NOW
+        run: make -C src/pam verify-hardening
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: grep for obvious secret patterns
+        run: |
+          set -e
+          ! grep -rniE "BEGIN (RSA|EC|OPENSSH|PGP) PRIVATE KEY|-----BEGIN CERTIFICATE-----" \
+            --include='*.go' --include='*.c' --include='*.sh' --include='*.md' .

@@ -1,0 +1,17 @@
+--- a/metadata.desktop
++++ b/metadata.desktop
+@@ -1,5 +1,5 @@
+ [SddmGreeterTheme]
+-Name=Debian Breeze
++Name=Debian Breeze (Authelia Passkey)
+ Name[ar]=Debian نسيم
+ Name[be]=Debian Breeze
+ Name[bg]=Debian Breeze
+@@ -72,6 +72,6 @@
+ ConfigFile=theme.conf
+ TranslationsDirectory=translations
+ Email=Debian Qt/KDE Maintainers <debian-qt-kde@lists.debian.org>
+-Theme-Id=breeze-debian
++Theme-Id=debian-breeze-authelia-passkey
+ Theme-API=2.0
+ QtVersion=6

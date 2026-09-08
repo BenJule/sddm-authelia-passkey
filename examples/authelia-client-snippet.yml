@@ -1,0 +1,17 @@
+# Example Authelia OIDC client configuration for sddm-authelia-passkey.
+# Merge into your Authelia configuration.yml under identity_providers.oidc.clients.
+# See docs/installation.md for the full explanation, and check Authelia's
+# own current documentation for the exact option names in your version -
+# these change between releases.
+identity_providers:
+  oidc:
+    clients:
+      - client_id: pam-authelia
+        client_name: "PAM Device Login"
+        public: true
+        authorization_policy: two_factor
+        scopes:
+          - openid
+        grant_types:
+          - urn:ietf:params:oauth:grant-type:device_code
+        response_types: []

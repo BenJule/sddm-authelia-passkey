@@ -1,0 +1,31 @@
+# Secrets - never commit
+*.secret
+*.cred
+*.credential
+*.key
+*.pem
+.env
+.env.*
+
+# Build artifacts
+build/
+dist/
+*.deb
+*.o
+src/broker/broker
+src/kwallet-secretd/kwallet-secretd
+src/pam/*.so
+coverage.out
+coverage/
+
+# Local/test state that should never be committed
+*.tmp
+*marker*.local
+production-backups/
+claude-scratchpad/
+/scratchpad/
+
+# Editor/OS noise
+.DS_Store
+*.swp
+*~
