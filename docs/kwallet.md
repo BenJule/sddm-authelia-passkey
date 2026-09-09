@@ -48,16 +48,14 @@ already using** (or that you set it to, via KWalletManager) -
 `pam_kwallet5` unlocks by receiving this value as `PAM_AUTHTOK`, exactly
 as it would receive their typed login password on the normal path.
 
-Then tell the running daemon about this user's credential - add one line
-per user via `sudo systemctl edit sddm-authelia-passkey-kwallet-secretd.service`:
+The setup command also creates that user's dedicated systemd
+`LoadCredentialEncrypted=` drop-in atomically, runs `systemctl
+daemon-reload`, and restarts only
+`sddm-authelia-passkey-kwallet-secretd.service`. No manual
+`systemctl edit` step is required. Running setup for one user never
+rewrites another user's credential/drop-in.
 
-```
-[Service]
-LoadCredentialEncrypted=kwallet.secret.alice:/etc/credstore.encrypted/kwallet.secret.alice
-```
-
-`sudo systemctl restart sddm-authelia-passkey-kwallet-secretd.service`,
-then in `/etc/sddm-authelia-passkey/config.conf`:
+Then enable the feature in `/etc/sddm-authelia-passkey/config.conf`:
 
 ```
 kwallet_auto_unlock=true
