@@ -36,7 +36,7 @@ jobs:
       - name: lintian
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: deb-package
           path: out/sddm-authelia-passkey_*.deb

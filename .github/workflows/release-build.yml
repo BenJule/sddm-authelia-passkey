@@ -57,7 +57,7 @@ jobs:
       - name: Checksums (unsigned - maintainer signs these locally)
         run: cd out && sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo *.cdx.json > SHA256SUMS.unsigned
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-candidate
           path: out/
