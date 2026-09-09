@@ -25,18 +25,21 @@ jobs:
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
+      - name: Collect build output (upload-artifact rejects ../ paths)
+        run: mkdir -p out && mv ../sddm-authelia-passkey_*.deb ../sddm-authelia-passkey_*.changes ../sddm-authelia-passkey_*.buildinfo out/
+
       - name: Verify package metadata (control fields, file listing)
         run: |
-          dpkg-deb -I ../sddm-authelia-passkey_*.deb
-          dpkg-deb -c ../sddm-authelia-passkey_*.deb
+          dpkg-deb -I out/sddm-authelia-passkey_*.deb
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb
 
       - name: lintian
-        run: lintian --fail-on error,warning ../sddm-authelia-passkey_*.deb
+        run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
       - uses: actions/upload-artifact@v4
         with:
           name: deb-package
-          path: ../sddm-authelia-passkey_*.deb
+          path: out/sddm-authelia-passkey_*.deb
           retention-days: 7
 
   lifecycle:

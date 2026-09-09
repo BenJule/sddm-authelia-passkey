@@ -35,7 +35,17 @@ signature over the `.deb` and over `SHA256SUMS`.
   `src/kwallet-secretd/go.sum`. Dependabot (`.github/dependabot.yml`)
   keeps these and GitHub Actions dependencies current on a weekly
   cadence. `govulncheck` runs in CI (`security.yml`) against both
-  modules.
+  modules, deliberately under the latest stable Go toolchain rather
+  than the `1.24` pinned by `build.yml`/`test.yml`/`package.yml`.
+- **Known gap**: the actual `.deb` is built with Debian 13's own
+  `golang-go` package (currently 1.24.x), which lags upstream Go point
+  releases - some Go standard-library CVEs are only fixed in 1.25+ and
+  have no 1.24.x backport upstream. `govulncheck` in CI catches issues
+  in *our own code and third-party dependencies* early by using the
+  latest Go, but that does not change what the shipped binary is
+  actually built with. Closing this gap depends on Debian's own
+  security team backporting fixes to their `golang-go` package (their
+  normal process for stable), not on anything this repository controls.
 - No vendored third-party C/C++ code in `src/pam` - only the system
   `libpam` (via `-lpam`), linked, not vendored.
 - The theme integration ships as patches against the Debian-packaged
