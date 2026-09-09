@@ -180,17 +180,6 @@ func (c Config) Validate() error {
 		// control-flow ordering never changing.
 		return fmt.Errorf("allowed_users must not include root")
 	}
-	if c.KWalletAutoUnlock && len(c.AllowedUsers) > 1 {
-		// kwallet-secretd currently releases a single credential
-		// (kwallet_credential_name) regardless of which user's flow
-		// requested it - there is no per-user credential binding yet.
-		// With more than one allowed user this would hand one user's
-		// KWallet-unlock secret to another. Refuse rather than silently
-		// cross-wire secrets; see docs/architecture.md's multi-user
-		// notes. Per-user credentials are a future enhancement, not
-		// implemented here.
-		return fmt.Errorf("kwallet_auto_unlock requires exactly one allowed_users entry (kwallet-secretd does not yet support per-user credentials)")
-	}
 	if c.ApprovalTTLSeconds <= 0 || c.UserCooldownSeconds < 0 || c.MaxParallelFlows <= 0 ||
 		c.FailureLockoutThreshold <= 0 || c.FailureLockoutSeconds <= 0 {
 		return fmt.Errorf("timing/limit values must be positive")
