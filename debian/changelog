@@ -19,11 +19,15 @@ sddm-authelia-passkey (0.4.0-1) unstable; urgency=medium
     cross-user invariant against real local test accounts and the
     compiled PAM module: alice's approval never authenticates bob and
     vice versa, parallel alice+bob approvals remain independent.
-  * Documented the multi-user identity-binding model and remaining
-    known limitations (no SDDM account-picker UX yet) in
+  * SDDM theme: the smartphone/passkey flow is now bound to whichever
+    account SDDM's own existing user selector currently has selected
+    (avatar list or manual username entry), captured immutably per
+    flow; changing the selection mid-flow cancels it rather than
+    silently retargeting.
+  * Documented the multi-user identity-binding model in
     docs/architecture.md.
 
- -- Benjamin Lütker <benjamin.luetker@gmail.com>  Wed, 09 Sep 2026 21:55:00 +0200
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Wed, 09 Sep 2026 22:40:00 +0200
 
 sddm-authelia-passkey (0.3.0-1) unstable; urgency=medium
 
