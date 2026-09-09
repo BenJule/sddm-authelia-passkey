@@ -2,7 +2,13 @@
 set -e
 
 if [ "$1" = "configure" ]; then
-    echo "sddm-authelia-passkey: installed. PAM integration is NOT automatic."
+    if [ -x /usr/share/sddm-authelia-passkey/install-theme.sh ]; then
+        /usr/share/sddm-authelia-passkey/install-theme.sh
+    fi
+
+    echo "sddm-authelia-passkey: installed."
+    echo "PAM integration is NOT automatic."
+    echo "SDDM was NOT restarted."
     echo "Next steps:"
     echo "  1. Edit /etc/sddm-authelia-passkey/config.conf (see config.conf.example)"
     echo "  2. sudo /usr/share/sddm-authelia-passkey/preflight.sh"
@@ -12,5 +18,4 @@ if [ "$1" = "configure" ]; then
 fi
 
 #DEBHELPER#
-
 exit 0

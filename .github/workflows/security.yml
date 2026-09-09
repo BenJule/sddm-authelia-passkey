@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: shellcheck (warning level and above)
-        run: shellcheck -S warning scripts/*.sh tests/integration/*.sh
+      - name: shellcheck (warning level and above, including sourced helpers)
+        run: shellcheck -x -S warning scripts/*.sh scripts/lib/*.sh tests/integration/*.sh
 
   go-vet-strict:
     runs-on: ubuntu-latest

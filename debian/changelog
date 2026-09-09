@@ -1,3 +1,14 @@
+sddm-authelia-passkey (0.4.1-1) unstable; urgency=medium
+
+  * Harden KWallet credstore permissions and fail closed on unsafe paths.
+  * Surface Authelia token-endpoint HTTP 429 state to the SDDM theme.
+  * Generate the custom SDDM theme automatically from Debian Breeze plus
+    the project's additive patches, without modifying the original theme.
+  * Preserve KWallet credentials during rollback and extend package
+    lifecycle CI for theme and credstore regressions.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 00:43:49 +0200
+
 sddm-authelia-passkey (0.4.0-1) unstable; urgency=medium
 
   * Broker: resolve the target account's UID via NSS fresh on every

@@ -5,6 +5,13 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- Debian package installs now generate the custom SDDM theme automatically
+  from the installed pristine Debian Breeze theme plus this project's
+  additive patches; the original Breeze files remain untouched.
+- Rollback preserves encrypted KWallet credentials and leaves package-owned
+  files to dpkg when the package is installed.
+
 ### Fixed
 - `scripts/setup-kwallet-credential.sh`: no longer widens an existing
   `/etc/credstore.encrypted` directory's permissions to `0755` on every

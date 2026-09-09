@@ -50,7 +50,9 @@ full verification commands (import the signing key, `gpg --verify
 SHA256SUMS.asc SHA256SUMS`, `sha256sum -c SHA256SUMS`).
 
 1. `sudo apt install ./sddm-authelia-passkey_X.Y.Z-1_amd64.deb` -
-   installs the broker, `kwallet-secretd`, PAM module, and systemd units.
+   installs the broker, `kwallet-secretd`, PAM module, and systemd units,
+   and generates `debian-breeze-authelia-passkey` from Debian's installed
+   pristine Breeze theme plus this project's additive patches.
    Writes `/etc/sddm-authelia-passkey/config.conf.example` but does
    **not** create `config.conf`, and does **not** touch
    `/etc/pam.d/sddm` - see the package's own `postinst` message for the
@@ -67,7 +69,8 @@ SHA256SUMS.asc SHA256SUMS`, `sha256sum -c SHA256SUMS`).
    (and `sddm-authelia-passkey-kwallet-secretd.service` too, if you plan
    to use KWallet auto-unlock).
 6. `sudo /usr/share/sddm-authelia-passkey/postflight.sh`
-7. (Optional) theme integration - see `theme/debian-breeze-authelia-passkey-patch/README.md`.
+7. Select `debian-breeze-authelia-passkey` as the SDDM theme if not already selected.
+   The package never restarts SDDM automatically.
 8. (Optional) KWallet auto-unlock - see `docs/kwallet.md`.
 9. Log out, test a normal password login FIRST, then test smartphone/passkey login.
    If anything is wrong: `sudo /usr/share/sddm-authelia-passkey/rollback.sh`.
