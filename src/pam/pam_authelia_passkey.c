@@ -107,7 +107,30 @@ static void wipe(void *p, size_t n) {
 /* Atomically consume (single-use) the approval marker for `user`, then
  * verify its age is within TTL. Returns 1 if the login is smartphone-approved,
  * 0 otherwise. The marker is gone either way once this returns. */
-static int consume_login_approval(const char *user, long ttl_seconds) {
+/* Extracts the value of "KEY=" from a small, fixed-format marker buffer
+ * (one KEY=VALUE per line). Returns 0/false if the key is absent or the
+ * value would not fit - never partial-copies. */
+static int marker_field(const char *buf, size_t buflen, const char *key,
+                         char *out, size_t outcap) {
+    size_t keylen = strlen(key);
+    size_t i = 0;
+    while (i < buflen) {
+        size_t line_start = i;
+        while (i < buflen && buf[i] != '\n') i++;
+        size_t line_len = i - line_start;
+        if (line_len > keylen && memcmp(buf + line_start, key, keylen) == 0) {
+            size_t vlen = line_len - keylen;
+            if (vlen == 0 || vlen >= outcap) return 0;
+            memcpy(out, buf + line_start + keylen, vlen);
+            out[vlen] = '\0';
+            return 1;
+        }
+        i++; /* skip the newline */
+    }
+    return 0;
+}
+
+static int consume_login_approval(const char *user, uid_t expected_uid, long ttl_seconds) {
     char marker[256], tmp[300];
     int n = snprintf(marker, sizeof(marker), MARKER_DIR "/approved-%s", user);
     if (n <= 0 || (size_t)n >= sizeof(marker)) return 0;
@@ -118,24 +141,49 @@ static int consume_login_approval(const char *user, long ttl_seconds) {
         return 0; /* no marker, or already consumed concurrently */
     }
 
-    struct stat st;
     int ok = 0;
-    if (stat(tmp, &st) == 0) {
-        /* Defense in depth: the real boundary is markerDir's own mode
-         * (0700, root-owned - see docs/threat-model.md), which already
-         * makes it impossible for a non-root process to place a file
-         * here at all. Still verify ownership/mode on the file itself
-         * so a future regression that loosens the directory's
-         * permissions doesn't silently become a local privilege
-         * escalation - fail closed rather than trust path/name alone. */
-        int owned_by_root = (st.st_uid == 0 && st.st_gid == 0);
-        int mode_is_0600 = ((st.st_mode & 07777) == 0600);
-        int is_regular = S_ISREG(st.st_mode);
-        if (owned_by_root && mode_is_0600 && is_regular) {
-            time_t now = time(NULL);
-            long age = (long)(now - st.st_mtime);
-            ok = (age >= 0 && age <= ttl_seconds);
+    int fd = open(tmp, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd >= 0) {
+        struct stat st;
+        if (fstat(fd, &st) == 0) {
+            /* Defense in depth: the real boundary is markerDir's own mode
+             * (0700, root-owned - see docs/threat-model.md), which already
+             * makes it impossible for a non-root process to place a file
+             * here at all. Still verify ownership/mode on the file itself
+             * so a future regression that loosens the directory's
+             * permissions doesn't silently become a local privilege
+             * escalation - fail closed rather than trust path/name alone. */
+            int owned_by_root = (st.st_uid == 0 && st.st_gid == 0);
+            int mode_is_0600 = ((st.st_mode & 07777) == 0600);
+            int is_regular = S_ISREG(st.st_mode);
+            if (owned_by_root && mode_is_0600 && is_regular) {
+                time_t now = time(NULL);
+                long age = (long)(now - st.st_mtime);
+                int fresh = (age >= 0 && age <= ttl_seconds);
+
+                char buf[512];
+                ssize_t got = read(fd, buf, sizeof(buf) - 1);
+                if (fresh && got > 0) {
+                    buf[got] = '\0';
+                    char version[8], uidbuf[16];
+                    /* v2 format required: VERSION=2, and the marker's own
+                     * embedded UID must match a UID we resolved via NSS
+                     * for `user` *right now* - this is what catches an
+                     * account that was deleted and recreated (same
+                     * username, different UID) between the broker minting
+                     * the marker and PAM consuming it. */
+                    if (marker_field(buf, (size_t)got, "VERSION=", version, sizeof(version)) &&
+                        strcmp(version, "2") == 0 &&
+                        marker_field(buf, (size_t)got, "UID=", uidbuf, sizeof(uidbuf))) {
+                        char expected[16];
+                        snprintf(expected, sizeof(expected), "%lu", (unsigned long)expected_uid);
+                        ok = (strcmp(uidbuf, expected) == 0);
+                    }
+                }
+                wipe(buf, sizeof(buf));
+            }
         }
+        close(fd);
     }
     unlink(tmp);
     return ok;
@@ -144,17 +192,27 @@ static int consume_login_approval(const char *user, long ttl_seconds) {
 /* Mints a short-lived, single-use hand-off marker authorizing exactly one
  * secret release by kwallet-secretd, separate from the login-decision
  * marker above (which is already consumed by the time we get here). */
-static void mint_kwallet_handoff(const char *user) {
-    char path[256];
+static void mint_kwallet_handoff(const char *user, uid_t uid) {
+    char path[256], tmp[300], content[64];
     int n = snprintf(path, sizeof(path), MARKER_DIR "/kwallet-ready-%s", user);
     if (n <= 0 || (size_t)n >= sizeof(path)) return;
-    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    if (fd >= 0) close(fd);
+    n = snprintf(tmp, sizeof(tmp), "%s.tmp.%d", path, (int)getpid());
+    if (n <= 0 || (size_t)n >= sizeof(tmp)) return;
+    int clen = snprintf(content, sizeof(content), "UID=%lu\n", (unsigned long)uid);
+    if (clen <= 0 || (size_t)clen >= sizeof(content)) return;
+
+    int fd = open(tmp, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0600);
+    if (fd < 0) return;
+    ssize_t w = write(fd, content, (size_t)clen);
+    close(fd);
+    if (w != clen || rename(tmp, path) != 0) {
+        unlink(tmp);
+    }
 }
 
 /* connect+send+recv with a hard timeout; returns 0 and fills out/outlen on
  * success ("OK <secret>"), -1 on any failure (never partial/garbage). */
-static int fetch_secret(const char *user, char *out, size_t outcap, size_t *outlen) {
+static int fetch_secret(const char *user, uid_t uid, char *out, size_t outcap, size_t *outlen) {
     int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
     if (fd < 0) return -1;
 
@@ -169,7 +227,7 @@ static int fetch_secret(const char *user, char *out, size_t outcap, size_t *outl
     }
 
     char req[320];
-    int reqlen = snprintf(req, sizeof(req), "GET %s\n", user);
+    int reqlen = snprintf(req, sizeof(req), "GET %s %lu\n", user, (unsigned long)uid);
     if (reqlen <= 0 || (size_t)reqlen >= sizeof(req)) { close(fd); return -1; }
 
     struct pollfd pfd = { .fd = fd, .events = POLLOUT };
@@ -241,7 +299,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
     /* This is the ONLY gate for the login decision. Once a valid approval
      * is consumed, the smartphone login is authoritative-successful no matter
      * what happens below. */
-    if (!consume_login_approval(user, cfg.approval_ttl_seconds)) {
+    if (!consume_login_approval(user, pw->pw_uid, cfg.approval_ttl_seconds)) {
         return PAM_IGNORE;
     }
 
@@ -251,14 +309,14 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
 
     /* Best-effort from here on: KWallet auto-unlock must never be able to
      * fail the login that was already decided above. */
-    mint_kwallet_handoff(user);
+    mint_kwallet_handoff(user, pw->pw_uid);
 
     char secret[MAX_SECRET];
     if (mlock(secret, sizeof(secret)) != 0) {
         /* proceed anyway; mlock is best-effort hardening, not a hard requirement */
     }
     size_t seclen = 0;
-    int rc = fetch_secret(user, secret, sizeof(secret), &seclen);
+    int rc = fetch_secret(user, pw->pw_uid, secret, sizeof(secret), &seclen);
     if (rc == 0) {
         pam_set_item(pamh, PAM_AUTHTOK, secret); /* best-effort; ignore failure here too */
     }

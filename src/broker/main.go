@@ -142,9 +142,15 @@ func cleanupStaleFlows() {
 }
 
 type flowState struct {
-	mu              sync.Mutex
-	Status          string `json:"status"` // pending|approved|denied|expired|error
-	Username        string `json:"username,omitempty"`
+	mu       sync.Mutex
+	Status   string `json:"status"` // pending|approved|denied|expired|error
+	Username string `json:"username,omitempty"`
+	// UID is resolved via NSS once, at flow start, and never re-derived
+	// from the username string again for the rest of this flow's
+	// lifetime - it is the immutable target-account binding a matching
+	// OIDC identity gets checked against, and what's embedded in the
+	// approval marker for PAM to cross-check at consumption time.
+	UID             string `json:"-"`
 	UserCode        string `json:"user_code,omitempty"`
 	VerificationURI string `json:"verification_uri_complete,omitempty"`
 	QRPath          string `json:"qr_path,omitempty"`
@@ -251,6 +257,19 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Re-resolve the account fresh via NSS for every flow, not just once
+	// at broker startup: if the account was deleted and recreated (e.g.
+	// UID reuse/rename) between startup and this request, the UID we
+	// bind into the marker below must reflect the *current* account, not
+	// a stale one - this is what lets PAM detect and reject a marker
+	// minted for an account that no longer exists in its original form.
+	localUser, err := userLookup(username)
+	if err != nil {
+		log.Printf("session start: NSS lookup failed for allowed user %q: %v", username, err)
+		http.Error(w, "not permitted", http.StatusForbidden)
+		return
+	}
+
 	release, err := checkAndReserve(username)
 	if err != nil {
 		log.Printf("rate limit: %s: %v", username, err)
@@ -261,7 +280,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	supersedePriorFlow(username)
 
 	sessionID := randomHex(16)
-	fs := &flowState{Status: "pending", Username: username, startedAt: time.Now()}
+	fs := &flowState{Status: "pending", Username: username, UID: localUser.Uid, startedAt: time.Now()}
 	flowsMu.Lock()
 	flows[sessionID] = fs
 	lastSessionForUser[username] = sessionID
@@ -514,7 +533,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 				log.Printf("session %s: SECURITY: token username %q != requested %q", sessionID, gotUser, username)
 				return
 			}
-			writeApprovalMarker(username)
+			writeApprovalMarker(username, fs.UID)
 			fs.mu.Lock()
 			fs.Status = "approved"
 			fs.mu.Unlock()
@@ -620,9 +639,18 @@ func fail(fs *flowState, reason string) {
 // by the PAM module, which also deletes it on read - so a marker can
 // grant at most one login, within a short window, no matter how this
 // HTTP API is otherwise reached from localhost.
-func writeApprovalMarker(username string) {
+func writeApprovalMarker(username, uid string) {
 	path := fmt.Sprintf("%s/approved-%s", markerDir, sanitizeUsername(username))
-	token := randomHex(32) + "\n" + time.Now().UTC().Format(time.RFC3339) + "\n"
+	// v2: PAM re-resolves the requesting account's UID via NSS at
+	// consumption time and compares it against UID= below - this is what
+	// makes a marker minted for an account that has since been deleted
+	// and recreated (same username, different UID) fail closed instead
+	// of silently trusting the username string alone.
+	token := "VERSION=2\n" +
+		"USERNAME=" + sanitizeUsername(username) + "\n" +
+		"UID=" + uid + "\n" +
+		"NONCE=" + randomHex(32) + "\n" +
+		"APPROVED_AT=" + time.Now().UTC().Format(time.RFC3339) + "\n"
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, []byte(token), 0600); err != nil {
 		log.Printf("writeApprovalMarker: %v", err)

@@ -32,3 +32,22 @@ independently of trusting that the tests above are correct:
 - [ ] A `kwallet-secretd` outage or missing credential never prevents a
       valid smartphone/passkey login from succeeding (verified in
       `tests/integration/pam-flow-test.sh`'s last case).
+- [ ] A marker's embedded `UID=` must match a *fresh* NSS lookup of the
+      account at consumption time - an account deleted and recreated
+      (same username, different UID) between approval and consumption
+      is rejected, not silently trusted (verified:
+      `pam-multiuser-test.sh`'s "wrong UID embedded" case).
+- [ ] `kwallet-secretd` never releases one user's credential for a
+      request naming a different user, and never releases a credential
+      when the hand-off marker's `UID=` doesn't match the requested UID
+      (verified: `TestConsumeHandoff_WrongUIDRejected`, and manually via
+      the real protocol in lab testing - see docs/validated-environment.md).
+- [ ] `allowed_users` may safely contain more than one entry with
+      `kwallet_auto_unlock=true` - each user's credential is a separate
+      file (`kwallet.secret.<user>`), never one shared secret.
+- [ ] Parallel flows for two different users (alice, bob) never
+      interfere: alice's `/cancel`, supersede, rate limit, or failure
+      lockout never affects bob's independent flow (verified:
+      `TestHandleStart_AliceAndBobFlowsAreIndependent`,
+      `TestSupersedePriorFlow_NewAliceFlowDoesNotSupersedeBobFlow`,
+      `TestHandleCancel_CancellingAliceSessionLeavesBobActive`).

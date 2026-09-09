@@ -63,14 +63,17 @@ stack. See `docs/installation.md`.
   one (see `docs/architecture.md`).
 - No packages are published to a Debian/APT repository yet - install
   from a signed GitHub release `.deb`, see `docs/installation.md`.
-- Single-user configuration is what has actually been validated
-  end-to-end. `allowed_users` structurally accepts more than one local
-  account and every flow/marker/cancel operation is already scoped per
-  user (see `docs/architecture.md`'s "Multi-user readiness" section),
-  but there is no SDDM account-picker UX yet, and KWallet auto-unlock
-  specifically refuses to enable with more than one allowed user until
-  it supports per-user credentials. Full multi-user support is planned
-  for a future release, not this one.
+- Multi-user support: `allowed_users` may list more than one account,
+  each with independent flows, approval markers, and KWallet
+  credentials, bound to whichever account SDDM's own existing user
+  selector (avatar list or manual username entry) currently has
+  selected - see `docs/architecture.md`'s "Multi-user readiness"
+  section. Tested via unit tests, real PAM integration tests against
+  local test accounts, and manual verification of the theme change on
+  the lab VM. Only one real human/production Authelia identity has been
+  used in end-to-end testing so far; multi-user proof beyond that uses
+  synthetic local accounts and unit-level identity mocks, not two real
+  people.
 
 ## Requirements
 

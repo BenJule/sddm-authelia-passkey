@@ -5,9 +5,26 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os/user"
 	"strings"
 	"testing"
 )
+
+// withStubUserLookup replaces the package's NSS lookup with a fixed,
+// in-memory set of test accounts, restoring the real user.Lookup after
+// the test - handleStart re-resolves the account via NSS on every call,
+// so any test driving it needs synthetic accounts rather than real ones.
+func withStubUserLookup(t *testing.T, uidByUser map[string]string) {
+	t.Helper()
+	prev := userLookup
+	userLookup = func(name string) (*user.User, error) {
+		if uid, ok := uidByUser[name]; ok {
+			return &user.User{Username: name, Uid: uid}, nil
+		}
+		return nil, user.UnknownUserError(name)
+	}
+	t.Cleanup(func() { userLookup = prev })
+}
 
 // --- pollToken outcome classification (RFC 8628 vs. rate-limit vs.
 // genuinely ambiguous) - see the pollOutcome doc comment in main.go for
@@ -212,6 +229,7 @@ func TestHandleStart_SingleAllowedUser_ResolvesWithoutUsernameParam(t *testing.T
 	resetFlowState(t)
 	resetLimiterState(t)
 	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001"})
 	cfg.AllowedUsers = map[string]bool{"alice": true}
 
 	req := httptest.NewRequest(http.MethodPost, "/start", nil)
@@ -283,6 +301,7 @@ func TestHandleStart_RateLimitedUserGets429(t *testing.T) {
 	resetFlowState(t)
 	resetLimiterState(t)
 	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001"})
 	cfg.AllowedUsers = map[string]bool{"alice": true}
 
 	req1 := httptest.NewRequest(http.MethodPost, "/start", nil)
