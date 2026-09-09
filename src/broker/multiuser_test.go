@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 )
 
@@ -21,6 +22,7 @@ func TestHandleStart_MultipleAllowedUsers_ExplicitAliceAccepted(t *testing.T) {
 	resetFlowState(t)
 	resetLimiterState(t)
 	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001", "bob": "1002"})
 	cfg.AllowedUsers = map[string]bool{"alice": true, "bob": true}
 
 	req := httptest.NewRequest(http.MethodPost, "/start?"+url.Values{"username": {"alice"}}.Encode(), nil)
@@ -36,6 +38,7 @@ func TestHandleStart_MultipleAllowedUsers_ExplicitBobAccepted(t *testing.T) {
 	resetFlowState(t)
 	resetLimiterState(t)
 	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001", "bob": "1002"})
 	cfg.AllowedUsers = map[string]bool{"alice": true, "bob": true}
 
 	req := httptest.NewRequest(http.MethodPost, "/start?"+url.Values{"username": {"bob"}}.Encode(), nil)
@@ -66,6 +69,7 @@ func TestHandleStart_AliceAndBobFlowsAreIndependent(t *testing.T) {
 	resetFlowState(t)
 	resetLimiterState(t)
 	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001", "bob": "1002"})
 	cfg.AllowedUsers = map[string]bool{"alice": true, "bob": true}
 
 	reqA := httptest.NewRequest(http.MethodPost, "/start?"+url.Values{"username": {"alice"}}.Encode(), nil)
@@ -155,6 +159,29 @@ func TestHandleCancel_CancellingAliceSessionLeavesBobActive(t *testing.T) {
 	}
 }
 
+func TestHandleStart_ConcurrentAliceAndBob_NoRace(t *testing.T) {
+	resetFlowState(t)
+	resetLimiterState(t)
+	withFailingDeviceAuthEndpoint(t)
+	withStubUserLookup(t, map[string]string{"alice": "1001", "bob": "1002"})
+	cfg.AllowedUsers = map[string]bool{"alice": true, "bob": true}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		for _, u := range []string{"alice", "bob"} {
+			wg.Add(1)
+			go func(user string) {
+				defer wg.Done()
+				req := httptest.NewRequest(http.MethodPost, "/start?"+url.Values{"username": {user}}.Encode(), nil)
+				handleStart(httptest.NewRecorder(), req)
+				req2 := httptest.NewRequest(http.MethodGet, "/status?session_id=nonexistent", nil)
+				handleStatus(httptest.NewRecorder(), req2)
+			}(u)
+		}
+	}
+	wg.Wait()
+}
+
 func TestLoadConfig_MultipleAllowedUsersParsedCorrectly(t *testing.T) {
 	p := writeTempConfig(t, `
 authelia_base_url=https://idp.example.com
@@ -176,7 +203,10 @@ allowed_users=alice,bob,carol
 	}
 }
 
-func TestLoadConfig_RejectsKWalletAutoUnlockWithMultipleUsers(t *testing.T) {
+func TestLoadConfig_AllowsKWalletAutoUnlockWithMultipleUsers(t *testing.T) {
+	// kwallet-secretd now binds credentials per-user (kwallet_credential_name
+	// is a prefix, one file per allowed user - see docs/kwallet.md), so
+	// this is no longer refused.
 	p := writeTempConfig(t, `
 authelia_base_url=https://idp.example.com
 allowed_verification_host=idp.example.com
@@ -184,8 +214,8 @@ oidc_client_id=pam-authelia
 allowed_users=alice,bob
 kwallet_auto_unlock=true
 `)
-	if _, err := LoadConfig(p); err == nil {
-		t.Fatal("expected rejection: kwallet-secretd has no per-user credential binding yet")
+	if _, err := LoadConfig(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
