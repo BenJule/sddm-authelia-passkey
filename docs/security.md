@@ -23,7 +23,7 @@ WebAuthn itself, not something this project adds or removes.
 
 ## What is, and is not, a secret
 
-- The Pixel/Passkey login path itself has **no persistent secret** at
+- The smartphone/passkey login path itself has **no persistent secret** at
   rest - the private key never leaves the authenticator, and the
   short-lived approval marker is not a credential, just a "this exact
   device flow was approved, once, recently" fact.

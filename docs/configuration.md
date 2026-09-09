@@ -17,9 +17,11 @@ ambiguous or insecure configuration:
 
 - `authelia_base_url` must be `https://` unless
   `authelia_dev_insecure_http=true` (development only).
-- `allowed_users` must list at least one account, and every listed
-  account is verified to exist via a real NSS lookup (`os/user.Lookup`)
-  at broker startup - not just trusted from the config file text.
+- `allowed_users` must list at least one account, must not include
+  `root` (refused outright, redundant with the PAM stack's own `user !=
+  root` line - see `docs/architecture.md`), and every listed account is
+  verified to exist via a real NSS lookup (`os/user.Lookup`) at broker
+  startup - not just trusted from the config file text.
 - All timing/limit values must be positive.
 
 ## Changing `allowed_users`
