@@ -31,27 +31,22 @@ jobs:
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
+      - name: Collect build output (upload-artifact rejects ../ paths)
+        run: mkdir -p out && mv ../sddm-authelia-passkey_*.deb ../sddm-authelia-passkey_*.changes ../sddm-authelia-passkey_*.buildinfo out/
+
       - name: lintian
-        run: lintian --fail-on error,warning ../sddm-authelia-passkey_*.deb
+        run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
       - name: Generate SBOMs (CycloneDX, per Go module)
         run: |
-          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../broker.cdx.json
-          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../kwallet-secretd.cdx.json
+          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
+          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/kwallet-secretd.cdx.json
 
       - name: Checksums (unsigned - maintainer signs these locally)
-        run: |
-          cd ..
-          sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes \
-            sddm-authelia-passkey_*.buildinfo > SHA256SUMS.unsigned
+        run: cd out && sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo > SHA256SUMS.unsigned
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-candidate
-          path: |
-            ../sddm-authelia-passkey_*.deb
-            ../sddm-authelia-passkey_*.changes
-            ../sddm-authelia-passkey_*.buildinfo
-            ../SHA256SUMS.unsigned
-            *.cdx.json
+          path: out/
           retention-days: 14
