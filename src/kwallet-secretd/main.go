@@ -45,12 +45,29 @@ var markerDir = "/run/sddm-authelia-passkey"
 
 var cfg config
 
-func credPath() string {
+// credPath is per-user: cfg.KWalletCredentialName is a prefix (default
+// "kwallet.secret"), and each allowed user has their own systemd-creds
+// encrypted file "<prefix>.<user>" - never one credential shared across
+// every allowed user. See docs/kwallet.md for the setup tool that
+// creates these.
+func credPath(user string) string {
 	dir := os.Getenv("CREDENTIALS_DIRECTORY")
 	if dir == "" {
-		dir = "/run/credentials/kwallet-secretd.service"
+		dir = "/run/credentials/sddm-authelia-passkey-kwallet-secretd.service"
 	}
-	return filepath.Join(dir, cfg.KWalletCredentialName)
+	return filepath.Join(dir, cfg.KWalletCredentialName+"."+user)
+}
+
+func sanitizeUID(u string) (string, bool) {
+	if u == "" || len(u) > 10 {
+		return "", false
+	}
+	for _, c := range u {
+		if c < '0' || c > '9' {
+			return "", false
+		}
+	}
+	return u, true
 }
 
 func sanitizeUsername(u string) (string, bool) {
@@ -66,9 +83,11 @@ func sanitizeUsername(u string) (string, bool) {
 }
 
 // consumeHandoff atomically claims (removes) the hand-off marker for
-// user, and reports whether it was present and still within TTL.
+// user, and reports whether it was present, still within TTL, and (if
+// it carries a UID= line - minted by an up to date PAM module) bound to
+// exactly the UID the caller claims to be releasing a secret for.
 // Single-use: whether valid or expired, the marker is gone afterwards.
-func consumeHandoff(user string) bool {
+func consumeHandoff(user string, wireUID string) bool {
 	path := filepath.Join(markerDir, markerPrefix+user)
 	tmp := path + ".claimed"
 	if err := os.Rename(path, tmp); err != nil {
@@ -80,7 +99,19 @@ func consumeHandoff(user string) bool {
 	if err != nil {
 		return false
 	}
-	return time.Since(info.ModTime()) <= markerTTL
+	if time.Since(info.ModTime()) > markerTTL {
+		return false
+	}
+	content, err := os.ReadFile(tmp)
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		if after, ok := strings.CutPrefix(line, "UID="); ok {
+			return after == wireUID
+		}
+	}
+	return false
 }
 
 func peerIsRoot(c *net.UnixConn) bool {
@@ -113,8 +144,8 @@ func handle(c *net.UnixConn) {
 		return
 	}
 	line = strings.TrimSpace(line)
-	parts := strings.SplitN(line, " ", 2)
-	if len(parts) != 2 || parts[0] != "GET" {
+	parts := strings.SplitN(line, " ", 3)
+	if len(parts) != 3 || parts[0] != "GET" {
 		fmt.Fprint(c, "DENY\n")
 		return
 	}
@@ -123,13 +154,22 @@ func handle(c *net.UnixConn) {
 		fmt.Fprint(c, "DENY\n")
 		return
 	}
-
-	if !consumeHandoff(user) {
+	uid, ok := sanitizeUID(parts[2])
+	if !ok {
 		fmt.Fprint(c, "DENY\n")
 		return
 	}
 
-	secret, err := os.ReadFile(credPath())
+	// The handoff marker's own UID= binding is checked against uid here -
+	// a request for "alice" carrying bob's UID (or any UID that doesn't
+	// match what PAM's own fresh NSS lookup produced when it minted the
+	// marker) is rejected, not just a username string match.
+	if !consumeHandoff(user, uid) {
+		fmt.Fprint(c, "DENY\n")
+		return
+	}
+
+	secret, err := os.ReadFile(credPath(user))
 	if err != nil {
 		log.Printf("credential unavailable: %v", err)
 		fmt.Fprint(c, "DENY\n")
@@ -179,10 +219,14 @@ func main() {
 		log.Fatalf("chmod socket: %v", err)
 	}
 
-	// Fail fast and loudly at startup if the credential is missing/unreadable,
-	// rather than only discovering it during a real smartphone login attempt.
-	if _, err := os.Stat(credPath()); err != nil {
-		log.Printf("WARNING: kwallet credential not present at startup (%v) - auto-unlock will fail-safe to DENY until fixed", err)
+	// Fail fast and loudly at startup if a user's credential is missing/
+	// unreadable, rather than only discovering it during a real
+	// smartphone login attempt - checked per allowed user, since each
+	// has their own credential file.
+	for u := range cfg.AllowedUsers {
+		if _, err := os.Stat(credPath(u)); err != nil {
+			log.Printf("WARNING: kwallet credential for %q not present at startup (%v) - auto-unlock will fail-safe to DENY until fixed", u, err)
+		}
 	}
 
 	log.Printf("kwallet-secretd listening on %s", socketPath)
