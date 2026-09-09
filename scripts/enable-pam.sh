@@ -17,6 +17,14 @@ info() { echo "[INFO] $*"; }
 [ -f /lib/x86_64-linux-gnu/security/pam_authelia_passkey.so ] || \
     { bad "pam_authelia_passkey.so not installed yet - run install.sh or install the .deb package first"; exit 1; }
 
+# Idempotent re-runs must not create a backup of an already-integrated PAM file.
+if grep -q 'pam_authelia_passkey.so' /etc/pam.d/sddm; then
+    info "/etc/pam.d/sddm already integrated, leaving it untouched"
+    echo "PAM_INSTALL=GREEN"
+    echo "READY_FOR_SDDM_RESTART=YES"
+    exit 0
+fi
+
 BACKUP="/root/sddm-authelia-passkey-backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP"
 cp -a /etc/pam.d/sddm "$BACKUP/sddm.pam.orig"

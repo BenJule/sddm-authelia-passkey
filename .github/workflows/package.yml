@@ -25,6 +25,9 @@ jobs:
       - name: Credstore permission regression
         run: bash tests/integration/credstore-dir-test.sh
 
+      - name: PAM backup regression
+        run: bash tests/integration/pam-backup-test.sh
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
