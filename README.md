@@ -63,18 +63,17 @@ stack. See `docs/installation.md`.
   one (see `docs/architecture.md`).
 - No packages are published to a Debian/APT repository yet - install
   from a signed GitHub release `.deb`, see `docs/installation.md`.
-- Multi-user identity binding, cross-user isolation (flows, approval
-  markers, KWallet credentials), and per-user KWallet credentials are
-  implemented and tested (unit tests + real PAM integration tests
-  against local test accounts - see `docs/architecture.md`'s
-  "Multi-user readiness" section). What is **not** yet implemented is
-  an SDDM account-picker UX - `allowed_users` with more than one entry
-  currently requires the theme/greeter's existing username field to be
-  used explicitly (no automatic single-user convenience resolution).
-  A full account-picker UI is planned for a future release. Only one
-  real human/production Authelia identity has been used in end-to-end
-  testing so far; multi-user testing beyond that has used synthetic
-  local accounts and unit-level identity mocks, not two real people.
+- Multi-user support: `allowed_users` may list more than one account,
+  each with independent flows, approval markers, and KWallet
+  credentials, bound to whichever account SDDM's own existing user
+  selector (avatar list or manual username entry) currently has
+  selected - see `docs/architecture.md`'s "Multi-user readiness"
+  section. Tested via unit tests, real PAM integration tests against
+  local test accounts, and manual verification of the theme change on
+  the lab VM. Only one real human/production Authelia identity has been
+  used in end-to-end testing so far; multi-user proof beyond that uses
+  synthetic local accounts and unit-level identity mocks, not two real
+  people.
 
 ## Requirements
 

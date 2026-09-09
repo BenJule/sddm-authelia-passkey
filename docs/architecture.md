@@ -119,14 +119,16 @@ a second one.
 
 ## Multi-user readiness
 
-Full multi-user SDDM UX (account picker driving the smartphone/passkey
-flow) is not implemented yet - see `docs/validated-environment.md` for
-what is actually validated today (a single `allowed_users` entry, in
-both production and lab). `allowed_users` structurally supports more
-than one entry already, and every per-flow structure below is already
-scoped to exactly one local user - this section documents that binding
-explicitly so a future account-picker UI has a clean foundation to build
-on, without pretending multi-user is fully supported today.
+`allowed_users` supports more than one entry, and the smartphone/passkey
+flow is bound to whichever local account SDDM itself currently has
+selected - `pixelFlow.sddmSelectedUsername` in the theme tracks the
+avatar list's highlighted user (or the manually typed username when
+that prompt is showing instead) via SDDM's own `userList`/`userNameInput`,
+so there is no second, independent user database. See
+`docs/validated-environment.md` for what has actually been exercised
+end-to-end (still one real production/lab identity; multi-user proof
+beyond that is via real local PAM test accounts and unit-level identity
+mocks, not two real people - see `KNOWN_LIMITATIONS`).
 
 **Identity binding.** Three distinct usernames are involved in a single
 flow, and they must agree by the definition below - anything else is a
@@ -188,15 +190,26 @@ that UID matches what the requesting PAM process claims - a request
 naming "alice" cannot be satisfied by a hand-off marker minted for any
 other account, even under a race.
 
-**The single-allowed-user auto-resolution is a convenience fallback,
-not the multi-user model.** When `username` is omitted on `/start` and
-`allowed_users` has exactly one entry, the broker resolves it
-automatically (better UX for the common case). With more than one
-entry, an empty `username` is refused (`403`) rather than guessed -
-never username enumeration, never an implicit choice. The intended
-longer-term flow for real multi-user support is: SDDM's own
-account/session picker selects a local username first, which the theme
-then passes explicitly to `/start` - not the broker inferring one.
+**The single-allowed-user auto-resolution is a broker-level convenience
+fallback, not what the theme relies on.** The theme itself always sends
+an explicit `username` (SDDM's own currently-selected account - see
+below), so this API-level fallback (omit `username` when
+`allowed_users` has exactly one entry) mainly exists for direct API
+callers/testing. With more than one entry and no `username`, `/start`
+still refuses (`403`) rather than guessing - never username enumeration,
+never an implicit choice.
+
+**Flow-to-account binding in the theme.** `pixelFlow.sddmSelectedUsername`
+tracks SDDM's own account selection (`mainStack.currentItem.userList
+.selectedUser`, or `.userNameInput.text` when the manual-entry prompt is
+showing) - SDDM's existing account picker is the only source of truth,
+never a second user list. `pixelFlow.targetUsername` is captured from
+that once, when a flow starts, and is immutable for the flow's whole
+lifetime; if SDDM's selection changes to a different account while a
+flow is active, `onSddmSelectedUsernameChanged` cancels it immediately
+rather than silently retargeting - a stale `/status` "approved" response
+can then never reach `handleApproved` for the newly-selected account,
+because `state` is no longer `"waiting"` by the time it would arrive.
 
 ## Trust boundaries
 

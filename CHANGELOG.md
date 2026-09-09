@@ -27,6 +27,11 @@ follows [Keep a Changelog](https://keepachangelog.com/).
   real local test accounts and the compiled PAM module.
 - Broker unit tests for OIDC identity determination/exact-match binding
   (`identity_test.go`) and a concurrent alice/bob race test.
+- Theme: the smartphone/passkey flow is now bound to whichever account
+  SDDM's own existing user selector (avatar list or manual username
+  entry) currently has selected, captured immutably per flow
+  (`pixelFlow.targetUsername`); changing the selection mid-flow cancels
+  it instead of silently retargeting.
 
 ### Changed
 - Removed the v0.3.0-era restriction that refused
