@@ -40,6 +40,15 @@ jobs:
       - name: lintian
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
+      - name: Diagnose git state before SBOM generation
+        run: |
+          echo "pwd: $(pwd)"
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          ls -la .git || echo ".git MISSING"
+          git config --global --get-all safe.directory || echo "no safe.directory entries"
+          git -C src/broker rev-parse --show-toplevel || echo "git rev-parse FAILED from src/broker"
+          git -C src/broker status || echo "git status FAILED from src/broker"
+
       - name: Generate SBOMs (CycloneDX, per Go module)
         run: |
           cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
