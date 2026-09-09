@@ -120,7 +120,7 @@ func TestCheckAndReserve_Cooldown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first call should succeed: %v", err)
 	}
-	release(true)
+	release(releaseSuccess)
 
 	if _, err := checkAndReserve("testuser1"); err == nil {
 		t.Fatal("expected cooldown to reject immediate second call")
@@ -130,7 +130,7 @@ func TestCheckAndReserve_Cooldown(t *testing.T) {
 func TestCheckAndReserve_GlobalConcurrencyCap(t *testing.T) {
 	resetLimiterState(t)
 
-	var releases []func(bool)
+	var releases []func(releaseOutcome)
 	for i := 0; i < cfg.MaxParallelFlows; i++ {
 		user := string(rune('a' + i))
 		r, err := checkAndReserve(user)
@@ -143,7 +143,26 @@ func TestCheckAndReserve_GlobalConcurrencyCap(t *testing.T) {
 		t.Fatal("expected global concurrency cap to reject")
 	}
 	for _, r := range releases {
-		r(true)
+		r(releaseSuccess)
+	}
+}
+
+func TestCheckAndReserve_NeutralOutcomesDoNotTriggerFailureLockout(t *testing.T) {
+	resetLimiterState(t)
+	cooldown := time.Duration(cfg.UserCooldownSeconds) * time.Second
+	user := "neutraltest"
+
+	for i := 0; i < cfg.FailureLockoutThreshold+2; i++ {
+		l := limiterFor(user)
+		l.mu.Lock()
+		l.lastStart = time.Now().Add(-cooldown - time.Second)
+		l.mu.Unlock()
+
+		release, err := checkAndReserve(user)
+		if err != nil {
+			t.Fatalf("neutral outcome %d unexpectedly locked user out: %v", i, err)
+		}
+		release(releaseNeutral)
 	}
 }
 
@@ -161,7 +180,7 @@ func TestCheckAndReserve_FailureLockout(t *testing.T) {
 		if err != nil {
 			t.Fatalf("call %d should succeed: %v", i, err)
 		}
-		release(false) // simulate denial
+		release(releaseAuthFailure) // simulate denial
 	}
 
 	l := limiterFor(user)
