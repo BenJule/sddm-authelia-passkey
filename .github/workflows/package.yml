@@ -1,0 +1,88 @@
+name: package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  build-and-lintian:
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts golang-go gcc libpam0g-dev \
+            lintian git ca-certificates
+
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Verify package metadata (control fields, file listing)
+        run: |
+          dpkg-deb -I ../sddm-authelia-passkey_*.deb
+          dpkg-deb -c ../sddm-authelia-passkey_*.deb
+
+      - name: lintian
+        run: lintian --fail-on error,warning ../sddm-authelia-passkey_*.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-package
+          path: ../sddm-authelia-passkey_*.deb
+          retention-days: 7
+
+  lifecycle:
+    runs-on: ubuntu-latest
+    needs: build-and-lintian
+    container: debian:13
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-package
+          path: /tmp/pkg
+
+      - run: apt-get update
+
+      - name: Install package (pulls sddm/libpam-modules/systemd via Depends)
+        run: apt-get install -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
+
+      - name: Verify installed files, ownership, package integrity
+        run: |
+          test -f /usr/lib/sddm-authelia-passkey/broker
+          test -f /usr/lib/sddm-authelia-passkey/kwallet-secretd
+          test -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
+          test -f /usr/lib/systemd/system/sddm-authelia-passkey-broker.service
+          test -f /usr/lib/systemd/system/sddm-authelia-passkey-kwallet-secretd.service
+          test -f /etc/sddm-authelia-passkey/config.conf.example
+          [ "$(stat -c '%U:%G %a' /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so)" = "root:root 644" ]
+          dpkg -V sddm-authelia-passkey
+
+      - name: Invariant - plain install must not touch /etc/pam.d/sddm
+        run: |
+          if [ -f /etc/pam.d/sddm ] && grep -q pam_authelia_passkey /etc/pam.d/sddm; then
+            echo "FAIL: package install silently modified /etc/pam.d/sddm"
+            exit 1
+          fi
+          echo "OK: PAM untouched by plain package install"
+
+      - name: Remove package
+        run: apt-get remove -y sddm-authelia-passkey
+
+      - name: Verify cleanup
+        run: |
+          test ! -f /usr/lib/sddm-authelia-passkey/broker
+          test ! -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
+
+      - name: Reinstall package
+        run: apt-get install -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
+
+      - name: Verify reinstall
+        run: dpkg -V sddm-authelia-passkey

@@ -1,0 +1,57 @@
+name: release-build
+
+# Builds release-candidate artifacts (deterministically, in a clean
+# Debian 13 container) for the maintainer to download, inspect, sign,
+# and upload manually - see docs/release-signing.md. Deliberately does
+# NOT sign anything or create/publish a GitHub release itself: doing
+# that in CI would require putting the maintainer's private GPG key into
+# a long-lived repository secret, which is a strictly worse trust
+# boundary than the current manual process. Security beats automation.
+
+on:
+  workflow_dispatch:
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts golang-go gcc libpam0g-dev \
+            lintian git ca-certificates
+
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: lintian
+        run: lintian --fail-on error,warning ../sddm-authelia-passkey_*.deb
+
+      - name: Generate SBOMs (CycloneDX, per Go module)
+        run: |
+          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../broker.cdx.json
+          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../kwallet-secretd.cdx.json
+
+      - name: Checksums (unsigned - maintainer signs these locally)
+        run: |
+          cd ..
+          sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes \
+            sddm-authelia-passkey_*.buildinfo > SHA256SUMS.unsigned
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: |
+            ../sddm-authelia-passkey_*.deb
+            ../sddm-authelia-passkey_*.changes
+            ../sddm-authelia-passkey_*.buildinfo
+            ../SHA256SUMS.unsigned
+            *.cdx.json
+          retention-days: 14
