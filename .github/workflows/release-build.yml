@@ -28,34 +28,34 @@ jobs:
             build-essential debhelper devscripts golang-go gcc libpam0g-dev \
             lintian git ca-certificates
 
-      - name: Trust the checkout dir (container UID != checkout owner, needed for cyclonedx-gomod's git calls)
+      - name: Trust the checkout dir (container UID != checkout owner)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Generate SBOMs (CycloneDX, per Go module)
+        # Deliberately BEFORE the Debian build: dpkg-buildpackage's clean/
+        # build steps leave .git absent from the working tree afterward
+        # (observed empirically, in this exact debian:13 container - not
+        # fully root-caused, but 100% reproducible), and cyclonedx-gomod
+        # needs .git to determine the module's pseudo-version. SBOM
+        # generation only needs the source tree, not build output, so
+        # ordering it first sidesteps the issue rather than depending on
+        # a build tool's internal cleanup behavior not changing.
+        run: |
+          mkdir -p out
+          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
+          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/kwallet-secretd.cdx.json
 
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
       - name: Collect build output (upload-artifact rejects ../ paths)
-        run: mkdir -p out && mv ../sddm-authelia-passkey_*.deb ../sddm-authelia-passkey_*.changes ../sddm-authelia-passkey_*.buildinfo out/
+        run: mv ../sddm-authelia-passkey_*.deb ../sddm-authelia-passkey_*.changes ../sddm-authelia-passkey_*.buildinfo out/
 
       - name: lintian
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
-      - name: Diagnose git state before SBOM generation
-        run: |
-          echo "pwd: $(pwd)"
-          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
-          ls -la .git || echo ".git MISSING"
-          git config --global --get-all safe.directory || echo "no safe.directory entries"
-          git -C src/broker rev-parse --show-toplevel || echo "git rev-parse FAILED from src/broker"
-          git -C src/broker status || echo "git status FAILED from src/broker"
-
-      - name: Generate SBOMs (CycloneDX, per Go module)
-        run: |
-          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
-          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/kwallet-secretd.cdx.json
-
       - name: Checksums (unsigned - maintainer signs these locally)
-        run: cd out && sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo > SHA256SUMS.unsigned
+        run: cd out && sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo *.cdx.json > SHA256SUMS.unsigned
 
       - uses: actions/upload-artifact@v4
         with:
