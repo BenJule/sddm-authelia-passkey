@@ -28,6 +28,9 @@ jobs:
             build-essential debhelper devscripts golang-go gcc libpam0g-dev \
             lintian git ca-certificates
 
+      - name: Trust the checkout dir (container UID != checkout owner, needed for cyclonedx-gomod's git calls)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
