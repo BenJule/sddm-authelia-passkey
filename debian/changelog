@@ -1,3 +1,16 @@
+sddm-authelia-passkey (0.2.0-1) unstable; urgency=medium
+
+  * Fix hardcoded session index in smartphone-login (now uses
+    sessionButton.currentIndex, matching password login).
+  * Fix overlapping/duplicate device-authorization flows exhausting
+    broker concurrency slots; add explicit /cancel endpoint.
+  * Distinguish rate-limited/ambiguous token-poll responses from real
+    RFC 8628 outcomes in the broker.
+  * Replace floating passkey button with a sidebar-integrated
+    Smartphone-Login action, matching the host theme's action row.
+
+ -- sddm-authelia-passkey contributors <noreply@example.invalid>  Wed, 09 Sep 2026 03:16:00 +0200
+
 sddm-authelia-passkey (0.1.0-1) unstable; urgency=medium
 
   * Initial packaging.
