@@ -1,0 +1,116 @@
+name: "CD: APT Repository"
+
+# Verifies a published GitHub Release's .deb (signature + checksum +
+# package metadata) and hands it to a tightly-scoped, forced-command SSH
+# publisher on the existing internal APT server (apt.s3-dev.ovh). This
+# workflow never writes to dists/, Release, or InRelease directly, never
+# touches the BambuStudio "stable"/"nightly" distributions sharing that
+# server, and never has access to the repository's private signing key
+# (which stays exclusively on the server) - see docs/apt-repository.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to (re-)publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.event.release.tag_name }}"
+          [ -n "$TAG" ] || { echo "no tag resolved"; exit 1; }
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the release itself (not draft, tag exists, signed+verified)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          DRAFT=$(gh api repos/${{ github.repository }}/releases/tags/"$TAG" --jq .draft)
+          [ "$DRAFT" = "false" ] || { echo "refusing: release $TAG is a draft"; exit 1; }
+          TAG_SHA=$(gh api repos/${{ github.repository }}/git/refs/tags/"$TAG" --jq .object.sha)
+          TAG_OBJ_TYPE=$(gh api repos/${{ github.repository }}/git/refs/tags/"$TAG" --jq .object.type)
+          if [ "$TAG_OBJ_TYPE" = "tag" ]; then
+            VERIFIED=$(gh api repos/${{ github.repository }}/git/tags/"$TAG_SHA" --jq .verification.verified)
+          else
+            VERIFIED=$(gh api repos/${{ github.repository }}/commits/"$TAG_SHA" --jq .commit.verification.verified)
+          fi
+          [ "$VERIFIED" = "true" ] || { echo "refusing: tag $TAG is not GitHub-verified"; exit 1; }
+          echo "RELEASE_TAG_VERIFICATION=GREEN"
+
+      - name: Download exactly the expected assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p rc && cd rc
+          gh release download "$TAG" -R ${{ github.repository }} \
+            -p 'sddm-authelia-passkey_*_amd64.deb' \
+            -p 'sddm-authelia-passkey_*_amd64.deb.asc' \
+            -p 'SHA256SUMS' -p 'SHA256SUMS.asc'
+          DEBS=(sddm-authelia-passkey_*_amd64.deb)
+          [ "${#DEBS[@]}" -eq 1 ] || { echo "expected exactly one .deb, found ${#DEBS[@]}"; exit 1; }
+          echo "DEB=${DEBS[0]}" >> "$GITHUB_ENV"
+
+      - name: Verify maintainer signature and checksum
+        run: |
+          set -euo pipefail
+          cd rc
+          # Public key only - the private maintainer key never touches CI.
+          gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 96D8CF4E27A30719930EC28973F9432144634D95
+          gpg --verify SHA256SUMS.asc SHA256SUMS
+          sha256sum -c SHA256SUMS 2>&1 | grep "$DEB"
+          gpg --verify "$DEB.asc" "$DEB"
+          echo "MAINTAINER_SIGNATURE_VERIFICATION=GREEN"
+          echo "SHA256_VERIFICATION=GREEN"
+
+      - name: Verify package metadata
+        run: |
+          set -euo pipefail
+          PKG=$(dpkg-deb --field "rc/$DEB" Package)
+          ARCH=$(dpkg-deb --field "rc/$DEB" Architecture)
+          [ "$PKG" = "sddm-authelia-passkey" ] || { echo "unexpected Package: $PKG"; exit 1; }
+          [ "$ARCH" = "amd64" ] || { echo "unexpected Architecture: $ARCH"; exit 1; }
+          echo "DEB_METADATA_VERIFICATION=GREEN"
+
+      - name: Publish via the restricted forced-command SSH publisher
+        env:
+          APT_DEPLOY_SSH_KEY: ${{ secrets.APT_DEPLOY_SSH_KEY }}
+          APT_DEPLOY_KNOWN_HOSTS: ${{ secrets.APT_DEPLOY_KNOWN_HOSTS }}
+          APT_DEPLOY_HOST: ${{ secrets.APT_DEPLOY_HOST }}
+          APT_DEPLOY_USER: ${{ secrets.APT_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$APT_DEPLOY_SSH_KEY" > ~/.ssh/apt_deploy_key
+          chmod 600 ~/.ssh/apt_deploy_key
+          printf '%s\n' "$APT_DEPLOY_KNOWN_HOSTS" > ~/.ssh/apt_deploy_known_hosts
+          # No -o StrictHostKeyChecking=no anywhere: the host key is pinned
+          # from a secret, never trust-on-first-use.
+          ssh -i ~/.ssh/apt_deploy_key -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/apt_deploy_known_hosts \
+              "$APT_DEPLOY_USER@$APT_DEPLOY_HOST" < "rc/$DEB"
+
+      - name: Post-publish HTTPS validation
+        run: |
+          set -euo pipefail
+          curl -fsS https://apt.s3-dev.ovh/dists/trixie/InRelease > /dev/null
+          curl -fsS https://apt.s3-dev.ovh/dists/trixie/main/binary-amd64/Packages.gz > /dev/null
+          PUBLISHED_VERSION=$(dpkg-deb --field "rc/$DEB" Version)
+          curl -fsS "https://apt.s3-dev.ovh/pool/main/s/sddm-authelia-passkey/sddm-authelia-passkey_${PUBLISHED_VERSION}_amd64.deb" -o /dev/null
+          echo "HTTPS_VALIDATION=GREEN version=$PUBLISHED_VERSION"
