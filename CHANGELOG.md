@@ -23,6 +23,16 @@ follows [Keep a Changelog](https://keepachangelog.com/).
   genuinely ambiguous/malformed responses), `handleStart`'s
   username-resolution/rejection logic, and `handleCancel`.
 - `docs/validated-environment.md` and `docs/supply-chain.md`.
+- Broker: `kwallet_auto_unlock=true` is now refused at config-load time
+  when `allowed_users` has more than one entry - `kwallet-secretd` has
+  no per-user credential binding yet, so this prevents one user's
+  KWallet secret from being handed to another. Documented in
+  `docs/architecture.md`'s new "Multi-user readiness" section, along
+  with the existing per-user isolation of rate limits, flow
+  supersession, cancellation, and approval markers, and the
+  `REQUESTED_LOCAL_USER`/`AUTHENTICATED_AUTHELIA_USER`/`BOUND_LOCAL_USER`
+  identity-binding model. 8 new regression tests
+  (`src/broker/multiuser_test.go`).
 
 ### Fixed
 - Debian packaging: `debian/rules`, `debian/postinst`, and

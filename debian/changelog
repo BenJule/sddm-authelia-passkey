@@ -17,6 +17,9 @@ sddm-authelia-passkey (0.3.0-1) unstable; urgency=medium
     gitleaks, dependency review, and theme-patch validation.
   * Expand broker test coverage for token-poll outcome classification,
     username resolution, and flow cancellation.
+  * Broker: refuse kwallet_auto_unlock=true with more than one
+    allowed_users entry (no per-user KWallet credential yet); document
+    multi-user readiness and identity binding in docs/architecture.md.
 
  -- Benjamin Lütker <benjamin.luetker@gmail.com>  Wed, 09 Sep 2026 09:40:04 +0200
 

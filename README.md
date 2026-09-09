@@ -63,6 +63,14 @@ stack. See `docs/installation.md`.
   one (see `docs/architecture.md`).
 - No packages are published to a Debian/APT repository yet - install
   from a signed GitHub release `.deb`, see `docs/installation.md`.
+- Single-user configuration is what has actually been validated
+  end-to-end. `allowed_users` structurally accepts more than one local
+  account and every flow/marker/cancel operation is already scoped per
+  user (see `docs/architecture.md`'s "Multi-user readiness" section),
+  but there is no SDDM account-picker UX yet, and KWallet auto-unlock
+  specifically refuses to enable with more than one allowed user until
+  it supports per-user credentials. Full multi-user support is planned
+  for a future release, not this one.
 
 ## Requirements
 
