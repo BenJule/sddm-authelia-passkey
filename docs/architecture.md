@@ -63,7 +63,7 @@ makes this safe: `N` is the exact number of lines the local
 `@include common-auth` expands to, computed fresh at install time (see
 `scripts/enable-pam.sh`), never hardcoded. On success it skips exactly
 those `N` lines - never past the following `pam_kwallet5` line - so a
-Pixel login still reaches `pam_kwallet5` just like a password login
+a smartphone/passkey login still reaches `pam_kwallet5` just like a password login
 does; on any non-success it changes nothing and password login proceeds
 exactly as if this project were not installed.
 

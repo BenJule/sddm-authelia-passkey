@@ -1,9 +1,17 @@
 # sddm-authelia-passkey
 
-**Status: experimental / early release.** Proven end-to-end on one
-production host and one lab VM; not yet tested across multiple
-independent installs. Read `docs/threat-model.md` and `docs/security.md`
-before deploying.
+[![build](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml)
+[![test](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml)
+[![security](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml)
+[![package](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/package.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/package.yml)
+[![release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey?include_prereleases)](https://github.com/BenJule/sddm-authelia-passkey/releases)
+[![license](https://img.shields.io/github/license/BenJule/sddm-authelia-passkey)](LICENSE)
+
+**Status: pre-1.0, experimental.** Proven end-to-end on one production
+host and one lab VM, including a real host reboot and a full password +
+smartphone/passkey login regression on both; not yet tested across
+multiple independent installs or hardware configurations. Read
+`docs/threat-model.md` and `docs/security.md` before deploying.
 
 Passwordless SDDM login via Authelia's OIDC Device Authorization Grant
 and WebAuthn/Passkey user verification - approve a login on your phone
@@ -17,7 +25,7 @@ kept as a fallback.
 - Password login is never removed, weakened, or made conditional - the
   PAM integration is purely additive and falls through unchanged when no
   approval is present.
-- Optional KWallet auto-unlock on a successful Pixel login
+- Optional KWallet auto-unlock on a successful smartphone/passkey login
   (`kwallet_auto_unlock`, off by default), using `systemd-creds` so the
   wallet password is never stored in plaintext.
 - Rate limiting, single-use/short-TTL approval markers, and a
@@ -29,12 +37,32 @@ See `docs/architecture.md` for the full diagram and design rationale
 (including why a separate broker process is unavoidable given SDDM's PAM
 architecture).
 
-## Supported platforms
+## Tested configuration
 
-Debian 13 (Trixie) + SDDM 0.21.x + KDE Plasma 6 + Authelia 4.39+ +
-systemd 257+. Other distributions/versions are unsupported/experimental
-- the installer will refuse to touch PAM rather than guess on an
-unrecognized stack. See `docs/installation.md`.
+| Component | Version |
+| --- | --- |
+| OS | Debian 13 (Trixie) |
+| Display manager | SDDM 0.21.x |
+| Desktop | KDE Plasma 6 |
+| Identity provider | Authelia 4.39+ (OIDC, Device Authorization Grant) |
+| Init system | systemd 257+ |
+
+Other distributions/versions are unsupported/experimental - the
+installer will refuse to touch PAM rather than guess on an unrecognized
+stack. See `docs/installation.md`.
+
+## Limitations
+
+- Only proven on the configuration above; not yet validated on other
+  distributions, display managers, or desktop environments.
+- Requires an Authelia instance you control and can configure an OIDC
+  client on - it does not work against arbitrary/unmodified identity
+  providers.
+- KWallet auto-unlock is KDE-specific and optional; it is off by default
+  and a failure there can never turn a successful login into a failed
+  one (see `docs/architecture.md`).
+- No packages are published to a Debian/APT repository yet - install
+  from a signed GitHub release `.deb`, see `docs/installation.md`.
 
 ## Requirements
 
@@ -44,7 +72,11 @@ unrecognized stack. See `docs/installation.md`.
 
 ## Installation
 
-See `docs/installation.md`.
+Signed `.deb` releases are published on
+[GitHub Releases](https://github.com/BenJule/sddm-authelia-passkey/releases)
+(verify before installing - see `docs/release-signing.md`). Building
+from source is also supported. See `docs/installation.md` for both
+paths.
 
 ## Configuration
 
@@ -62,7 +94,10 @@ See `docs/kwallet.md`.
 
 ## Security
 
-See `docs/security.md`, `docs/threat-model.md`, and `SECURITY.md`.
+See `docs/security.md`, `docs/threat-model.md`, and `SECURITY.md`. For
+what has actually been exercised end-to-end vs. merely expected to work,
+see `docs/validated-environment.md`. For SBOM/dependency/provenance
+status, see `docs/supply-chain.md`.
 
 ## Rollback
 
