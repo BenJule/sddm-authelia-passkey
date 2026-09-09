@@ -1,3 +1,3 @@
 module sddm-authelia-passkey/kwallet-secretd
 
-go 1.23
+go 1.24

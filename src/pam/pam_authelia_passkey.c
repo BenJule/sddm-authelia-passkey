@@ -1,14 +1,14 @@
 /*
  * pam_authelia_passkey.so - auth module.
  *
- * Sole consumer of the single-use, TTL-bound Pixel/Authelia device-
+ * Sole consumer of the single-use, TTL-bound Authelia device-
  * authorization approval marker written by the broker
  * (/run/sddm-authelia-passkey/approved-<user>). A pam_exec(8) child
  * process cannot set PAM_AUTHTOK for its parent PAM stack (see
  * docs/architecture.md), so this native module exists specifically to
  * make optional KWallet auto-unlock possible; without that feature it
  * would functionally be a pam_exec(8) + shell script, as in a minimal
- * password-only Pixel-login deployment.
+ * password-only smartphone-login deployment.
  *
  * On a valid approval:
  *   - the login decision is final and unconditional (PAM_SUCCESS) -
@@ -105,7 +105,7 @@ static void wipe(void *p, size_t n) {
 }
 
 /* Atomically consume (single-use) the approval marker for `user`, then
- * verify its age is within TTL. Returns 1 if the login is Pixel-approved,
+ * verify its age is within TTL. Returns 1 if the login is smartphone-approved,
  * 0 otherwise. The marker is gone either way once this returns. */
 static int consume_login_approval(const char *user, long ttl_seconds) {
     char marker[256], tmp[300];
@@ -121,9 +121,21 @@ static int consume_login_approval(const char *user, long ttl_seconds) {
     struct stat st;
     int ok = 0;
     if (stat(tmp, &st) == 0) {
-        time_t now = time(NULL);
-        long age = (long)(now - st.st_mtime);
-        ok = (age >= 0 && age <= ttl_seconds);
+        /* Defense in depth: the real boundary is markerDir's own mode
+         * (0700, root-owned - see docs/threat-model.md), which already
+         * makes it impossible for a non-root process to place a file
+         * here at all. Still verify ownership/mode on the file itself
+         * so a future regression that loosens the directory's
+         * permissions doesn't silently become a local privilege
+         * escalation - fail closed rather than trust path/name alone. */
+        int owned_by_root = (st.st_uid == 0 && st.st_gid == 0);
+        int mode_is_0600 = ((st.st_mode & 07777) == 0600);
+        int is_regular = S_ISREG(st.st_mode);
+        if (owned_by_root && mode_is_0600 && is_regular) {
+            time_t now = time(NULL);
+            long age = (long)(now - st.st_mtime);
+            ok = (age >= 0 && age <= ttl_seconds);
+        }
     }
     unlink(tmp);
     return ok;
@@ -227,7 +239,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
     }
 
     /* This is the ONLY gate for the login decision. Once a valid approval
-     * is consumed, the Pixel login is authoritative-successful no matter
+     * is consumed, the smartphone login is authoritative-successful no matter
      * what happens below. */
     if (!consume_login_approval(user, cfg.approval_ttl_seconds)) {
         return PAM_IGNORE;

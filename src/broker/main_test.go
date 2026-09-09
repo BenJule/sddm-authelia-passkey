@@ -80,12 +80,12 @@ func TestValidateVerificationURI_MissingUserCode(t *testing.T) {
 
 func TestSanitizeUsername(t *testing.T) {
 	cases := map[string]string{
-		"alice":              "alice",
-		"../../etc/passwd":   "etcpasswd",
-		"alice; rm -rf /":    "alicerm-rf",
-		"alice\x00root":      "aliceroot",
-		"UPPER":              "", // uppercase intentionally not allowed through
-		"under_score-dash1":  "under_score-dash1",
+		"alice":             "alice",
+		"../../etc/passwd":  "etcpasswd",
+		"alice; rm -rf /":   "alicerm-rf",
+		"alice\x00root":     "aliceroot",
+		"UPPER":             "", // uppercase intentionally not allowed through
+		"under_score-dash1": "under_score-dash1",
 	}
 	for in, want := range cases {
 		got := sanitizeUsername(in)

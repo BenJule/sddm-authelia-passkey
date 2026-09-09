@@ -1,4 +1,4 @@
-// pixel-broker performs the Authelia OAuth2 Device Authorization flow
+// broker performs the Authelia OAuth2 Device Authorization flow
 // (RFC 8628) out of band from SDDM/PAM, so SDDM never needs to understand
 // a multi-step PAM conversation (SDDM's PAM service name is hardcoded per
 // login type - see docs/architecture.md - ruling out a per-login-type PAM
@@ -189,7 +189,7 @@ func supersedePriorFlow(username string) {
 
 func main() {
 	if os.Geteuid() != 0 {
-		log.Fatal("pixel-broker must run as root (writes root-owned approval markers)")
+		log.Fatal("sddm-authelia-passkey broker must run as root (writes root-owned approval markers)")
 	}
 	var err error
 	cfg, err = LoadConfig(configPath)
@@ -215,7 +215,7 @@ func main() {
 	mux.HandleFunc("/start", handleStart)
 	mux.HandleFunc("/status", handleStatus)
 	mux.HandleFunc("/cancel", handleCancel)
-	log.Printf("pixel-broker listening on %s (allowed users: %v)", listenAddr, allowedUsersList())
+	log.Printf("sddm-authelia-passkey broker listening on %s (allowed users: %v)", listenAddr, allowedUsersList())
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
 }
 
@@ -616,7 +616,7 @@ func fail(fs *flowState, reason string) {
 }
 
 // writeApprovalMarker is the ONLY thing that can make the PAM module
-// succeed on the Pixel path. Written root:root 0600, short TTL enforced
+// succeed on the smartphone/passkey path. Written root:root 0600, short TTL enforced
 // by the PAM module, which also deletes it on read - so a marker can
 // grant at most one login, within a short window, no matter how this
 // HTTP API is otherwise reached from localhost.
