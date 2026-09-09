@@ -172,3 +172,59 @@ func TestCheckAndReserve_FailureLockout(t *testing.T) {
 		t.Fatal("expected lockout after repeated failures")
 	}
 }
+
+// --- flow supersession (releases stuck global concurrency slots) -------
+
+func TestSupersedePriorFlow_MarksOldPendingFlowCancelled(t *testing.T) {
+	flowsMu.Lock()
+	flows = map[string]*flowState{}
+	lastSessionForUser = map[string]string{}
+	flowsMu.Unlock()
+
+	old := &flowState{Status: "pending", Username: "alice"}
+	flowsMu.Lock()
+	flows["old-session"] = old
+	lastSessionForUser["alice"] = "old-session"
+	flowsMu.Unlock()
+
+	supersedePriorFlow("alice")
+
+	old.mu.Lock()
+	cancelled := old.cancelled
+	old.mu.Unlock()
+	if !cancelled {
+		t.Fatal("expected the prior pending flow to be marked cancelled")
+	}
+}
+
+func TestSupersedePriorFlow_DoesNotTouchFinishedFlow(t *testing.T) {
+	flowsMu.Lock()
+	flows = map[string]*flowState{}
+	lastSessionForUser = map[string]string{}
+	flowsMu.Unlock()
+
+	done := &flowState{Status: "approved", Username: "alice"}
+	flowsMu.Lock()
+	flows["done-session"] = done
+	lastSessionForUser["alice"] = "done-session"
+	flowsMu.Unlock()
+
+	supersedePriorFlow("alice")
+
+	done.mu.Lock()
+	cancelled := done.cancelled
+	done.mu.Unlock()
+	if cancelled {
+		t.Fatal("must not cancel a flow that already reached a terminal state")
+	}
+}
+
+func TestSupersedePriorFlow_NoPriorSessionIsNoop(t *testing.T) {
+	flowsMu.Lock()
+	flows = map[string]*flowState{}
+	lastSessionForUser = map[string]string{}
+	flowsMu.Unlock()
+
+	// Must not panic or block when the user has no prior session at all.
+	supersedePriorFlow("nobody-yet")
+}
