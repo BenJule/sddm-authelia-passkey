@@ -6,6 +6,36 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Broker: resolve the target account's UID via NSS fresh on every flow
+  start and embed it in the approval marker (v2 format:
+  `VERSION=2`/`USERNAME=`/`UID=`/`NONCE=`/`APPROVED_AT=`).
+- PAM module: re-resolve the requesting account's UID via NSS at marker
+  consumption time and require an exact match against the marker's
+  embedded UID - an account deleted and recreated (same username,
+  different UID) between approval and login is now rejected instead of
+  silently trusted.
+- KWallet: per-user credentials. `kwallet_credential_name` is now a
+  prefix (`kwallet.secret.<user>`, one systemd-creds encrypted file per
+  allowed user) instead of one credential shared by every allowed user
+  - see `scripts/setup-kwallet-credential.sh` and `docs/kwallet.md`.
+  The KWallet hand-off marker also now carries the account's UID, and
+  `kwallet-secretd` refuses to release a secret unless the requesting
+  UID matches it.
+- `tests/integration/pam-multiuser-test.sh`: proves the core
+  cross-user invariant (alice's approval never authenticates bob and
+  vice versa, parallel alice+bob approvals stay independent) against
+  real local test accounts and the compiled PAM module.
+- Broker unit tests for OIDC identity determination/exact-match binding
+  (`identity_test.go`) and a concurrent alice/bob race test.
+
+### Changed
+- Removed the v0.3.0-era restriction that refused
+  `kwallet_auto_unlock=true` with more than one `allowed_users` entry -
+  per-user credentials make this safe now.
+
+## [0.3.0]
+
+### Added
 - Broker: config validation now refuses `allowed_users` containing
   `root` outright at startup, redundant with (and independent of) the
   PAM stack's own `user != root` protection.

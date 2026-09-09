@@ -164,6 +164,12 @@ flow, and they must agree by the definition below - anything else is a
    (`writeApprovalMarker`) and consumed by PAM using its own
    independently-obtained username - PAM can structurally never consume
    a marker for a user other than the one it is actually authenticating.
+   The marker's content additionally embeds the UID the broker resolved
+   via NSS *at flow-start time* (`VERSION=2`/`USERNAME=`/`UID=` fields);
+   PAM re-resolves the account fresh via `getpwnam_r` at consumption
+   time and requires an exact UID match, so an account deleted and
+   recreated (same username, different UID) between approval and
+   consumption fails closed instead of being silently trusted.
 5. `allowed_users["root"]` is refused outright at config-load time,
    redundant with (not a replacement for) the PAM stack's own
    `pam_succeed_if.so user != root` line.
@@ -172,15 +178,15 @@ See `src/broker/multiuser_test.go` for the tests exercising this
 isolation directly (parallel alice/bob flows, cross-user
 supersede/cancel rejection, multi-entry `allowed_users` parsing).
 
-**Known gap: KWallet auto-unlock is not yet per-user.**
-`kwallet-secretd` releases a single, globally-configured credential
-(`kwallet_credential_name`) regardless of which user's flow requested
-it - there is no per-user credential storage yet. Enabling
-`kwallet_auto_unlock=true` with more than one `allowed_users` entry is
-therefore refused at config-load time (`Config.Validate`) rather than
-silently handing one user's KWallet secret to another. Per-user
-credentials (e.g. `kwallet.secret.<user>`) are a reasonable future
-enhancement, not implemented here.
+**Per-user KWallet credentials.** `kwallet-secretd` resolves a distinct
+credential per local user (`kwallet_credential_name` is a *prefix*; the
+actual file is `<prefix>.<username>`, e.g. `kwallet.secret.alice` - see
+`docs/kwallet.md` and `scripts/setup-kwallet-credential.sh`). The
+hand-off marker PAM mints after a successful login also carries the
+account's UID, and `kwallet-secretd` refuses to release a secret unless
+that UID matches what the requesting PAM process claims - a request
+naming "alice" cannot be satisfied by a hand-off marker minted for any
+other account, even under a race.
 
 **The single-allowed-user auto-resolution is a convenience fallback,
 not the multi-user model.** When `username` is omitted on `/start` and
