@@ -72,7 +72,10 @@ jobs:
           # Public key only - the private maintainer key never touches CI.
           gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 96D8CF4E27A30719930EC28973F9432144634D95
           gpg --verify SHA256SUMS.asc SHA256SUMS
-          sha256sum -c SHA256SUMS 2>&1 | grep "$DEB"
+          # --ignore-missing: SHA256SUMS also lists .changes/.buildinfo/SBOMs
+          # this workflow deliberately does not download; only verify what
+          # is actually present.
+          sha256sum -c --ignore-missing SHA256SUMS 2>&1 | grep "$DEB"
           gpg --verify "$DEB.asc" "$DEB"
           echo "MAINTAINER_SIGNATURE_VERIFICATION=GREEN"
           echo "SHA256_VERIFICATION=GREEN"
