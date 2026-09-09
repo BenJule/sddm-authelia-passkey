@@ -22,11 +22,11 @@ type Config struct {
 
 	AllowedUsers map[string]bool
 
-	ApprovalTTLSeconds       int
-	UserCooldownSeconds      int
-	MaxParallelFlows         int
-	FailureLockoutThreshold  int
-	FailureLockoutSeconds    int
+	ApprovalTTLSeconds      int
+	UserCooldownSeconds     int
+	MaxParallelFlows        int
+	FailureLockoutThreshold int
+	FailureLockoutSeconds   int
 
 	KWalletAutoUnlock     bool
 	KWalletCredentialName string
@@ -148,7 +148,7 @@ func LoadConfig(path string) (Config, error) {
 	return cfg, cfg.Validate()
 }
 
-// Validate enforces fail-closed policy for anything Pixel-auth-relevant.
+// Validate enforces fail-closed policy for anything auth-relevant.
 // A validation failure must never be silently ignored - refuse to start
 // rather than run with an insecure or ambiguous configuration.
 func (c Config) Validate() error {
@@ -170,6 +170,15 @@ func (c Config) Validate() error {
 	}
 	if len(c.AllowedUsers) == 0 {
 		return fmt.Errorf("allowed_users must list at least one local account")
+	}
+	if c.AllowedUsers["root"] {
+		// The PAM stack's own `pam_succeed_if.so user != root` line
+		// already structurally prevents a root marker from ever granting
+		// login (see docs/architecture.md) - this is a second, redundant
+		// check at config-load time so a misconfiguration is refused
+		// immediately and loudly instead of relying solely on PAM
+		// control-flow ordering never changing.
+		return fmt.Errorf("allowed_users must not include root")
 	}
 	if c.ApprovalTTLSeconds <= 0 || c.UserCooldownSeconds < 0 || c.MaxParallelFlows <= 0 ||
 		c.FailureLockoutThreshold <= 0 || c.FailureLockoutSeconds <= 0 {

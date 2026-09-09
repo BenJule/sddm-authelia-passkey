@@ -30,5 +30,5 @@ independently of trusting that the tests above are correct:
       `common-auth` does not end in the standard pam-auth-update
       failsafe pair.
 - [ ] A `kwallet-secretd` outage or missing credential never prevents a
-      valid Pixel login from succeeding (verified in
+      valid smartphone/passkey login from succeeding (verified in
       `tests/integration/pam-flow-test.sh`'s last case).
