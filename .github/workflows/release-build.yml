@@ -19,27 +19,28 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:13
     steps:
+      # git must exist BEFORE actions/checkout runs: in a container: job,
+      # checkout executes inside the container, and without a git binary
+      # on PATH yet it silently falls back to a plain tarball download -
+      # no .git directory at all - which then breaks cyclonedx-gomod's
+      # (and anything else's) ability to inspect repository history.
+      # Observed empirically as "no git repository found" even before any
+      # build step ran.
+      - name: Install git (must precede checkout in a container: job)
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install remaining build dependencies
         run: |
-          apt-get update
           apt-get install -y --no-install-recommends \
             build-essential debhelper devscripts golang-go gcc libpam0g-dev \
-            lintian git ca-certificates
+            lintian
 
       - name: Trust the checkout dir (container UID != checkout owner)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Generate SBOMs (CycloneDX, per Go module)
-        # Deliberately BEFORE the Debian build: dpkg-buildpackage's clean/
-        # build steps leave .git absent from the working tree afterward
-        # (observed empirically, in this exact debian:13 container - not
-        # fully root-caused, but 100% reproducible), and cyclonedx-gomod
-        # needs .git to determine the module's pseudo-version. SBOM
-        # generation only needs the source tree, not build output, so
-        # ordering it first sidesteps the issue rather than depending on
-        # a build tool's internal cleanup behavior not changing.
         run: |
           mkdir -p out
           cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
