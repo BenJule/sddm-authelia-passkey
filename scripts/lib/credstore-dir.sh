@@ -1,4 +1,4 @@
-#!/bin/bash
+# shellcheck shell=bash
 # Fail-closed ensure/harden of a root-owned, 0700 credential-store
 # directory. Never widens permissions: an existing mode is only ever
 # masked down toward 0700, never chmod'd up. Refuses symlinks and
