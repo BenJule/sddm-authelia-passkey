@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: sddm-authelia-passkey
-Source: https://github.com/example/sddm-authelia-passkey
+Source: https://github.com/BenJule/sddm-authelia-passkey
 
 Files: *
 Copyright: 2026, sddm-authelia-passkey contributors

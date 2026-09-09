@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-This project is pre-1.0 (`v0.1.0`, experimental). Only the latest tagged
-release receives security fixes until a stable release line is
+This project is currently pre-1.0 and experimental. Only the latest
+tagged release receives security fixes until a stable release line is
 established.
 
 ## Reporting a vulnerability

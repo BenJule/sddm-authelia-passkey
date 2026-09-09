@@ -27,8 +27,8 @@ allowed_verification_host=idp.example.com
 # instance. Refused by the broker at startup otherwise (fail closed).
 authelia_dev_insecure_http=false
 
-# Comma-separated local usernames allowed to use the Pixel/passwordless
-# path. Every other account (including root, always) keeps password-only
+# Comma-separated local usernames allowed to use the smartphone/passkey
+# passwordless path. Every other account (including root, always) keeps password-only
 # login - this list is additive, never a replacement for the password path.
 allowed_users=alice,bob
 
@@ -45,12 +45,12 @@ user_cooldown_seconds=10
 max_parallel_flows=3
 
 # After this many consecutive denied/expired approvals for a user, lock
-# that user out of the Pixel path for failure_lockout_seconds.
+# that user out of the smartphone/passkey path for failure_lockout_seconds.
 failure_lockout_threshold=3
 failure_lockout_seconds=60
 
 # Optional: automatically unlock a running KDE KWallet on a successful
-# Pixel login. Requires a one-time interactive setup (see docs/kwallet.md)
+# smartphone/passkey login. Requires a one-time interactive setup (see docs/kwallet.md)
 # and a systemd-creds encrypted credential. Off by default - a failed or
 # unavailable credential never blocks login either way, it only means
 # KWallet falls back to its normal manual password prompt.

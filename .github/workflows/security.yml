@@ -35,8 +35,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: grep for obvious secret patterns
+      - name: grep for obvious secret patterns (defense in depth)
         run: |
           set -e
           ! grep -rniE "BEGIN (RSA|EC|OPENSSH|PGP) PRIVATE KEY|-----BEGIN CERTIFICATE-----" \
             --include='*.go' --include='*.c' --include='*.sh' --include='*.md' .
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Deliberately NOT pinned to '1.24' like build.yml/test.yml/package.yml:
+      # those mirror Debian 13's own golang-go package (the actual packaging
+      # target), which lags upstream Go point releases. This check exists to
+      # catch real vulnerabilities in our own code/dependencies as early as
+      # possible, so it runs under the latest stable Go instead - see
+      # docs/supply-chain.md for the resulting gap this doesn't close (the
+      # shipped .deb's stdlib exposure depends on Debian's own Go package
+      # security backports, which this repository does not control).
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: cd src/broker && govulncheck ./...
+      - run: cd src/kwallet-secretd && govulncheck ./...

@@ -71,6 +71,18 @@ oidc_client_id=pam-authelia
 	}
 }
 
+func TestLoadConfig_RejectsRootInAllowedUsers(t *testing.T) {
+	p := writeTempConfig(t, `
+authelia_base_url=https://idp.example.com
+allowed_verification_host=idp.example.com
+oidc_client_id=pam-authelia
+allowed_users=alice,root
+`)
+	if _, err := LoadConfig(p); err == nil {
+		t.Fatal("expected rejection of root in allowed_users")
+	}
+}
+
 func TestLoadConfig_RejectsMalformedLine(t *testing.T) {
 	p := writeTempConfig(t, "not_a_key_value_line\n")
 	if _, err := LoadConfig(p); err == nil {

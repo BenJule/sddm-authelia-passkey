@@ -1,7 +1,7 @@
 // kwallet-secretd is a single-purpose daemon: it releases a KDE KWallet
 // unlock secret to the local PAM module, but only when a valid,
 // single-use, short-TTL hand-off marker - minted by the PAM module itself,
-// only after it already independently consumed the real Pixel login-
+// only after it already independently consumed the real smartphone login-
 // approval marker - is present for the requesting user.
 //
 // It never talks to the identity provider itself and never listens on
@@ -30,7 +30,7 @@ const (
 	socketPath = "/run/sddm-authelia-passkey/kwallet-secret.sock"
 	// Separate, short-lived hand-off marker ("kwallet-ready-<user>") minted
 	// by the PAM module ONLY after it has already independently consumed
-	// the real, single-use Pixel login-approval marker ("approved-<user>").
+	// the real, single-use smartphone login-approval marker ("approved-<user>").
 	// This daemon never reads or consumes the login-approval marker
 	// itself, so there is no double-consumer race between the login
 	// decision and the secret release.
@@ -180,7 +180,7 @@ func main() {
 	}
 
 	// Fail fast and loudly at startup if the credential is missing/unreadable,
-	// rather than only discovering it during a real Pixel login attempt.
+	// rather than only discovering it during a real smartphone login attempt.
 	if _, err := os.Stat(credPath()); err != nil {
 		log.Printf("WARNING: kwallet credential not present at startup (%v) - auto-unlock will fail-safe to DENY until fixed", err)
 	}

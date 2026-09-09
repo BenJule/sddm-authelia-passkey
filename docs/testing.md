@@ -27,8 +27,22 @@ no-marker, valid-marker, replay, expired, wrong-user, and
 
 Anything requiring a live Authelia instance, a real WebAuthn
 authenticator, or a real SDDM/Plasma session - these are exercised
-manually against a lab VM before any release; see the project's release
-process notes (not yet published for v0.1.0).
+manually against a lab VM before any release; see `docs/release-signing.md`
+for the release process notes.
+
+## Theme/QML validation (CI, best-effort)
+
+`.github/workflows/theme.yml` applies the theme patch against the real
+`sddm-theme-debian-breeze` package inside a Debian 13 container (a hard
+gate - the patch must apply cleanly) and additionally runs `qmllint` on
+the result. `qmllint` is run best-effort/non-blocking: the theme imports
+several KDE-specific QML modules (`org.kde.plasma.components`,
+`org.kde.kirigami`, `org.kde.breeze.components`, the private
+`../breeze` relative import) that are not resolvable outside a full
+Plasma install, so `qmllint` alone cannot fully type-check this file in
+CI. Full headless SDDM/Plasma rendering is not attempted in CI for the
+same reason; that level of validation only happens in the lab VM
+acceptance run before a release (see `docs/release-signing.md`).
 
 ## Security-focused tests (`tests/security/`)
 

@@ -7,7 +7,7 @@ doesn't end in the standard pam-auth-update `requisite pam_deny.so` /
 found in `/etc/pam.d/sddm`. Don't hand-patch blindly; open an issue with
 your (sanitized) `/etc/pam.d/sddm` and `/etc/pam.d/common-auth`.
 
-**Pixel login shows "device flow failed: temporarily_unavailable" or
+**Smartphone/passkey login shows "device flow failed: temporarily_unavailable" or
 similar after several quick attempts** - almost always Authelia's own
 rate limiter on `/api/oidc/token`, not a bug in this project. Wait a
 minute and try once; avoid rapid repeated attempts, which can make the
@@ -17,7 +17,7 @@ backoff grow further.
 check `systemctl status sddm-authelia-passkey-kwallet-secretd`; if it
 shows `243/CREDENTIALS` it means the encrypted credential file is
 missing/corrupt - see `docs/kwallet.md` to (re)create it. This is a
-fail-safe, not a crash: Pixel login itself is unaffected.
+fail-safe, not a crash: smartphone/passkey login itself is unaffected.
 
 **Password login stopped auto-unlocking KWallet after installing this
 project** - should not happen; this project never modifies

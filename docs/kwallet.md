@@ -52,7 +52,7 @@ kwallet_auto_unlock=true
 If the credential is lost, corrupted, deleted, or the TPM is reset/the
 motherboard replaced:
 
-- Pixel login continues to work exactly as before - nothing about the
+- Smartphone/passkey login continues to work exactly as before - nothing about the
   login decision depends on this credential.
 - KWallet auto-unlock silently fails; the manual password prompt appears
   the first time an application accesses the wallet.

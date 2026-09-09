@@ -63,7 +63,7 @@ makes this safe: `N` is the exact number of lines the local
 `@include common-auth` expands to, computed fresh at install time (see
 `scripts/enable-pam.sh`), never hardcoded. On success it skips exactly
 those `N` lines - never past the following `pam_kwallet5` line - so a
-Pixel login still reaches `pam_kwallet5` just like a password login
+a smartphone/passkey login still reaches `pam_kwallet5` just like a password login
 does; on any non-success it changes nothing and password login proceeds
 exactly as if this project were not installed.
 
@@ -116,6 +116,81 @@ endpoint for the same reason, rather than relying only on this supersede-
 on-next-start behavior. `pixelFlow.open()` in the theme is itself
 idempotent - calling it while a flow is already in progress does not start
 a second one.
+
+## Multi-user readiness
+
+Full multi-user SDDM UX (account picker driving the smartphone/passkey
+flow) is not implemented yet - see `docs/validated-environment.md` for
+what is actually validated today (a single `allowed_users` entry, in
+both production and lab). `allowed_users` structurally supports more
+than one entry already, and every per-flow structure below is already
+scoped to exactly one local user - this section documents that binding
+explicitly so a future account-picker UI has a clean foundation to build
+on, without pretending multi-user is fully supported today.
+
+**Identity binding.** Three distinct usernames are involved in a single
+flow, and they must agree by the definition below - anything else is a
+`DENY`, not a best-effort guess:
+
+- `REQUESTED_LOCAL_USER` - the local account the flow was started for.
+  Either the `username` query parameter on `/start` (validated against
+  `allowed_users`), or, only when `allowed_users` has exactly one entry,
+  that sole entry (a convenience fallback, not the long-term model - see
+  below). Stored as `flowState.Username` for the lifetime of the flow,
+  and independently re-derived by PAM via `pam_get_user()` (i.e. from
+  SDDM's own login prompt) when a marker is consumed.
+- `AUTHENTICATED_AUTHELIA_USER` - the `authelia.pam.username` claim from
+  Authelia's `/api/oidc/userinfo` response for the access token the
+  device flow produced (`verifyUserinfo` in `src/broker/main.go`).
+- `BOUND_LOCAL_USER` - the mapping rule is **exact string match**:
+  `pollAndDecide` refuses (`fail(fs, "username mismatch")`, logged at
+  `SECURITY` level) unless `AUTHENTICATED_AUTHELIA_USER ==
+  REQUESTED_LOCAL_USER`. No fuzzy/heuristic mapping exists or is
+  planned; a future explicit static mapping table (Authelia username ->
+  local username) is conceivable, but exact match is and remains the
+  default.
+
+**Per-user isolation, already true today:**
+
+1. Rate limiting (`limiterFor`), the concurrency cap, and failure
+   lockout are all keyed by username (`limiters map[string]*userLimiter`).
+2. `supersedePriorFlow`/`lastSessionForUser` are keyed by username - a
+   new flow for alice can only ever supersede alice's own prior flow,
+   never bob's.
+3. `/cancel` operates on an unguessable `session_id` (128 bits of
+   randomness from `randomHex`), not a username - cancelling one
+   session cannot reach another user's session by construction.
+4. Approval markers are filed as `approved-<sanitized username>`
+   (`writeApprovalMarker`) and consumed by PAM using its own
+   independently-obtained username - PAM can structurally never consume
+   a marker for a user other than the one it is actually authenticating.
+5. `allowed_users["root"]` is refused outright at config-load time,
+   redundant with (not a replacement for) the PAM stack's own
+   `pam_succeed_if.so user != root` line.
+
+See `src/broker/multiuser_test.go` for the tests exercising this
+isolation directly (parallel alice/bob flows, cross-user
+supersede/cancel rejection, multi-entry `allowed_users` parsing).
+
+**Known gap: KWallet auto-unlock is not yet per-user.**
+`kwallet-secretd` releases a single, globally-configured credential
+(`kwallet_credential_name`) regardless of which user's flow requested
+it - there is no per-user credential storage yet. Enabling
+`kwallet_auto_unlock=true` with more than one `allowed_users` entry is
+therefore refused at config-load time (`Config.Validate`) rather than
+silently handing one user's KWallet secret to another. Per-user
+credentials (e.g. `kwallet.secret.<user>`) are a reasonable future
+enhancement, not implemented here.
+
+**The single-allowed-user auto-resolution is a convenience fallback,
+not the multi-user model.** When `username` is omitted on `/start` and
+`allowed_users` has exactly one entry, the broker resolves it
+automatically (better UX for the common case). With more than one
+entry, an empty `username` is refused (`403`) rather than guessed -
+never username enumeration, never an implicit choice. The intended
+longer-term flow for real multi-user support is: SDDM's own
+account/session picker selects a local username first, which the theme
+then passes explicitly to `/start` - not the broker inferring one.
 
 ## Trust boundaries
 
