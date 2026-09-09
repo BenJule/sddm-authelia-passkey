@@ -1,139 +1,485 @@
 --- a/Main.qml
 +++ b/Main.qml
-@@ -529,4 +529,147 @@
+@@ -134,7 +134,13 @@
+             id: clock
+             property Item shadow: clockShadow
+             visible: y > 0 && config.showClock === "true"
+-            anchors.horizontalCenter: parent.horizontalCenter
++            // Center within the visible main area (matches mainStack's own
++            // rightMargin adjustment above), not the full screen including
++            // the Smartphone-Login sidebar.
++            x: (parent.width - (pixelPanel.visible ? pixelPanel.width : 0)) / 2 - width / 2
++            Behavior on x {
++                NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++            }
+             y: (userListComponent.userList.y + mainStack.y)/2 - height/2
+             Layout.alignment: Qt.AlignBaseline
+         }
+@@ -144,6 +150,15 @@
+             anchors {
+                 left: parent.left
+                 right: parent.right
++                // Recenter the login block within the visible main area
++                // (not the full screen) when the Smartphone-Login sidebar
++                // is open, so it doesn't appear crowded against the panel
++                // edge. Purely a layout adjustment; panel width/visibility
++                // themselves are unchanged.
++                rightMargin: pixelPanel.visible ? pixelPanel.width : 0
++                Behavior on rightMargin {
++                    NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++                }
+             }
+             height: root.height + Kirigami.Units.gridUnit * 3
+ 
+@@ -226,6 +241,16 @@
+                         text: i18ndc("plasma-desktop-sddm-theme", "For switching to a username and password prompt", "Other…")
+                         onClicked: mainStack.push(userPromptComponent)
+                         visible: !userListComponent.showUsernamePrompt
++                    },
++                    ActionButton {
++                        id: pixelActionButton1
++                        icon.name: "smartphone-symbolic"
++                        text: i18nd("plasma-desktop-sddm-theme", "Smartphone-Login")
++                        onClicked: pixelFlow.open()
++                        // Active-state highlight while the sidebar is open,
++                        // layered on top of ActionButton's own hover/focus
++                        // opacity behaviour rather than replacing it.
++                        opacity: (pixelPanel.visible || activeFocus || hovered) ? 1 : 0.85
+                     }]
+ 
+                 onLoginRequest: {
+@@ -364,6 +389,13 @@
+                         icon.name: "system-user-list"
+                         text: i18nd("plasma-desktop-sddm-theme", "List Users")
+                         onClicked: mainStack.pop()
++                    },
++                    ActionButton {
++                        id: pixelActionButton2
++                        icon.name: "smartphone-symbolic"
++                        text: i18nd("plasma-desktop-sddm-theme", "Smartphone-Login")
++                        onClicked: pixelFlow.open()
++                        opacity: (pixelPanel.visible || activeFocus || hovered) ? 1 : 0.85
+                     }
+                 ]
+             }
+@@ -529,4 +561,440 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
 +
 +    // --- Authelia Passkey passwordless login (additive only) -----------
-+    // Talks only to the local broker's HTTP API (127.0.0.1:7899) and to
-+    // the existing `sddm` context object's login()/loginFailed/
-+    // loginSucceeded, exactly like the rest of this theme already does.
-+    // Does not modify any existing element above; purely a new sibling
-+    // of the root Item's other top-level children.
-+    QQC2.Button {
-+        id: passkeyLoginButton
-+        text: "Login with Passkey"
-+        anchors.top: parent.top
-+        anchors.right: parent.right
-+        anchors.margins: 24
-+        onClicked: passkeyOverlay.open()
-+    }
-+
-+    QQC2.Popup {
-+        id: passkeyOverlay
-+        modal: true
-+        focus: true
-+        anchors.centerIn: parent
-+        width: 360
-+        height: 480
-+        closePolicy: QQC2.Popup.NoAutoClose
-+
++    // Right-anchored panel, opened from the "Smartphone-Login" action button
++    // alongside Sleep/Restart/Shut Down/Other. Talks only to the local
++    // broker's HTTP API (127.0.0.1:7899) and to the existing `sddm`
++    // context object's login()/loginFailed/loginSucceeded, exactly like
++    // the rest of this theme already does. Purely additive: no existing
++    // element above is modified.
++    QtObject {
++        id: pixelFlow
++        // idle -> starting -> waiting -> logging_in -> (idle on loginFailed)
++        //                            \-> error|expired -> (idle via retry/cancel)
++        property string state: "idle"
 +        property string sessionId: ""
++        property string qrPath: ""
++        property string statusText: ""
++        property string verificationUri: ""
++        property string userCode: ""
++        property bool showAltCode: false
++        // Only ever set from a broker response (never guessed/hardcoded
++        // client-side). Cleared on every new attempt so a stale value from
++        // a prior flow can never be reused by mistake.
++        property string resolvedUsername: ""
 +
-+        function startFlow() {
-+            var username = usernameField.text
-+            if (username.length === 0) {
-+                statusLabel.text = "Enter your username first"
++        // Phase 8: ONE_PANEL_OPEN = ONE_DEVICE_FLOW. A flow already in
++        // progress must not be able to spawn a second backend session -
++        // only a terminal state (idle/error/expired) may start a new one.
++        function open() {
++            if (state !== "idle" && state !== "error" && state !== "expired") {
++                console.log("PHONE_FLOW: open() ignored, flow already in progress, state=", state)
++                pixelPanel.visible = true
 +                return
 +            }
-+            statusLabel.text = "Starting device authorization..."
-+            qrImage.source = ""
-+            urlLabel.text = ""
++            state = "starting"
++            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
++            qrPath = ""
++            verificationUri = ""
++            userCode = ""
++            showAltCode = false
++            resolvedUsername = ""
++            pixelPanel.visible = true
++            requestStart("")
++        }
++
++        function requestStart(withUsername) {
 +            var xhr = new XMLHttpRequest()
-+            xhr.open("POST", "http://127.0.0.1:7899/start?username=" + encodeURIComponent(username))
++            var url = "http://127.0.0.1:7899/start"
++            if (withUsername) url += "?username=" + encodeURIComponent(withUsername)
++            xhr.open("POST", url)
 +            xhr.onreadystatechange = function() {
 +                if (xhr.readyState !== XMLHttpRequest.DONE) return
-+                if (xhr.status !== 200) {
-+                    statusLabel.text = "Broker unreachable (" + xhr.status + ")"
++                if (xhr.status === 429) {
++                    pixelFlow.state = "error"
++                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
 +                    return
 +                }
-+                passkeyOverlay.sessionId = JSON.parse(xhr.responseText).session_id
-+                pollTimer.start()
++                if (xhr.status === 400 && !withUsername) {
++                    // Broker could not auto-resolve a single allowed user -
++                    // fall back to asking, exactly once, per point 22.
++                    pixelFlow.state = "need_username"
++                    pixelFlow.statusText = ""
++                    pixelUsernameField.forceActiveFocus()
++                    return
++                }
++                if (xhr.status !== 200) {
++                    pixelFlow.state = "error"
++                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung konnte nicht gestartet werden.")
++                    return
++                }
++                pixelFlow.sessionId = JSON.parse(xhr.responseText).session_id
++                pixelFlow.state = "waiting"
++                pixelPollTimer.start()
 +            }
 +            xhr.send()
++        }
++
++        function start() {
++            // Only reached from the need_username fallback view.
++            if (pixelUsernameField.text.length === 0) return
++            state = "starting"
++            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
++            requestStart(pixelUsernameField.text)
 +        }
 +
 +        function poll() {
-+            if (sessionId === "") return
++            // Phase 5 step 2: once we've moved past waiting (e.g. already
++            // logging in, or cancelled), a late-arriving response from an
++            // in-flight XHR must be ignored rather than acted on again.
++            if (state !== "waiting" || sessionId === "") return
++            var pollingSessionId = sessionId
 +            var xhr = new XMLHttpRequest()
-+            xhr.open("GET", "http://127.0.0.1:7899/status?session_id=" + sessionId)
++            xhr.open("GET", "http://127.0.0.1:7899/status?session_id=" + pollingSessionId)
 +            xhr.onreadystatechange = function() {
 +                if (xhr.readyState !== XMLHttpRequest.DONE) return
 +                if (xhr.status !== 200) return
++                // The session/flow this response belongs to may no longer
++                // be the current one (superseded, cancelled) by the time
++                // this async callback finally runs - never act on stale data.
++                if (pollingSessionId !== pixelFlow.sessionId || pixelFlow.state !== "waiting") return
++
 +                var resp = JSON.parse(xhr.responseText)
-+                if (resp.qr_path) qrImage.source = "file://" + resp.qr_path
-+                if (resp.verification_uri_complete) urlLabel.text = resp.verification_uri_complete
-+                if (resp.status === "approved") {
-+                    pollTimer.stop()
-+                    statusLabel.text = "Approved - signing in..."
-+                    sddm.login(usernameField.text, "", 0)
-+                } else if (resp.status === "denied" || resp.status === "error") {
-+                    pollTimer.stop()
-+                    statusLabel.text = "Failed: " + (resp.error || resp.status)
-+                } else {
-+                    statusLabel.text = "Confirm on your device: " + (resp.user_code || "")
++                if (resp.qr_path) pixelFlow.qrPath = resp.qr_path
++                if (resp.verification_uri_complete) pixelFlow.verificationUri = resp.verification_uri_complete
++                if (resp.user_code) pixelFlow.userCode = resp.user_code
++
++                switch (resp.status) {
++                case "pending":
++                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Warte auf Bestätigung…")
++                    break
++                case "approved":
++                    pixelFlow.handleApproved(resp.username)
++                    break
++                case "denied":
++                case "error":
++                    pixelPollTimer.stop()
++                    var reason = resp.error || ""
++                    if (reason.indexOf("expired") !== -1) {
++                        pixelFlow.state = "expired"
++                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "QR-Code abgelaufen.")
++                    } else if (reason.indexOf("temporarily_unavailable") !== -1 || reason.indexOf("slow_down") !== -1) {
++                        pixelFlow.state = "error"
++                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
++                    } else {
++                        pixelFlow.state = "error"
++                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                    }
++                    break
 +                }
 +            }
 +            xhr.send()
 +        }
 +
-+        function cancelFlow() {
-+            pollTimer.stop()
++        // Phase 5: the ONE place in the whole flow allowed to call
++        // sddm.login(). Runs at most once per flow - poll() only reaches
++        // here while state is still "waiting", and this function's first
++        // action is to leave that state, so a second, late-arriving
++        // "approved" response for the same or a stale session can never
++        // re-enter this function (both the state check above in poll()
++        // and the explicit reasserts below cover this).
++        function handleApproved(username) {
++            if (state !== "waiting") return
++            pixelPollTimer.stop()
++            state = "logging_in"
++            statusText = i18nd("plasma-desktop-sddm-theme", "Bestätigt – Anmeldung läuft…")
++
++            resolvedUsername = username || ""
++            console.log("PHONE_FLOW: approved")
++            console.log("PHONE_FLOW: resolved user present =", resolvedUsername.length > 0)
++
++            if (resolvedUsername.length === 0) {
++                console.log("PHONE_FLOW: AUTH_HANDOFF_ERROR=EMPTY_USERNAME")
++                state = "error"
++                statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                return
++            }
++
++            var idx = sessionButton.currentIndex
++            console.log("PHONE_FLOW: session index =", idx)
++            if (idx < 0) {
++                console.log("PHONE_FLOW: AUTH_HANDOFF_ERROR=INVALID_SESSION_INDEX")
++                state = "error"
++                statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                return
++            }
++
++            console.log("PHONE_FLOW: calling sddm.login")
++            sddm.login(resolvedUsername, "", idx)
++        }
++
++        // Phase 9: a real server-side cancel for the specific session,
++        // not just a client-side UI reset - supersedePriorFlow on the
++        // broker remains a defense-in-depth backstop, not the normal path.
++        function cancel() {
++            pixelPollTimer.stop()
++            if (sessionId !== "" && (state === "waiting" || state === "starting")) {
++                var xhr = new XMLHttpRequest()
++                xhr.open("POST", "http://127.0.0.1:7899/cancel?session_id=" + sessionId)
++                xhr.send()
++            }
 +            sessionId = ""
-+            close()
++            resolvedUsername = ""
++            state = "idle"
++            pixelPanel.visible = false
 +        }
++    }
 +
-+        onOpened: {
-+            usernameField.text = ""
-+            statusLabel.text = ""
-+            qrImage.source = ""
-+            urlLabel.text = ""
++    Timer { id: pixelPollTimer; interval: 2000; repeat: true; onTriggered: pixelFlow.poll() }
++
++    Rectangle {
++        id: pixelPanel
++        visible: false
++        anchors.top: parent.top
++        anchors.bottom: parent.bottom
++        anchors.right: parent.right
++        width: Math.max(320, Math.min(420, root.width * 0.24))
++        color: Qt.rgba(0.13, 0.20, 0.27, 0.72)
++        z: 200
++        focus: visible
++
++        Keys.onEscapePressed: pixelFlow.cancel()
++
++        MouseArea {
++            // Absorb clicks so they don't fall through to elements behind
++            // the panel; does not cover the rest of the screen.
++            anchors.fill: parent
 +        }
-+
-+        Timer { id: pollTimer; interval: 2000; repeat: true; onTriggered: passkeyOverlay.poll() }
 +
 +        ColumnLayout {
 +            anchors.fill: parent
-+            spacing: 12
-+            QQC2.TextField {
-+                id: usernameField
-+                Layout.fillWidth: true
-+                placeholderText: "Username"
-+                onAccepted: passkeyOverlay.startFlow()
++            anchors.margins: Kirigami.Units.gridUnit * 1.5
++            spacing: Kirigami.Units.smallSpacing
++
++            QQC2.ToolButton {
++                icon.name: "go-previous"
++                icon.color: "white"
++                icon.width: Kirigami.Units.iconSizes.medium
++                icon.height: Kirigami.Units.iconSizes.medium
++                implicitWidth: Kirigami.Units.gridUnit * 2.2
++                implicitHeight: Kirigami.Units.gridUnit * 2.2
++                display: QQC2.AbstractButton.IconOnly
++                onClicked: pixelFlow.cancel()
 +            }
-+            QQC2.Button {
-+                text: "Start"
-+                Layout.alignment: Qt.AlignHCenter
-+                onClicked: passkeyOverlay.startFlow()
-+            }
-+            Image {
-+                id: qrImage
-+                Layout.alignment: Qt.AlignHCenter
-+                Layout.preferredWidth: 260
-+                Layout.preferredHeight: 260
-+                fillMode: Image.PreserveAspectFit
-+                smooth: false
-+                visible: source != ""
-+            }
-+            Text {
-+                id: urlLabel
-+                color: "#a0a0a0"
-+                font.pixelSize: 10
-+                wrapMode: Text.WrapAnywhere
-+                Layout.fillWidth: true
-+                horizontalAlignment: Text.AlignHCenter
-+            }
-+            Text {
-+                id: statusLabel
++
++            Item { Layout.preferredHeight: Kirigami.Units.gridUnit }
++
++            Kirigami.Heading {
++                level: 1
 +                Layout.fillWidth: true
 +                wrapMode: Text.WordWrap
-+                horizontalAlignment: Text.AlignHCenter
++                color: "white"
++                text: i18nd("plasma-desktop-sddm-theme", "Mit Smartphone anmelden")
++            }
++            QQC2.Label {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                wrapMode: Text.WordWrap
++                color: "white"
++                opacity: 0.8
++                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
++                text: i18nd("plasma-desktop-sddm-theme", "QR-Code mit dem Smartphone scannen, um sich anzumelden.")
++            }
++
++            // Fallback only reached if the broker cannot uniquely resolve a
++            // single allowed user (see pixelFlow.requestStart).
++            QQC2.TextField {
++                id: pixelUsernameField
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.largeSpacing
++                placeholderText: i18nd("plasma-desktop-sddm-theme", "Benutzername")
++                visible: pixelFlow.state === "need_username"
++                onAccepted: pixelFlow.start()
++                background: Rectangle { radius: height / 2; color: "white" }
 +            }
 +            QQC2.Button {
-+                text: "Cancel"
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                visible: pixelFlow.state === "need_username"
++                text: i18nd("plasma-desktop-sddm-theme", "Weiter")
++                onClicked: pixelFlow.start()
++            }
++
++            Item { Layout.preferredHeight: Kirigami.Units.gridUnit; visible: pixelFlow.state === "waiting" || pixelFlow.state === "starting" }
++
++            // QR card - white rounded background, generous padding, so the
++            // code itself keeps a clean quiet zone and high contrast edge.
++            Rectangle {
 +                Layout.alignment: Qt.AlignHCenter
-+                onClicked: passkeyOverlay.cancelFlow()
++                Layout.preferredWidth: Math.max(220, Math.min(260, pixelPanel.width - Kirigami.Units.gridUnit * 4))
++                Layout.preferredHeight: Layout.preferredWidth
++                visible: (pixelFlow.state === "waiting" || pixelFlow.state === "approved") && !pixelFlow.showAltCode
++                radius: Kirigami.Units.gridUnit * 0.6
++                color: "white"
++
++                Image {
++                    anchors.centerIn: parent
++                    width: parent.width - Kirigami.Units.gridUnit * 1.4
++                    height: width
++                    fillMode: Image.PreserveAspectFit
++                    smooth: false
++                    source: pixelFlow.qrPath ? "file://" + pixelFlow.qrPath : ""
++                }
++            }
++
++            // Secondary "enter code manually" view - shown instead of the QR
++            // card, not as a separate dialog. Purely informational: the code
++            // must be entered on the phone/browser at verificationUri, this
++            // screen has no channel to send anything back for a device-flow
++            // approval other than the QR/URL itself.
++            ColumnLayout {
++                Layout.fillWidth: true
++                visible: pixelFlow.state === "waiting" && pixelFlow.showAltCode
++                spacing: Kirigami.Units.smallSpacing
++
++                Kirigami.Heading {
++                    level: 3
++                    Layout.fillWidth: true
++                    color: "white"
++                    wrapMode: Text.WordWrap
++                    text: i18nd("plasma-desktop-sddm-theme", "Mit Code anmelden")
++                }
++                QQC2.Label {
++                    Layout.fillWidth: true
++                    color: "white"
++                    opacity: 0.8
++                    wrapMode: Text.WrapAnywhere
++                    text: i18nd("plasma-desktop-sddm-theme", "Öffnen Sie auf Ihrem Smartphone:")
++                }
++                QQC2.Label {
++                    Layout.fillWidth: true
++                    color: "white"
++                    wrapMode: Text.WrapAnywhere
++                    textFormat: Text.PlainText
++                    text: pixelFlow.verificationUri
++                }
++                QQC2.Label {
++                    Layout.fillWidth: true
++                    Layout.topMargin: Kirigami.Units.smallSpacing
++                    color: "white"
++                    opacity: 0.8
++                    text: i18nd("plasma-desktop-sddm-theme", "Code:")
++                }
++                QQC2.Label {
++                    Layout.fillWidth: true
++                    color: "white"
++                    font.family: "monospace"
++                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.4
++                    horizontalAlignment: Text.AlignHCenter
++                    text: pixelFlow.userCode
++                }
++            }
++
++            QQC2.BusyIndicator {
++                Layout.alignment: Qt.AlignHCenter
++                running: pixelFlow.state === "starting"
++                visible: running
++            }
++
++            // "Oder" divider
++            RowLayout {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.gridUnit
++                visible: pixelFlow.state === "waiting"
++                Rectangle { Layout.fillWidth: true; height: 1; color: "white"; opacity: 0.3 }
++                QQC2.Label {
++                    text: i18nd("plasma-desktop-sddm-theme", "Oder")
++                    color: "white"
++                    opacity: 0.7
++                    Layout.leftMargin: Kirigami.Units.smallSpacing
++                    Layout.rightMargin: Kirigami.Units.smallSpacing
++                }
++                Rectangle { Layout.fillWidth: true; height: 1; color: "white"; opacity: 0.3 }
++            }
++
++            // Real outlined button, not plain text.
++            QQC2.Button {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                visible: pixelFlow.state === "waiting" && pixelFlow.verificationUri !== ""
++                text: pixelFlow.showAltCode
++                    ? i18nd("plasma-desktop-sddm-theme", "Zurück zum QR-Code")
++                    : i18nd("plasma-desktop-sddm-theme", "Alternativ Code eingeben")
++                onClicked: pixelFlow.showAltCode = !pixelFlow.showAltCode
++                background: Rectangle {
++                    radius: Kirigami.Units.gridUnit * 0.4
++                    color: "transparent"
++                    border.color: "white"
++                    border.width: 1
++                    opacity: parent.hovered ? 0.9 : 0.6
++                }
++                contentItem: QQC2.Label {
++                    text: parent.text
++                    color: "white"
++                    horizontalAlignment: Text.AlignHCenter
++                }
++            }
++
++            QQC2.Label {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                wrapMode: Text.WordWrap
++                horizontalAlignment: Text.AlignHCenter
++                visible: text.length > 0
++                text: pixelFlow.statusText
++                color: (pixelFlow.state === "error" || pixelFlow.state === "expired")
++                       ? Kirigami.Theme.negativeTextColor
++                       : "white"
++            }
++
++            Item { Layout.fillHeight: true }
++
++            QQC2.Label {
++                Layout.fillWidth: true
++                Layout.bottomMargin: Kirigami.Units.smallSpacing
++                wrapMode: Text.WordWrap
++                horizontalAlignment: Text.AlignLeft
++                visible: pixelFlow.state === "waiting" && !pixelFlow.showAltCode
++                color: "white"
++                opacity: 0.65
++                font.pointSize: Kirigami.Theme.defaultFont.pointSize
++                text: i18nd("plasma-desktop-sddm-theme", "Stellen Sie sicher, dass sich Ihr Smartphone im selben Netzwerk befindet.")
++            }
++
++            QQC2.Button {
++                Layout.alignment: Qt.AlignHCenter
++                visible: pixelFlow.state === "error" || pixelFlow.state === "expired"
++                text: i18nd("plasma-desktop-sddm-theme", "Erneut versuchen")
++                onClicked: pixelFlow.open()
++            }
++            QQC2.Button {
++                Layout.alignment: Qt.AlignHCenter
++                Layout.bottomMargin: Kirigami.Units.largeSpacing
++                visible: pixelFlow.state !== "idle"
++                text: i18nd("plasma-desktop-sddm-theme", "Abbrechen")
++                onClicked: pixelFlow.cancel()
 +            }
 +        }
 +    }
@@ -141,10 +487,19 @@
 +    Connections {
 +        target: sddm
 +        function onLoginFailed() {
-+            passkeyOverlay.cancelFlow()
++            console.log("PHONE_FLOW: SDDM loginFailed")
++            // UI wieder bedienbar machen, aber NICHT automatisch einen
++            // neuen Device Flow starten - pixelFlow.cancel() only tells
++            // the broker to cancel the session if it were still
++            // waiting/starting (a no-op here, since the flow already
++            // reached "logging_in"), then resets to the normal login
++            // screen. A new phone login requires the user to click
++            // "Smartphone-Login" again explicitly.
++            pixelFlow.cancel()
 +        }
 +        function onLoginSucceeded() {
-+            passkeyOverlay.close()
++            console.log("PHONE_FLOW: SDDM loginSucceeded")
++            pixelPanel.visible = false
 +        }
 +    }
  }

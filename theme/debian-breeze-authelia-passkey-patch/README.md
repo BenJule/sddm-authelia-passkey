@@ -4,12 +4,17 @@
 GPL-2.0-or-later / LGPL (mixed, per-file - see
 `/usr/share/doc/sddm-theme-debian-breeze/copyright` on a Debian system).
 This project does **not** vendor a copy of that theme. Instead, this
-directory ships two small additive unified diffs against the theme files
-as installed by the `sddm-theme-debian-breeze` Debian package:
+directory ships two small unified diffs against the theme files as
+installed by the `sddm-theme-debian-breeze` Debian package:
 
-- `Main.qml.patch` - adds a "Login with Passkey" button and its popup as
-  new sibling QML elements after the theme's existing root `Item`'s last
-  child. Touches zero existing lines.
+- `Main.qml.patch` - adds a "Smartphone-Login" action button (alongside
+  Sleep/Restart/Shut Down/Other) that opens a right-anchored sidebar panel
+  with the QR code, mostly as new sibling QML elements after the theme's
+  existing root `Item`'s last child. Two small, deliberate exceptions touch
+  existing lines: the main login block's horizontal centering (clock and
+  the `StackView` holding the password form) is adjusted so it recenters
+  within the visible area when the sidebar is open, instead of staying
+  centered on the full screen width behind it.
 - `metadata.desktop.patch` - renames the theme copy so it appears
   alongside (not instead of) the original in SDDM's theme picker.
 
