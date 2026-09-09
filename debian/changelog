@@ -11,6 +11,9 @@ sddm-authelia-passkey (0.4.1-1) unstable; urgency=medium
     of the local auth-failure lockout; make rate-limit waits interruptible.
   * Preserve unrelated SDDM configuration and dpkg ownership during rollback.
 
+  * Make repeated PAM setup a true no-op before backup creation and make
+    automatic rollback select only clean pre-integration PAM backups.
+
  -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 00:43:49 +0200
 
 sddm-authelia-passkey (0.4.0-1) unstable; urgency=medium

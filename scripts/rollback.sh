@@ -15,7 +15,18 @@ fi
 
 if [ "$pam_integrated" -eq 1 ]; then
     if [ -z "$BACKUP" ]; then
-        BACKUP="$(ls -dt /root/sddm-authelia-passkey-backup-* 2>/dev/null | head -1 || true)"
+        BACKUP="$(
+            find /root -maxdepth 1 -mindepth 1 -type d -name 'sddm-authelia-passkey-backup-*' -printf '%T@ %p\n' 2>/dev/null |
+                sort -nr |
+                cut -d' ' -f2- |
+                while IFS= read -r d; do
+                    [ -f "$d/sddm.pam.orig" ] || continue
+                    if ! grep -q 'pam_authelia_passkey.so' "$d/sddm.pam.orig"; then
+                        printf '%s\n' "$d"
+                        break
+                    fi
+                done
+        )"
     fi
 
     [ -n "$BACKUP" ] && [ -d "$BACKUP" ] || {
@@ -27,6 +38,11 @@ if [ "$pam_integrated" -eq 1 ]; then
         echo "backup missing sddm.pam.orig: $BACKUP" >&2
         exit 1
     }
+
+    if grep -q 'pam_authelia_passkey.so' "$BACKUP/sddm.pam.orig"; then
+        echo "refusing already-integrated PAM backup: $BACKUP" >&2
+        exit 1
+    fi
 
     install -o root -g root -m 0644 -T "$BACKUP/sddm.pam.orig" /etc/pam.d/sddm
 
