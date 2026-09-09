@@ -252,3 +252,17 @@ because `state` is no longer `"waiting"` by the time it would arrive.
   release.
 - See `docs/threat-model.md` and `docs/security.md` for the full
   analysis.
+
+
+### Flow outcome versus local failure lockout
+
+The per-user failure lockout is an authentication-abuse control, not an
+availability-error counter. Only explicit authentication denial, including
+OAuth `access_denied` or a verified identity mismatch, increments it.
+Cancellation, supersession, expiry, HTTP 429, transport/proxy errors and
+userinfo infrastructure failures release the concurrency slot neutrally.
+
+HTTP 429 backoff never becomes shorter than the current poll interval and
+grows conservatively while throttling continues. Cancellation wakes a poller
+even during a long Retry-After wait so stale flows do not retain global
+concurrency slots.

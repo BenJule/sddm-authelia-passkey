@@ -5,6 +5,17 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- Local failure lockout now counts only genuine authentication denials.
+  Cancellation, expiry, upstream token-endpoint throttling, and infrastructure
+  errors are neutral and cannot manufacture a user lockout.
+- Rate-limit backoff is monotonic, cancellation interrupts long backoff waits,
+  and terminal infrastructure throttling is exposed as an error rather than
+  an authentication denial.
+- Rollback now preserves unrelated SDDM configuration while changing only the
+  custom theme selection back to Debian Breeze, and package removal no longer
+  manually deletes dpkg-owned files.
+
 ### Changed
 - Debian package installs now generate the custom SDDM theme automatically
   from the installed pristine Debian Breeze theme plus this project's

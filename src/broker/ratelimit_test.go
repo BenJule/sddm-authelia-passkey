@@ -69,8 +69,8 @@ func TestRateLimitDecision_MissingRetryAfterUsesIntervalFallback(t *testing.T) {
 	if giveUp {
 		t.Fatal("must not give up when remaining time is plentiful")
 	}
-	if effective != 20 {
-		t.Fatalf("got effectiveRetry=%d, want 20 (fallback to current interval)", effective)
+	if effective != 25 {
+		t.Fatalf("got effectiveRetry=%d, want 25 (actual fallback backoff)", effective)
 	}
 	if newInterval != 25*time.Second {
 		t.Fatalf("got newInterval=%v, want interval+5s backoff when no Retry-After given", newInterval)
@@ -87,6 +87,16 @@ func TestRateLimitDecision_RetryAfterHonoredWhenPresent(t *testing.T) {
 	}
 	if newInterval != 45*time.Second {
 		t.Fatalf("got newInterval=%v, want exactly the server's Retry-After, not the old +5s creep", newInterval)
+	}
+}
+
+func TestRateLimitDecision_RetryAfterNeverShortensCurrentInterval(t *testing.T) {
+	effective, newInterval, giveUp := rateLimitDecision(1, 15*time.Second, 5*time.Minute)
+	if giveUp {
+		t.Fatal("must not give up")
+	}
+	if effective != 15 || newInterval != 15*time.Second {
+		t.Fatalf("got effective=%d interval=%v, want current 15s interval preserved", effective, newInterval)
 	}
 }
 
@@ -151,12 +161,12 @@ func withFastPolling(t *testing.T) {
 }
 
 func newTestFlow(username string) (*flowState, *deviceAuthResponse) {
-	fs := &flowState{Status: "pending", Username: username, UID: "1000", startedAt: time.Now()}
+	fs := &flowState{Status: "pending", Username: username, UID: "1000", startedAt: time.Now(), cancelCh: make(chan struct{})}
 	dev := &deviceAuthResponse{DeviceCode: "dev-" + username, Interval: 0, ExpiresIn: 3600}
 	return fs, dev
 }
 
-func noopRelease(bool) {}
+func noopRelease(releaseOutcome) {}
 
 func TestPollAndDecide_RateLimit_PropagatesThenRecoversThenApproves(t *testing.T) {
 	withFastPolling(t)
@@ -236,10 +246,8 @@ func TestPollAndDecide_RateLimit_NeverApprovesWhileStillLimited(t *testing.T) {
 	if fs.Status == "approved" {
 		t.Fatal("a flow that only ever saw 429s must never be approved")
 	}
-	if fs.RateLimited && fs.Status != "denied" {
-		// Once terminal (denied), RateLimited/RetryAfterSeconds are
-		// left as last-known values - fine, Status/Error are authoritative.
-		t.Fatalf("got status=%q while still marked RateLimited with no terminal decision", fs.Status)
+	if fs.Status != "error" || fs.Error != "rate_limited" {
+		t.Fatalf("got status=%q error=%q, want error/rate_limited", fs.Status, fs.Error)
 	}
 }
 
@@ -272,8 +280,8 @@ func TestPollAndDecide_RateLimit_ExceedsFlowLifetime_TerminalError(t *testing.T)
 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
-	if fs.Status != "denied" || fs.Error != "rate_limited" {
-		t.Fatalf("got status=%q error=%q, want denied/rate_limited", fs.Status, fs.Error)
+	if fs.Status != "error" || fs.Error != "rate_limited" {
+		t.Fatalf("got status=%q error=%q, want error/rate_limited", fs.Status, fs.Error)
 	}
 }
 
@@ -291,9 +299,7 @@ func TestPollAndDecide_Cancelled_NeverApprovedEvenIfRateLimitedFirst(t *testing.
 	defer func() { cfg.AutheliaBaseURL = prevBase }()
 
 	fs, dev := newTestFlow("benlue")
-	fs.mu.Lock()
-	fs.cancelled = true
-	fs.mu.Unlock()
+	markPendingFlowCancelled(fs)
 	done := make(chan struct{})
 	go func() { pollAndDecide("sess-4", fs, dev, "benlue", noopRelease); close(done) }()
 
@@ -354,4 +360,102 @@ func TestPollAndDecide_RateLimit_FlowIsolation(t *testing.T) {
 
 	aliceFS.cancelled = true
 	bobFS.cancelled = true
+}
+
+func TestPollAndDecide_RateLimitTerminalIsNeutral(t *testing.T) {
+	withFastPolling(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "3600")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-neutral-429", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	select {
+	case got := <-released:
+		if got != releaseNeutral {
+			t.Fatalf("got release outcome %v, want neutral", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout")
+	}
+}
+
+func TestPollAndDecide_CancelInterruptsLongBackoff(t *testing.T) {
+	withFastPolling(t)
+	var calls int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.Header().Set("Retry-After", "5")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-cancel", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	deadline := time.Now().Add(2 * time.Second)
+	for atomic.LoadInt32(&calls) == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if atomic.LoadInt32(&calls) == 0 {
+		t.Fatal("first rate-limited poll never happened")
+	}
+
+	start := time.Now()
+	if !markPendingFlowCancelled(fs) {
+		t.Fatal("cancel was not accepted")
+	}
+	select {
+	case got := <-released:
+		if got != releaseNeutral {
+			t.Fatalf("got %v, want neutral", got)
+		}
+		if time.Since(start) > 500*time.Millisecond {
+			t.Fatalf("cancel too slow: %v", time.Since(start))
+		}
+	case <-time.After(time.Second):
+		t.Fatal("cancel did not interrupt backoff")
+	}
+}
+
+func TestPollAndDecide_AccessDeniedCountsAsAuthFailure(t *testing.T) {
+	withFastPolling(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(tokenResponse{Error: "access_denied"})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-denied", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	select {
+	case got := <-released:
+		if got != releaseAuthFailure {
+			t.Fatalf("got %v, want auth failure", got)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout")
+	}
 }

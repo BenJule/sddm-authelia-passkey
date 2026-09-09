@@ -4,6 +4,9 @@ set -euo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
 
 BACKUP="${1:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/theme-selection.sh
+source "$SCRIPT_DIR/lib/theme-selection.sh"
 pam_integrated=0
 
 if grep -q 'pam_authelia_passkey.so' /etc/pam.d/sddm 2>/dev/null; then
@@ -44,13 +47,15 @@ fi
 systemctl disable --now sddm-authelia-passkey-kwallet-secretd.service 2>/dev/null || true
 systemctl disable --now sddm-authelia-passkey-broker.service 2>/dev/null || true
 
-if grep -q 'debian-breeze-authelia-passkey' /etc/sddm.conf.d/*.conf 2>/dev/null; then
-    grep -rl 'debian-breeze-authelia-passkey' /etc/sddm.conf.d/*.conf 2>/dev/null | xargs -r rm -f
-fi
+replace_sddm_theme_current /etc/sddm.conf debian-breeze-authelia-passkey debian-breeze
+for f in /etc/sddm.conf.d/*.conf; do
+    [ -e "$f" ] || continue
+    replace_sddm_theme_current "$f" debian-breeze-authelia-passkey debian-breeze
+done
 
 rm -rf /usr/share/sddm/themes/debian-breeze-authelia-passkey
 
-if dpkg-query -W -f='${Status}' sddm-authelia-passkey 2>/dev/null | grep -q 'ok installed'; then
+if dpkg-query -W -f='${binary:Package}' sddm-authelia-passkey >/dev/null 2>&1; then
     echo "PACKAGE_MANAGED=YES"
 else
     echo "PACKAGE_MANAGED=NO"
