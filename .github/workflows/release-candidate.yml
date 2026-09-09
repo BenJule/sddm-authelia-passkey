@@ -1,4 +1,4 @@
-name: release-build
+name: release-candidate
 
 # Builds release-candidate artifacts (deterministically, in a clean
 # Debian 13 container) for the maintainer to download, inspect, sign,
@@ -9,6 +9,8 @@ name: release-build
 # boundary than the current manual process. Security beats automation.
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -19,14 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:13
     steps:
-      # git must exist BEFORE actions/checkout runs: in a container: job,
+      # git must exist BEFORE actions/checkout runs: in a container job,
       # checkout executes inside the container, and without a git binary
-      # on PATH yet it silently falls back to a plain tarball download -
-      # no .git directory at all - which then breaks cyclonedx-gomod's
-      # (and anything else's) ability to inspect repository history.
-      # Observed empirically as "no git repository found" even before any
-      # build step ran.
-      - name: Install git (must precede checkout in a container: job)
+      # on PATH yet it silently falls back to a plain tarball download,
+      # no .git directory at all, which then breaks cyclonedx-gomod's
+      # ability to inspect repository history ("no git repository found").
+      - name: Install git (must run before checkout in a container job)
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
 
       - uses: actions/checkout@v4
@@ -43,8 +43,8 @@ jobs:
       - name: Generate SBOMs (CycloneDX, per Go module)
         run: |
           mkdir -p out
-          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/broker.cdx.json
-          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest app -json -output ../../out/kwallet-secretd.cdx.json
+          cd src/broker && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0 app -json -output ../../out/broker.cdx.json
+          cd ../kwallet-secretd && go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.12.0 app -json -output ../../out/kwallet-secretd.cdx.json
 
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
@@ -56,7 +56,7 @@ jobs:
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
 
       - name: Checksums (unsigned - maintainer signs these locally)
-        run: cd out && sha256sum sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo *.cdx.json > SHA256SUMS.unsigned
+        run: cd out && sha256sum -- sddm-authelia-passkey_*.deb sddm-authelia-passkey_*.changes sddm-authelia-passkey_*.buildinfo *.cdx.json > SHA256SUMS.unsigned
 
       - uses: actions/upload-artifact@v7
         with:
