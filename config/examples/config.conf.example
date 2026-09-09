@@ -50,9 +50,14 @@ failure_lockout_threshold=3
 failure_lockout_seconds=60
 
 # Optional: automatically unlock a running KDE KWallet on a successful
-# smartphone/passkey login. Requires a one-time interactive setup (see docs/kwallet.md)
+# smartphone/passkey login. Requires a one-time interactive setup per
+# allowed user (see docs/kwallet.md and scripts/setup-kwallet-credential.sh)
 # and a systemd-creds encrypted credential. Off by default - a failed or
 # unavailable credential never blocks login either way, it only means
 # KWallet falls back to its normal manual password prompt.
 kwallet_auto_unlock=false
+
+# Prefix only, not a filename: each allowed user has their own
+# systemd-creds encrypted credential named "<prefix>.<username>" (e.g.
+# kwallet.secret.alice) - never one credential shared across users.
 kwallet_credential_name=kwallet.secret

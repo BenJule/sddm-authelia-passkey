@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,440 @@
+@@ -529,4 +561,474 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -90,6 +90,29 @@
 +        // a prior flow can never be reused by mistake.
 +        property string resolvedUsername: ""
 +
++        // The local account SDDM itself currently has selected - the
++        // avatar list's highlighted user, or whatever is typed into the
++        // manual username field when that prompt is showing instead.
++        // Reactively tracks whichever Login instance (userListComponent
++        // or the "Other…" userPromptComponent) mainStack is currently
++        // showing, so this stays correct across "List Users"/"Other…"
++        // navigation without a second, independent user database.
++        property string sddmSelectedUsername: {
++            var page = mainStack.currentItem
++            if (!page) return ""
++            if (page.showUsernamePrompt) {
++                return page.userNameInput ? page.userNameInput.text : ""
++            }
++            return page.userList ? page.userList.selectedUser : ""
++        }
++
++        // Captured once, at flow start, from sddmSelectedUsername above -
++        // immutable for the rest of this flow's lifetime (Phase 11). If
++        // the user changes SDDM's own selection while a flow is active,
++        // onSddmSelectedUsernameChanged below cancels it rather than
++        // silently retargeting.
++        property string targetUsername: ""
++
 +        // Phase 8: ONE_PANEL_OPEN = ONE_DEVICE_FLOW. A flow already in
 +        // progress must not be able to spawn a second backend session -
 +        // only a terminal state (idle/error/expired) may start a new one.
@@ -99,6 +122,13 @@
 +                pixelPanel.visible = true
 +                return
 +            }
++            if (sddmSelectedUsername.length === 0) {
++                state = "error"
++                statusText = i18nd("plasma-desktop-sddm-theme", "Bitte zuerst ein Konto auswählen oder eingeben.")
++                pixelPanel.visible = true
++                return
++            }
++            targetUsername = sddmSelectedUsername
 +            state = "starting"
 +            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
 +            qrPath = ""
@@ -107,13 +137,27 @@
 +            showAltCode = false
 +            resolvedUsername = ""
 +            pixelPanel.visible = true
-+            requestStart("")
++            requestStart(targetUsername)
++        }
++
++        onSddmSelectedUsernameChanged: {
++            // Phase 11/40: a live flow is bound to targetUsername for its
++            // whole lifetime - if SDDM's own selection moves to a
++            // different account while one is active, cancel rather than
++            // silently retarget. Comparing against the *current* value of
++            // sddmSelectedUsername (not the one that just changed FROM)
++            // is deliberate: this only fires once the selection has
++            // actually settled on something new.
++            if (state === "idle" || state === "error" || state === "expired") return
++            if (targetUsername !== "" && targetUsername !== sddmSelectedUsername) {
++                console.log("PHONE_FLOW: SDDM selection changed during an active flow, cancelling")
++                cancel()
++            }
 +        }
 +
 +        function requestStart(withUsername) {
 +            var xhr = new XMLHttpRequest()
-+            var url = "http://127.0.0.1:7899/start"
-+            if (withUsername) url += "?username=" + encodeURIComponent(withUsername)
++            var url = "http://127.0.0.1:7899/start?username=" + encodeURIComponent(withUsername)
 +            xhr.open("POST", url)
 +            xhr.onreadystatechange = function() {
 +                if (xhr.readyState !== XMLHttpRequest.DONE) return
@@ -122,12 +166,12 @@
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
 +                    return
 +                }
-+                if (xhr.status === 400 && !withUsername) {
-+                    // Broker could not auto-resolve a single allowed user -
-+                    // fall back to asking, exactly once, per point 22.
-+                    pixelFlow.state = "need_username"
-+                    pixelFlow.statusText = ""
-+                    pixelUsernameField.forceActiveFocus()
++                if (xhr.status === 403) {
++                    // We always send an explicit username now (captured
++                    // from SDDM's own selection) - 403 means this specific
++                    // account is not allowed, not "ambiguous, please ask".
++                    pixelFlow.state = "error"
++                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Smartphone-Login ist für dieses Konto nicht verfügbar.")
 +                    return
 +                }
 +                if (xhr.status !== 200) {
@@ -140,14 +184,6 @@
 +                pixelPollTimer.start()
 +            }
 +            xhr.send()
-+        }
-+
-+        function start() {
-+            // Only reached from the need_username fallback view.
-+            if (pixelUsernameField.text.length === 0) return
-+            state = "starting"
-+            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
-+            requestStart(pixelUsernameField.text)
 +        }
 +
 +        function poll() {
@@ -247,6 +283,7 @@
 +            }
 +            sessionId = ""
 +            resolvedUsername = ""
++            targetUsername = ""
 +            state = "idle"
 +            pixelPanel.visible = false
 +        }
@@ -303,28 +340,25 @@
 +                Layout.topMargin: Kirigami.Units.smallSpacing
 +                wrapMode: Text.WordWrap
 +                color: "white"
++                opacity: 0.9
++                font.bold: true
++                visible: text.length > 0
++                // Whichever account this flow is (or would be) for - the
++                // immutable target once a flow is active, otherwise
++                // whatever SDDM currently has selected.
++                text: {
++                    var u = pixelFlow.targetUsername || pixelFlow.sddmSelectedUsername
++                    return u.length > 0 ? i18nd("plasma-desktop-sddm-theme", "Konto: %1", u) : ""
++                }
++            }
++            QQC2.Label {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                wrapMode: Text.WordWrap
++                color: "white"
 +                opacity: 0.8
 +                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.1
 +                text: i18nd("plasma-desktop-sddm-theme", "QR-Code mit dem Smartphone scannen, um sich anzumelden.")
-+            }
-+
-+            // Fallback only reached if the broker cannot uniquely resolve a
-+            // single allowed user (see pixelFlow.requestStart).
-+            QQC2.TextField {
-+                id: pixelUsernameField
-+                Layout.fillWidth: true
-+                Layout.topMargin: Kirigami.Units.largeSpacing
-+                placeholderText: i18nd("plasma-desktop-sddm-theme", "Benutzername")
-+                visible: pixelFlow.state === "need_username"
-+                onAccepted: pixelFlow.start()
-+                background: Rectangle { radius: height / 2; color: "white" }
-+            }
-+            QQC2.Button {
-+                Layout.fillWidth: true
-+                Layout.topMargin: Kirigami.Units.smallSpacing
-+                visible: pixelFlow.state === "need_username"
-+                text: i18nd("plasma-desktop-sddm-theme", "Weiter")
-+                onClicked: pixelFlow.start()
 +            }
 +
 +            Item { Layout.preferredHeight: Kirigami.Units.gridUnit; visible: pixelFlow.state === "waiting" || pixelFlow.state === "starting" }

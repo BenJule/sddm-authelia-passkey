@@ -23,29 +23,57 @@ If neither device exists, only `host` mode is available to you - this is
 normal on most desktops/laptops without a discrete or firmware TPM
 exposed to Linux, and on virtual machines without vTPM passthrough.
 
-## Setup (interactive, never automated)
+## Setup (interactive, never automated, per user)
 
-This project's installer **never** accepts your KWallet password as an
-argument, environment variable, or piped-without-your-own-terminal input.
-You run this yourself:
+Credentials are **per local user**, not shared - `alice` and `bob` each
+get their own encrypted credential file, and `kwallet-secretd` only ever
+releases the one matching the account whose login-approval marker (and
+its embedded UID) was just consumed by PAM. This project's installer
+**never** accepts a KWallet password as an argument, environment
+variable, or piped-without-your-own-terminal input.
+
+For each user you want KWallet auto-unlock for:
 
 ```
-read -s -p "KWallet password: " SECRET && \
-  printf '%s' "$SECRET" | sudo systemd-creds encrypt --with-key=host \
-    --name=kwallet.secret - /etc/credstore.encrypted/kwallet.secret && \
-  unset SECRET
+sudo /usr/share/sddm-authelia-passkey/setup-kwallet-credential.sh alice
 ```
 
-The value you enter must be **the same password your KWallet is already
-using** (or that you set it to, via KWalletManager) - `pam_kwallet5`
-unlocks by receiving this value as `PAM_AUTHTOK`, exactly as it would
-receive your typed login password on the normal path.
+(source checkout: `sudo scripts/setup-kwallet-credential.sh alice`) -
+prompts interactively (no echo), resolves the account via NSS, refuses
+`root`, and writes
+`/etc/credstore.encrypted/kwallet.secret.alice` (`root:root`, `0600`).
 
-Then in `/etc/sddm-authelia-passkey/config.conf`:
+The value you enter must be **the same password that user's KWallet is
+already using** (or that you set it to, via KWalletManager) -
+`pam_kwallet5` unlocks by receiving this value as `PAM_AUTHTOK`, exactly
+as it would receive their typed login password on the normal path.
+
+Then tell the running daemon about this user's credential - add one line
+per user via `sudo systemctl edit sddm-authelia-passkey-kwallet-secretd.service`:
+
+```
+[Service]
+LoadCredentialEncrypted=kwallet.secret.alice:/etc/credstore.encrypted/kwallet.secret.alice
+```
+
+`sudo systemctl restart sddm-authelia-passkey-kwallet-secretd.service`,
+then in `/etc/sddm-authelia-passkey/config.conf`:
 
 ```
 kwallet_auto_unlock=true
 ```
+
+## Migrating from a single-user (pre-per-user) setup
+
+Older configurations used one global
+`/etc/credstore.encrypted/kwallet.secret` for whichever single user was
+configured. This is never migrated automatically. If you have exactly
+one allowed user and want to keep using that same password, just run
+`setup-kwallet-credential.sh` for them as above (re-entering the
+password) - the old file is left in place, unused, and can be removed
+manually once you've confirmed the new one works. With more than one
+allowed user, there is no "correct" automatic choice of who the old
+credential belonged to, so it is never assigned to anyone.
 
 ## Recovery
 

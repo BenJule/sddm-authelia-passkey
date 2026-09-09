@@ -11,12 +11,28 @@ set -euo pipefail
 
 [ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
 TESTUSER="${1:?usage: $0 <existing-local-username-uid-1000-plus>}"
+TESTUID="$(id -u "$TESTUSER")"
 
 MARKER_DIR=/run/sddm-authelia-passkey
 SVC=/etc/pam.d/sddm-authelia-passkey-test
 FAIL=0
 ok()  { echo "[OK]   $*"; }
 bad() { echo "[FAIL] $*"; FAIL=1; }
+
+# v2 marker format: PAM requires VERSION=2 and a UID= line matching a
+# fresh NSS lookup of the target account - see writeApprovalMarker in
+# src/broker/main.go and consume_login_approval in src/pam/.
+write_marker() {
+    install -o root -g root -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+    {
+        echo "VERSION=2"
+        echo "USERNAME=$TESTUSER"
+        echo "UID=$TESTUID"
+        echo "NONCE=test"
+        echo "APPROVED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } > "$MARKER_DIR/approved-$TESTUSER"
+    chmod 0600 "$MARKER_DIR/approved-$TESTUSER"
+}
 
 mkdir -p "$MARKER_DIR"
 rm -f "$MARKER_DIR/approved-$TESTUSER" "$MARKER_DIR/kwallet-ready-$TESTUSER"
@@ -37,7 +53,7 @@ else
 fi
 
 echo "-- valid marker --"
-install -o root -g root -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+write_marker
 if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
     ok "correctly accepted with valid marker"
 else
@@ -52,7 +68,7 @@ else
 fi
 
 echo "-- expired marker (default TTL 30s) --"
-install -o root -g root -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+write_marker
 touch -d "60 seconds ago" "$MARKER_DIR/approved-$TESTUSER"
 if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
     bad "accepted an expired (60s, TTL 30s) marker"
@@ -71,7 +87,7 @@ rm -f "$MARKER_DIR/approved-someoneelse"
 
 echo "-- kwallet-secretd down + valid marker: login still succeeds --"
 systemctl stop sddm-authelia-passkey-kwallet-secretd.service 2>/dev/null || true
-install -o root -g root -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+write_marker
 if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
     ok "login succeeded even with kwallet-secretd unavailable (fail-open for login)"
 else

@@ -34,6 +34,7 @@ override_dh_auto_install:
 	install -D -m 0755 scripts/postflight.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/postflight.sh
 	install -D -m 0755 scripts/enable-pam.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/enable-pam.sh
 	install -D -m 0755 scripts/rollback.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/rollback.sh
+	install -D -m 0755 scripts/setup-kwallet-credential.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/setup-kwallet-credential.sh
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/Main.qml.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/Main.qml.patch
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch
 

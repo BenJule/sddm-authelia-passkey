@@ -1,3 +1,34 @@
+sddm-authelia-passkey (0.4.0-1) unstable; urgency=medium
+
+  * Broker: resolve the target account's UID via NSS fresh on every
+    flow start (not just once at broker startup) and embed it in the
+    approval marker (v2 format: VERSION=2/USERNAME=/UID=/NONCE=/
+    APPROVED_AT=).
+  * PAM module: re-resolve the requesting account's UID via NSS at
+    marker consumption time and require an exact match against the
+    marker's embedded UID - an account deleted and recreated (same
+    username, different UID) between approval and login is rejected.
+  * KWallet: per-user credentials (kwallet_credential_name is now a
+    prefix, one systemd-creds encrypted file per allowed user - see
+    scripts/setup-kwallet-credential.sh and docs/kwallet.md). The
+    hand-off marker also carries UID, and kwallet-secretd refuses to
+    release a secret unless the requesting UID matches it. Removed the
+    v0.3.0 restriction that refused kwallet_auto_unlock with more than
+    one allowed_users entry.
+  * New tests/integration/pam-multiuser-test.sh proving the core
+    cross-user invariant against real local test accounts and the
+    compiled PAM module: alice's approval never authenticates bob and
+    vice versa, parallel alice+bob approvals remain independent.
+  * SDDM theme: the smartphone/passkey flow is now bound to whichever
+    account SDDM's own existing user selector currently has selected
+    (avatar list or manual username entry), captured immutably per
+    flow; changing the selection mid-flow cancels it rather than
+    silently retargeting.
+  * Documented the multi-user identity-binding model in
+    docs/architecture.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Wed, 09 Sep 2026 22:40:00 +0200
+
 sddm-authelia-passkey (0.3.0-1) unstable; urgency=medium
 
   * Broker: refuse `allowed_users` containing root at config-load time.
