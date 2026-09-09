@@ -5,6 +5,25 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Fixed
+- `scripts/setup-kwallet-credential.sh`: no longer widens an existing
+  `/etc/credstore.encrypted` directory's permissions to `0755` on every
+  run - only ever creates it at `0700` if missing, and hardens (never
+  loosens) an existing directory's mode back down to `0700`. Found on
+  production after the v0.4.0 cutover (`P0`, directory-metadata exposure
+  only - file contents remained `0600` throughout).
+- Broker: HTTP 429 from Authelia's own token-endpoint rate limiter is now
+  surfaced to the theme (`rate_limited`/`retry_after_seconds` on
+  `/status`) instead of being silently indistinguishable from a normal
+  "still waiting on the user" `pending` state. `Retry-After` (seconds or
+  HTTP-date form) is parsed when present; if honoring it would run past
+  the flow's own remaining lifetime, the flow now fails closed
+  (`rate_limited`) instead of quietly waiting out a deadline it can never
+  reach. Never weakens or reconfigures Authelia's actual rate limit - see
+  `docs/architecture.md`'s new "Upstream rate limiting" section.
+
+## [0.4.0]
+
 ### Added
 - Broker: resolve the target account's UID via NSS fresh on every flow
   start and embed it in the approval marker (v2 format:

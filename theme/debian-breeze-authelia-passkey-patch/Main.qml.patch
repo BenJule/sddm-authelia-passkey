@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,474 @@
+@@ -529,4 +561,514 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -186,6 +186,28 @@
 +            xhr.send()
 +        }
 +
++        // Formats a still-pending, rate-limited wait for a human without
++        // pretending to a precision we don't actually have - Authelia's
++        // Retry-After (when present) is a lower bound, not a guarantee,
++        // so this is deliberately "about X", never "in exactly X". Uses
++        // plain i18nd (with manual singular/plural text) rather than a
++        // plural-form i18n call - this theme has no established use of
++        // one, and qmllint isn't available locally to double-check it.
++        function rateLimitedWaitingText(retryAfterSeconds) {
++            if (retryAfterSeconds <= 0) {
++                return i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Der Anmeldedienst begrenzt derzeit weitere Anfragen.")
++            }
++            if (retryAfterSeconds < 120) {
++                return retryAfterSeconds === 1
++                    ? i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa 1 Sekunde warten.")
++                    : i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa %1 Sekunden warten.", retryAfterSeconds)
++            }
++            var mins = Math.round(retryAfterSeconds / 60)
++            return mins === 1
++                ? i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa 1 Minute warten.")
++                : i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa %1 Minuten warten.", mins)
++        }
++
 +        function poll() {
 +            // Phase 5 step 2: once we've moved past waiting (e.g. already
 +            // logging in, or cancelled), a late-arriving response from an
@@ -209,7 +231,17 @@
 +
 +                switch (resp.status) {
 +                case "pending":
-+                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Warte auf Bestätigung…")
++                    // A rate-limited poll is still structurally "pending"
++                    // (no approval/denial decision was made - Authelia's
++                    // own token-endpoint abuse limiter just isn't letting
++                    // the broker ask again yet) - never mistaken for
++                    // authorization_pending's plain "still waiting on the
++                    // user" case, so the UI can tell them apart.
++                    if (resp.rate_limited) {
++                        pixelFlow.statusText = pixelFlow.rateLimitedWaitingText(resp.retry_after_seconds || 0)
++                    } else {
++                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Warte auf Bestätigung…")
++                    }
 +                    break
 +                case "approved":
 +                    pixelFlow.handleApproved(resp.username)
@@ -221,6 +253,14 @@
 +                    if (reason.indexOf("expired") !== -1) {
 +                        pixelFlow.state = "expired"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "QR-Code abgelaufen.")
++                    } else if (reason.indexOf("rate_limited") !== -1) {
++                        // Distinct from the still-pending rate_limited
++                        // case above: this flow's own deadline is gone,
++                        // waiting out the limiter inside it can no
++                        // longer succeed - a fresh explicit retry (new
++                        // flow) is the only way forward now.
++                        pixelFlow.state = "error"
++                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Dieser Anmeldeversuch kann nicht mehr abgeschlossen werden. Bitte später erneut versuchen.")
 +                    } else if (reason.indexOf("temporarily_unavailable") !== -1 || reason.indexOf("slow_down") !== -1) {
 +                        pixelFlow.state = "error"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")

@@ -117,6 +117,32 @@ on-next-start behavior. `pixelFlow.open()` in the theme is itself
 idempotent - calling it while a flow is already in progress does not start
 a second one.
 
+## Upstream rate limiting
+
+Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits
+.openid_connect_token`, on by default) sits in front of the OAuth2 handler
+and can reject a poll with HTTP 429, independently of the device flow's own
+`interval`/`slow_down` semantics - a burst of overlapping flows (several
+real logins, or heavy manual testing) can trigger it purely through normal
+RFC 8628 polling, with nobody actually retrying anything abusively. The
+broker never weakens or reconfigures this limit; `pollToken` detects a 429,
+reads `Retry-After` if present (bounded, RFC 7231 seconds-or-HTTP-date
+form), and `pollAndDecide` treats it like a spec `slow_down` for backoff
+purposes - except the resulting wait is also checked against the flow's own
+remaining lifetime: if Authelia's `Retry-After` would land at or past the
+flow's deadline, the flow fails closed (`rate_limited`) instead of quietly
+running out the clock.
+
+Critically, this is a UX/diagnostic concern, not an authentication
+decision: `flowState.RateLimited`/`RetryAfterSeconds` are pure hints
+surfaced over `/status` so the theme can distinguish "Authelia's limiter is
+holding this poll" from "still waiting on the user" instead of showing an
+indistinguishable "Warte auf Bestätigung…" for both. A rate-limited flow
+can never be approved and never writes an approval marker - `fs.Status`
+only ever becomes `"approved"` via the same `outcomeOK` branch as before,
+which a rate-limited poll never reaches by construction (see
+`rateLimitDecision`, `pollAndDecide` in `src/broker/main.go`).
+
 ## Multi-user readiness
 
 `allowed_users` supports more than one entry, and the smartphone/passkey

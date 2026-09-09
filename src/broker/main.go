@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,9 +43,14 @@ const (
 	qrDir      = "/run/sddm-authelia-passkey/qr"
 	listenAddr = "127.0.0.1:7899"
 	maxFlowAge = 10 * time.Minute
-	// See pollAndDecide for why 15s, not RFC 8628's more typical 5s.
-	minPollInterval = 15 * time.Second
 )
+
+// minPollInterval is a var (not const) solely so tests can shrink it to
+// exercise pollAndDecide's real multi-iteration loop in milliseconds
+// instead of tens of seconds - production code never assigns it.
+//
+// See pollAndDecide for why 15s, not RFC 8628's more typical 5s.
+var minPollInterval = 15 * time.Second
 
 var cfg Config
 
@@ -155,8 +161,17 @@ type flowState struct {
 	VerificationURI string `json:"verification_uri_complete,omitempty"`
 	QRPath          string `json:"qr_path,omitempty"`
 	Error           string `json:"error,omitempty"`
-	startedAt       time.Time
-	cancelled       bool
+	// RateLimited/RetryAfterSeconds are pure UX/diagnostic hints, never
+	// an authentication decision: Authelia's own token-endpoint rate
+	// limiter (independent of the device flow's own RFC 8628 state) can
+	// reject a poll while the flow is still genuinely pending. Without
+	// these, the theme has no way to tell "waiting on the user" apart
+	// from "waiting on Authelia's rate limiter" and would show a
+	// misleading spinner for the flow's whole remaining lifetime.
+	RateLimited       bool `json:"rate_limited,omitempty"`
+	RetryAfterSeconds int  `json:"retry_after_seconds,omitempty"`
+	startedAt         time.Time
+	cancelled         bool
 }
 
 var (
@@ -470,6 +485,11 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 	// user for the full maxFlowAge instead of surfacing as an error.
 	const maxConsecutiveAmbiguous = 8
 	consecutiveAmbiguous := 0
+	// Log-throttling only, never an auth/flow decision: report the first
+	// rate limit hit and any materially different retry-after, not every
+	// single poll while Authelia's independent bucket stays hot.
+	loggedRateLimit := false
+	loggedRetryAfter := 0
 
 	for time.Now().Before(deadline) {
 		time.Sleep(interval)
@@ -482,7 +502,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			return
 		}
 
-		tok, status, outcome, err := pollToken(dev.DeviceCode)
+		tok, status, outcome, retryAfter, err := pollToken(dev.DeviceCode)
 		if err != nil {
 			log.Printf("session %s: token poll error: %v", sessionID, err)
 			consecutiveAmbiguous++
@@ -494,10 +514,44 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			continue
 		}
 
+		if outcome != outcomeRateLimit {
+			fs.mu.Lock()
+			wasRateLimited := fs.RateLimited
+			fs.RateLimited = false
+			fs.RetryAfterSeconds = 0
+			fs.mu.Unlock()
+			if wasRateLimited {
+				log.Printf("session %s: upstream token endpoint recovered from rate limit", sessionID)
+				loggedRateLimit, loggedRetryAfter = false, 0
+			}
+		}
+
 		switch outcome {
 		case outcomeRateLimit:
-			// See pollToken: does not count toward consecutiveAmbiguous.
-			interval += 5 * time.Second
+			// See pollToken: does not count toward consecutiveAmbiguous,
+			// and is never itself an approval/denial - purely a UX hint
+			// plus a pacing decision below.
+			effectiveRetry, newInterval, giveUp := rateLimitDecision(retryAfter, interval, time.Until(deadline))
+			if giveUp {
+				// The soonest Authelia says it might accept another poll
+				// is at or past this flow's own deadline - waiting out
+				// the rate limit inside the SAME flow can no longer
+				// succeed. Fail closed with a distinct, UI-recognizable
+				// reason rather than silently running out the clock.
+				fail(fs, "rate_limited")
+				log.Printf("session %s: giving up, rate limit retry-after (%ds) exceeds remaining flow lifetime",
+					sessionID, effectiveRetry)
+				return
+			}
+			fs.mu.Lock()
+			fs.RateLimited = true
+			fs.RetryAfterSeconds = effectiveRetry
+			fs.mu.Unlock()
+			if !loggedRateLimit || absInt(effectiveRetry-loggedRetryAfter) > loggedRetryAfter/2+5 {
+				log.Printf("session %s: upstream token endpoint rate limited, retry_after=%ds", sessionID, effectiveRetry)
+				loggedRateLimit, loggedRetryAfter = true, effectiveRetry
+			}
+			interval = newInterval
 			continue
 		case outcomeAmbiguous:
 			consecutiveAmbiguous++
@@ -559,7 +613,40 @@ const (
 	outcomeAmbiguous                    // non-200 with no decodable OAuth error - not a spec-defined outcome
 )
 
-func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome pollOutcome, err error) {
+// maxParsableRetryAfter bounds what pollToken will accept out of a
+// Retry-After header as a sanity ceiling against a malformed or
+// deliberately huge upstream value - not a functional limit (the flow's
+// own remaining lifetime is what actually decides whether a wait is
+// worth continuing for, in pollAndDecide).
+const maxParsableRetryAfter = 24 * time.Hour
+
+// parseRetryAfter parses an RFC 7231 Retry-After header value (either
+// delta-seconds or an HTTP-date) relative to now. Returns ok=false for
+// anything empty, malformed, non-positive, or past maxParsableRetryAfter -
+// callers must fall back to their own safe default rather than trust a
+// zero value here.
+func parseRetryAfter(header string, now time.Time) (seconds int, ok bool) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return 0, false
+	}
+	if n, err := strconv.Atoi(header); err == nil {
+		if n <= 0 || time.Duration(n)*time.Second > maxParsableRetryAfter {
+			return 0, false
+		}
+		return n, true
+	}
+	if t, err := http.ParseTime(header); err == nil {
+		d := t.Sub(now)
+		if d <= 0 || d > maxParsableRetryAfter {
+			return 0, false
+		}
+		return int(d.Seconds()), true
+	}
+	return 0, false
+}
+
+func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome pollOutcome, retryAfterSeconds int, err error) {
 	form := url.Values{
 		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 		"device_code": {deviceCode},
@@ -567,7 +654,7 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 	}
 	resp, err := http.PostForm(cfg.AutheliaBaseURL+"/api/oidc/token", form)
 	if err != nil {
-		return "", "", outcomeAmbiguous, err
+		return "", "", outcomeAmbiguous, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
@@ -583,8 +670,9 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 		// consecutive-failure limit - Authelia's bucket state is out of
 		// this flow's control and can legitimately stay active for a long
 		// time without indicating anything is actually broken.
+		ra, _ := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		io.Copy(io.Discard, resp.Body)
-		return "", "slow_down", outcomeRateLimit, nil
+		return "", "slow_down", outcomeRateLimit, ra, nil
 	}
 	var t tokenResponse
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&t); decodeErr != nil {
@@ -592,17 +680,17 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 		// unexpected intermediary/server error (e.g. a proxy's HTML error
 		// page, a 5xx), not a spec-defined device-flow outcome. Bounded
 		// retry only - see pollAndDecide.
-		return "", "", outcomeAmbiguous, nil
+		return "", "", outcomeAmbiguous, 0, nil
 	}
 	if resp.StatusCode != http.StatusOK {
 		if t.Error == "" {
 			// Well-formed JSON, non-200, but no recognizable OAuth error
 			// code: same reasoning as above, bounded retry only.
-			return "", "", outcomeAmbiguous, nil
+			return "", "", outcomeAmbiguous, 0, nil
 		}
-		return "", t.Error, outcomeOAuth, nil
+		return "", t.Error, outcomeOAuth, 0, nil
 	}
-	return t.AccessToken, "", outcomeOK, nil
+	return t.AccessToken, "", outcomeOK, 0, nil
 }
 
 func verifyUserinfo(accessToken string) (string, error) {
@@ -626,6 +714,36 @@ func verifyUserinfo(accessToken string) (string, error) {
 		return "", fmt.Errorf("authelia.pam.username claim missing from userinfo response")
 	}
 	return u, nil
+}
+
+// rateLimitDecision is the pure decision logic for a single HTTP 429 from
+// the token endpoint: given what Authelia told us to wait (retryAfter,
+// possibly 0 if it sent no Retry-After header) and how much longer this
+// flow can still run (remaining), decide whether continuing to wait is
+// still worthwhile, and what the next poll interval should be. No I/O,
+// no locking - kept separate from pollAndDecide so this decision is
+// directly unit-testable without real sleeps.
+func rateLimitDecision(retryAfter int, interval, remaining time.Duration) (effectiveRetry int, newInterval time.Duration, giveUp bool) {
+	effectiveRetry = retryAfter
+	if effectiveRetry <= 0 {
+		effectiveRetry = int(interval.Seconds())
+	}
+	if time.Duration(effectiveRetry)*time.Second >= remaining {
+		return effectiveRetry, interval, true
+	}
+	if retryAfter > 0 {
+		newInterval = time.Duration(retryAfter) * time.Second
+	} else {
+		newInterval = interval + 5*time.Second
+	}
+	return effectiveRetry, newInterval, false
+}
+
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 func fail(fs *flowState, reason string) {
