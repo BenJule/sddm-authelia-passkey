@@ -1,0 +1,42 @@
+name: theme
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  patch-validate:
+    runs-on: ubuntu-latest
+    container: debian:13
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pristine sddm-theme-debian-breeze + qmllint
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            sddm-theme-debian-breeze qml6-module-qtquick patchutils qt6-declarative-dev-tools ca-certificates
+
+      - name: Patch applies cleanly against the pristine baseline
+        run: |
+          cp -a /usr/share/sddm/themes/debian-breeze /tmp/theme-test
+          patch -p1 -d /tmp/theme-test --dry-run < theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+          patch -p1 -d /tmp/theme-test --dry-run < theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch
+          patch -p1 -d /tmp/theme-test < theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+          patch -p1 -d /tmp/theme-test < theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch
+
+      - name: qmllint on the patched theme (best-effort - see docs/testing.md)
+        run: |
+          /usr/lib/qt6/bin/qmllint /tmp/theme-test/Main.qml || \
+            echo "qmllint reported findings above; not currently a hard CI gate, see docs/testing.md"
+
+      - name: No hardcoded local usernames in the patch
+        run: |
+          ! grep -qE '"benlue"|user ?= ?"[a-z]+"' theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+
+      - name: No Google/Pixel-specific branding in patch
+        run: |
+          ! grep -qiE 'google ?pixel|pixel ?phone' theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
