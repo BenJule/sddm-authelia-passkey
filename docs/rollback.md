@@ -1,5 +1,18 @@
 # Rollback / uninstall
 
+## If you installed the `.deb` package
+
+`sudo apt purge sddm-authelia-passkey` (or `apt remove`) is the normal
+path - the package's own `prerm` maintainer script automatically calls
+`rollback.sh` (shipped at `/usr/share/sddm-authelia-passkey/rollback.sh`)
+before the package's files are removed, restoring `/etc/pam.d/sddm`
+first. `apt purge` additionally removes
+`/etc/sddm-authelia-passkey/config.conf`; `apt remove` leaves it in
+place. You can also run `/usr/share/sddm-authelia-passkey/rollback.sh`
+manually at any time without removing the package.
+
+## If you installed from source
+
 Two related scripts, for two different situations:
 
 - **`scripts/rollback.sh`** - emergency restore. Finds the most recent

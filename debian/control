@@ -1,10 +1,10 @@
 Source: sddm-authelia-passkey
 Section: admin
 Priority: optional
-Maintainer: sddm-authelia-passkey contributors <noreply@example.invalid>
+Maintainer: Benjamin Lütker <benjamin.luetker@gmail.com>
 Build-Depends: debhelper-compat (= 13), golang-go (>= 2:1.24~), gcc, libpam0g-dev
 Standards-Version: 4.6.2
-Homepage: https://github.com/example/sddm-authelia-passkey
+Homepage: https://github.com/BenJule/sddm-authelia-passkey
 Rules-Requires-Root: no
 
 Package: sddm-authelia-passkey

@@ -70,14 +70,32 @@ fi
 rm -f "$MARKER_DIR/approved-someoneelse"
 
 echo "-- kwallet-secretd down + valid marker: login still succeeds --"
-systemctl stop kwallet-secretd.service 2>/dev/null || true
+systemctl stop sddm-authelia-passkey-kwallet-secretd.service 2>/dev/null || true
 install -o root -g root -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
 if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
     ok "login succeeded even with kwallet-secretd unavailable (fail-open for login)"
 else
     bad "login was affected by kwallet-secretd being down - this must never happen"
 fi
-systemctl start kwallet-secretd.service 2>/dev/null || true
+systemctl start sddm-authelia-passkey-kwallet-secretd.service 2>/dev/null || true
+
+echo "-- marker with wrong ownership (not root:root) is rejected --"
+install -o "$TESTUSER" -g "$TESTUSER" -m 0600 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
+    bad "authenticated using a marker not owned by root:root"
+else
+    ok "correctly rejected a marker not owned by root:root"
+fi
+rm -f "$MARKER_DIR/approved-$TESTUSER"
+
+echo "-- marker with wrong permissions (world-readable) is rejected --"
+install -o root -g root -m 0644 /dev/null "$MARKER_DIR/approved-$TESTUSER"
+if pamtester sddm-authelia-passkey-test "$TESTUSER" authenticate < /dev/null 2>/dev/null; then
+    bad "authenticated using a world-readable (0644) marker"
+else
+    ok "correctly rejected a marker with unexpected permissions"
+fi
+rm -f "$MARKER_DIR/approved-$TESTUSER"
 
 rm -f "$SVC" "$MARKER_DIR/approved-$TESTUSER" "$MARKER_DIR/kwallet-ready-$TESTUSER"
 
