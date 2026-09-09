@@ -16,8 +16,10 @@
   KWallet-unlock secret to the PAM module over a root-only AF_UNIX
   socket, gated by a second, separate, even-shorter-TTL hand-off marker
   that only the PAM module can mint (see below for why).
-- **theme patch** (`theme/`) - a small additive diff for
-  `sddm-theme-debian-breeze` adding a "Login with Passkey" button.
+- **theme patch** (`theme/`) - a diff for `sddm-theme-debian-breeze` adding
+  a "Smartphone-Login" action button (alongside Sleep/Restart/Shut Down/
+  Other) that opens a right-anchored sidebar with the QR code, matching the
+  existing action row's style rather than a floating overlay.
 
 ## Why a separate broker process at all?
 
@@ -76,8 +78,9 @@ sequenceDiagram
     participant PAM as pam_authelia_passkey.so
     participant KWallet as kwallet-secretd (optional)
 
-    User->>Theme: click "Login with Passkey", type username
-    Theme->>Broker: POST /start?username=...
+    User->>Theme: click "Smartphone-Login"
+    Note over Theme,Broker: username omitted; broker auto-resolves it<br/>when exactly one allowed_user is configured
+    Theme->>Broker: POST /start
     Broker->>Authelia: POST /api/oidc/device-authorization
     Authelia-->>Broker: user_code, verification_uri_complete
     Broker-->>Theme: session_id
@@ -87,8 +90,9 @@ sequenceDiagram
     Authelia-->>Broker: access_token (on approval)
     Broker->>Authelia: GET /api/oidc/userinfo (verify username claim)
     Broker->>Broker: write approval marker (root:root, 0600, TTL)
-    Theme->>Theme: poll /status, sees "approved"
-    Theme->>PAM: sddm.login(username, "", 0)
+    Theme->>Theme: poll /status, sees "approved" + resolved username
+    Note over Theme: idempotent: a stale/duplicate response for a<br/>session that's no longer current is ignored
+    Theme->>PAM: sddm.login(resolvedUsername, "", sessionButton.currentIndex)
     PAM->>PAM: consume approval marker, verify TTL
     PAM-->>User: login succeeds
     opt kwallet_auto_unlock=true
@@ -97,6 +101,21 @@ sequenceDiagram
         PAM->>PAM: PAM_AUTHTOK = secret
     end
 ```
+
+## Duplicate/overlapping flows
+
+Only one flow per user is meant to be "live" at a time. If a new `/start`
+arrives for a user who already has an unfinished flow (e.g. the panel was
+reopened before the previous attempt finished), the broker marks the prior
+flow `cancelled` so its poll loop exits and frees its concurrency slot on
+its next iteration - without this, a few overlapping attempts could each
+hold one of `max_parallel_flows`' limited slots until their natural 10-
+minute deadline, eventually blocking every further login attempt. The
+theme's explicit "Abbrechen"/panel-close path calls a dedicated `/cancel`
+endpoint for the same reason, rather than relying only on this supersede-
+on-next-start behavior. `pixelFlow.open()` in the theme is itself
+idempotent - calling it while a flow is already in progress does not start
+a second one.
 
 ## Trust boundaries
 
