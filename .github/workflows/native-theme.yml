@@ -95,6 +95,7 @@ jobs:
             qml6-module-qtquick-window \
             qml6-module-qttest \
             xvfb \
+            xauth \
             python3
 
       - name: 8. qmllint on all native QML
