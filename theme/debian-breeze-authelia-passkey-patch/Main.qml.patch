@@ -1,21 +1,62 @@
 --- a/Main.qml
 +++ b/Main.qml
-@@ -134,7 +134,13 @@
+@@ -31,6 +31,23 @@
+ 
+     property string notificationMessage
+ 
++    // v1.4.0 Responsive Greeter: exactly one Smartphone-Login layout is
++    // ever active - a right-anchored sidebar, or (below the breakpoint) a
++    // centered modal overlay card. root.width/height are QtQuick logical
++    // units, already DPI-independent (Qt divides out the screen's device
++    // pixel ratio before these bindings ever see a number), so this
++    // breakpoint is correct across 100/125/150/200/250% scale factors
++    // without any separate HiDPI branch.
++    //
++    // The breakpoint is derived, not a magic constant: the sidebar would
++    // claim pixelSidebarWidth, and the remaining main login column needs
++    // at least pixelMainAreaMinWidth to stay usable - overlay only kicks
++    // in once those two genuinely wouldn't fit side by side. See
++    // docs/architecture.md's "Responsive Greeter" section.
++    readonly property real pixelSidebarWidth: Math.max(320, Math.min(420, width * 0.24))
++    readonly property real pixelMainAreaMinWidth: 560
++    readonly property bool pixelOverlayLayout: width < (pixelSidebarWidth + pixelMainAreaMinWidth)
++
+     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
+     LayoutMirroring.childrenInherit: true
+ 
+@@ -66,6 +83,14 @@
+         property bool uiVisible: true
+         property bool blockUI: mainStack.depth > 1 || userListComponent.mainPasswordBox.text.length > 0 || inputPanel.keyboardActive || config.type !== "image"
+ 
++        // v1.4.0 Responsive Greeter: while the overlay card is open, the
++        // whole greeter behind it (password field, action buttons, user
++        // list) must be non-interactive and non-focusable, not just
++        // visually dimmed - Qt Quick disabling an Item disables mouse,
++        // keyboard and focus for it and all its children. Never disabled
++        // in sidebar layout, where the main area stays fully usable.
++        enabled: !(root.pixelOverlayLayout && pixelPanel.open)
++
+         hoverEnabled: true
+         drag.filterChildren: true
+         onPressed: uiVisible = true;
+@@ -134,7 +159,15 @@
              id: clock
              property Item shadow: clockShadow
              visible: y > 0 && config.showClock === "true"
 -            anchors.horizontalCenter: parent.horizontalCenter
 +            // Center within the visible main area (matches mainStack's own
 +            // rightMargin adjustment above), not the full screen including
-+            // the Smartphone-Login sidebar.
-+            x: (parent.width - (pixelPanel.visible ? pixelPanel.width : 0)) / 2 - width / 2
++            // the Smartphone-Login sidebar - but only in sidebar layout;
++            // an overlay floats on top rather than narrowing the main
++            // area, so nothing needs to recenter around it.
++            x: (parent.width - ((pixelPanel.visible && !root.pixelOverlayLayout) ? pixelPanel.width : 0)) / 2 - width / 2
 +            Behavior on x {
 +                NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
 +            }
              y: (userListComponent.userList.y + mainStack.y)/2 - height/2
              Layout.alignment: Qt.AlignBaseline
          }
-@@ -144,6 +150,15 @@
+@@ -144,6 +177,17 @@
              anchors {
                  left: parent.left
                  right: parent.right
@@ -23,15 +64,17 @@
 +                // (not the full screen) when the Smartphone-Login sidebar
 +                // is open, so it doesn't appear crowded against the panel
 +                // edge. Purely a layout adjustment; panel width/visibility
-+                // themselves are unchanged.
-+                rightMargin: pixelPanel.visible ? pixelPanel.width : 0
++                // themselves are unchanged. Never applied in overlay
++                // layout (small displays) - an overlay floats on top of
++                // the main area rather than narrowing it.
++                rightMargin: (pixelPanel.visible && !root.pixelOverlayLayout) ? pixelPanel.width : 0
 +                Behavior on rightMargin {
 +                    NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
 +                }
              }
              height: root.height + Kirigami.Units.gridUnit * 3
  
-@@ -226,6 +241,16 @@
+@@ -226,6 +270,16 @@
                          text: i18ndc("plasma-desktop-sddm-theme", "For switching to a username and password prompt", "Other…")
                          onClicked: mainStack.push(userPromptComponent)
                          visible: !userListComponent.showUsernamePrompt
@@ -48,7 +91,7 @@
                      }]
  
                  onLoginRequest: {
-@@ -364,6 +389,13 @@
+@@ -364,6 +418,13 @@
                          icon.name: "system-user-list"
                          text: i18nd("plasma-desktop-sddm-theme", "List Users")
                          onClicked: mainStack.pop()
@@ -62,7 +105,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,1004 @@
+@@ -529,4 +590,1063 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -534,6 +577,27 @@
 +        }
 +    }
 +
++    // v1.4.0 Responsive Greeter: dims and input-blocks the whole greeter
++    // behind the overlay card. Never present in sidebar layout (the
++    // sidebar narrows the main area instead of covering it). Deliberately
++    // does not close the panel on click - only Escape/Cancel does, so a
++    // stray tap can't discard an in-progress flow.
++    Rectangle {
++        id: pixelOverlayScrim
++        anchors.fill: parent
++        color: "black"
++        z: 199
++        opacity: (root.pixelOverlayLayout && pixelPanel.open) ? 0.55 : 0
++        visible: opacity > 0.01
++        Behavior on opacity {
++            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++        }
++        MouseArea {
++            anchors.fill: parent
++            hoverEnabled: true
++        }
++    }
++
 +    Rectangle {
 +        id: pixelPanel
 +        // Slide-in/out from the right edge: "open" is the single source of
@@ -543,19 +607,44 @@
 +        // the panel, matching the "one flow, one intent" spirit of the
 +        // rest of this file.
 +        property bool open: false
-+        anchors.top: parent.top
-+        anchors.bottom: parent.bottom
-+        width: Math.max(320, Math.min(420, root.width * 0.24))
-+        x: parent.width - (open ? width : 0)
++
++        // v1.4.0 Responsive Greeter: explicit x/y/width/height (rather
++        // than anchors) throughout, so both layouts - a right-anchored
++        // sidebar sliding in horizontally, or a centered modal card
++        // sliding up vertically - are expressed the same uniform way
++        // without fighting conflicting anchor lines. Exactly one of the
++        // two is ever active (root.pixelOverlayLayout), never a hybrid -
++        // the overlay card is explicitly size-capped (never full-screen)
++        // and centered, with pixelOverlayScrim (below) dimming and
++        // input-blocking everything behind it. See
++        // root.pixelOverlayLayout's doc comment for the breakpoint.
++        width: root.pixelOverlayLayout
++            ? Math.min(parent.width - Kirigami.Units.gridUnit * 4, 420)
++            : root.pixelSidebarWidth
++        height: root.pixelOverlayLayout
++            ? Math.min(parent.height - Kirigami.Units.gridUnit * 6, 620)
++            : parent.height
++        x: root.pixelOverlayLayout ? (parent.width - width) / 2 : (parent.width - (open ? width : 0))
++        y: root.pixelOverlayLayout ? (open ? (parent.height - height) / 2 : parent.height) : 0
++        radius: root.pixelOverlayLayout ? Kirigami.Units.gridUnit * 0.5 : 0
 +        opacity: open ? 1 : 0
 +        // Stays interactive/rendered through the whole close animation,
 +        // then truly gone - never a hard cut that would clip the slide.
-+        visible: open || x < parent.width
++        // Checks whichever axis this layout actually animates on.
++        visible: open || (root.pixelOverlayLayout ? y < parent.height : x < parent.width)
 +        color: Qt.rgba(0.13, 0.20, 0.27, 0.72)
 +        z: 200
 +        focus: open
++        // Defense in depth: even if content is taller than the card (a
++        // long translated string, a state with extra lines), nothing may
++        // ever paint outside the card's own bounds - see the ScrollView
++        // wrapper below, which is the primary mechanism.
++        clip: true
 +
 +        Behavior on x {
++            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic }
++        }
++        Behavior on y {
 +            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic }
 +        }
 +        Behavior on opacity {
@@ -570,10 +659,22 @@
 +            anchors.fill: parent
 +        }
 +
-+        ColumnLayout {
++        // Content can be taller than the card (long translated strings,
++        // states with extra lines, a small overlay height on a short
++        // display) - scrolls internally rather than overflowing past the
++        // card's edges, which the "nothing outside the card" requirement
++        // demands. In sidebar layout the card is full-height and content
++        // normally fits without ever showing a scrollbar.
++        QQC2.ScrollView {
++            id: pixelPanelScroll
 +            anchors.fill: parent
 +            anchors.margins: Kirigami.Units.gridUnit * 1.5
-+            spacing: Kirigami.Units.smallSpacing
++            clip: true
++            contentWidth: availableWidth
++
++            ColumnLayout {
++                width: pixelPanelScroll.availableWidth
++                spacing: Kirigami.Units.smallSpacing
 +
 +            QQC2.ToolButton {
 +                icon.name: "go-previous"
@@ -1020,7 +1121,7 @@
 +                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                color: "white"
 +                font.pointSize: Kirigami.Theme.defaultFont.pointSize
-+                text: i18nd("plasma-desktop-sddm-theme", "Stellen Sie sicher, dass sich Ihr Smartphone im selben Netzwerk befindet.")
++                text: i18nd("plasma-desktop-sddm-theme", "Scannen Sie den QR-Code mit Ihrem Smartphone und bestätigen Sie die Anmeldung.")
 +            }
 +
 +            QQC2.Button {
@@ -1044,6 +1145,7 @@
 +                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                text: i18nd("plasma-desktop-sddm-theme", "Abbrechen")
 +                onClicked: pixelFlow.cancel()
++            }
 +            }
 +        }
 +    }

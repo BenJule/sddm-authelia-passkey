@@ -235,6 +235,75 @@ polling being throttled. Fixed by:
   the identical "this code doesn't work anymore, get a new one"
   outcome would only add confusion.
 
+## Responsive Greeter (v1.4.0)
+
+`root.pixelOverlayLayout` switches the Smartphone-Login panel between
+exactly one of two layouts - never both, never a hybrid state - purely
+a geometry change; `pixelFlow`'s own state machine is completely
+unaware of which one is active:
+
+- **Sidebar** (the default): right-anchored,
+  `root.pixelSidebarWidth` (`Math.max(320, Math.min(420, root.width *
+  0.24))`) wide, full height, slides in horizontally. `mainStack`'s
+  `rightMargin` and the clock's centering both narrow to make room for
+  it.
+- **Overlay** (below the breakpoint): a centered, **size-capped** modal
+  card - never full-screen - `Math.min(parent.width - 4*gridUnit,
+  420)` wide and `Math.min(parent.height - 6*gridUnit, 620)` tall,
+  rounded corners, sliding up from off-screen to vertically centered.
+  A dedicated `pixelOverlayScrim` (a separate `Rectangle`, `z: 199`,
+  just below the card's own `z: 200`) covers the full screen behind
+  the card with a semi-transparent dim, and `loginScreenRoot.enabled`
+  (the `MouseArea` wrapping the password field, user list and action
+  row) is bound to `!(root.pixelOverlayLayout && pixelPanel.open)` -
+  Qt Quick disabling an `Item` disables mouse, keyboard and focus for
+  it and every child, so the greeter behind the overlay is dimmed
+  *and* genuinely non-interactive/non-focusable, not just visually
+  covered. The scrim's own `MouseArea` absorbs any remaining input but
+  deliberately does not close the panel on click - only Escape or the
+  Cancel button do, so a stray tap can't discard an in-progress flow.
+  `mainStack`/clock are **not** narrowed or recentered in this layout,
+  since the card floats on top rather than permanently shrinking the
+  main area.
+
+**Breakpoint**: derived, not a fixed constant -
+`pixelOverlayLayout: width < (pixelSidebarWidth +
+pixelMainAreaMinWidth)` (`pixelMainAreaMinWidth = 560`), i.e. the
+overlay only activates once the sidebar and a usably-wide main login
+column genuinely wouldn't fit side by side, rather than at an
+arbitrary screen-size cutoff. `root.width`/`height` are QtQuick
+logical units - already DPI-independent, since Qt divides out the
+platform's device pixel ratio before these bindings see a number - so
+this is correct unchanged across 100/125/150/200/250% scale factors,
+with no separate HiDPI branch needed.
+
+Both layouts share the exact same `pixelPanel.open` single-source-of-
+truth, the same `Keys.onEscapePressed`/cancel button, and the same
+inner `ColumnLayout` content (identity header, QR/countdown, alternate
+code, connection-status chip) unchanged - only the outer
+position/size/slide-axis/scrim differs.
+
+**Multi-monitor**: SDDM already instantiates one independent QML scene
+per screen (the existing `Repeater { model: screenModel }` driving the
+wallpaper). Each screen's `Main.qml` instance has its own `root.width`,
+so `pixelOverlayLayout` is evaluated independently per screen with no
+additional code needed - a narrow secondary display gets the overlay
+layout even if the primary display is wide enough for the sidebar, and
+vice versa.
+
+**HiDPI**: all of this project's own sizing is expressed in
+`Kirigami.Units` (already DPI-aware) or plain numbers interpreted as
+QML's own logical-pixel coordinate space, which Qt itself scales to
+physical pixels via the platform's normal HiDPI handling - no
+project-specific DPI detection was added or is needed.
+
+**Long names/translations**: the identity header's display name and
+username labels already `elide: Text.ElideRight` with
+`maximumLineCount: 1` (v1.1.0); the "Verzeichniskonto" badge and
+connection-status chip size to their own (short, fixed) text via
+`implicitWidth`, so longer translated strings simply grow the badge
+rather than clipping.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits
