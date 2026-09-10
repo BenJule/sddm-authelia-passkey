@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0]
+
+### Added
+- Service/Connection UX: a compact status chip (colored dot + short,
+  generic German label - never color alone) for `pixelFlow.connectionState`,
+  a new property distinct from flow-progress `state` with exactly six
+  values: `ready`, `connecting`, `waiting`, `rate_limited`, `offline`,
+  `error`. Shown only when it's not the plain happy path, so it adds no
+  noise to normal use.
+- `offline` detection: `xhr.status === 0` on `/start` or `/status` (a
+  real network-level failure, e.g. the broker isn't running) is now
+  distinguished from any HTTP error response, with its own clear,
+  non-technical message. A transient offline poll never tears the flow
+  down - it clears back to `waiting` automatically once the broker
+  responds again.
+
+### Unchanged (explicitly preserved)
+- No technical backend/OIDC/LDAP detail is ever shown in the greeter -
+  all six connection states use fixed, generic wording; hostnames/HTTP
+  codes/OIDC terms stay in the broker's own log only.
+
 ## [1.2.0]
 
 ### Added

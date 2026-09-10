@@ -170,6 +170,28 @@ small PNG, and the extra error-correction budget trades a slightly
 denser code for materially better real-world scan success against a
 phone camera's glare/angle/partial obstruction.
 
+## Service/Connection UX (v1.3.0)
+
+`pixelFlow.connectionState` is deliberately a separate property from
+`pixelFlow.state` (flow *progress*: idle/starting/waiting/approved/...):
+it answers "is the broker/upstream actually reachable right now", with
+exactly six values - `ready`, `connecting`, `waiting`, `rate_limited`,
+`offline`, `error` - each with fixed, generic German wording (a status
+chip: colored dot + short label, never color alone) that never names a
+hostname, HTTP status code, or OIDC/LDAP term. Those details exist only
+in the broker's own log (`journalctl -u sddm-authelia-passkey-broker`,
+or `SECURITY:`-tagged lines specifically via the admin CLI's
+`audit-log`), never in the greeter.
+
+`offline` is the one genuinely new failure mode this introduces
+detection for: `xhr.status === 0` on either the initial `/start` POST
+or an in-flight `/status` poll means a real network-level failure (no
+HTTP response at all - e.g. the broker process isn't running), distinct
+from any 4xx/5xx the broker itself returned. A transient offline poll
+never tears the flow down by itself - `pixelPollTimer` just keeps
+retrying on its normal interval, and a later successful poll clears the
+indicator back to `waiting` automatically.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits

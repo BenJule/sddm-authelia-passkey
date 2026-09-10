@@ -1,3 +1,12 @@
+sddm-authelia-passkey (1.3.0-1) unstable; urgency=medium
+
+  * Add a compact connection-status chip to the Smartphone-Login panel
+    (ready/connecting/waiting/rate_limited/offline/error), with generic
+    non-technical wording only. New offline detection for real
+    network-level broker unreachability.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 11:30:09 +0200
+
 sddm-authelia-passkey (1.2.0-1) unstable; urgency=medium
 
   * Add visible remaining time (live countdown + progress bar) to the
