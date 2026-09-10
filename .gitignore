@@ -29,3 +29,7 @@ claude-scratchpad/
 .DS_Store
 *.swp
 *~
+
+# Python bytecode / test cache
+__pycache__/
+*.py[cod]

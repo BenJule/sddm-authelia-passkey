@@ -114,19 +114,8 @@ jobs:
           MOCK_PID=$!
           trap 'kill "$MOCK_PID" >/dev/null 2>&1 || true' EXIT
 
-          python3 - <<'WAIT'
-import socket
-import time
-
-for _ in range(100):
-    try:
-        with socket.create_connection(("127.0.0.1", 17899), timeout=0.1):
-            break
-    except OSError:
-        time.sleep(0.05)
-else:
-    raise SystemExit("mock broker did not start")
-WAIT
+          sleep 1
+          python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:17899/health", timeout=5).read()'
 
           xvfb-run -a /usr/lib/qt6/bin/qmltestrunner \
             -input tests/native
@@ -179,7 +168,7 @@ WAIT
               exit 1
             fi
             if grep -qiE \
-              'QQmlApplicationEngine failed|failed to load component|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError' \
+              'QQmlApplicationEngine failed|failed to load component|Type .* unavailable|Cannot override FINAL property|Fallback to embedded theme|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError' \
               "$LOG"; then
               echo "fatal QML diagnostic found in $LOG" >&2
               exit 1
