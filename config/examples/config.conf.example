@@ -145,3 +145,12 @@ kwallet_credential_name=kwallet.secret
 fido2_authfile=/etc/sddm-authelia-passkey/fido2_mappings
 fido2_require_user_verification=true
 fido2_require_pin_verification=false
+
+# Optional policy gate: if set, only members of this local/NSS group are
+# even offered the FIDO2 path at all (enforced in the PAM stack itself
+# via an additive pam_succeed_if.so guard - see docs/fido2.md's "Group
+# policy" section) - everyone else falls straight through to the
+# smartphone/passkey flow, unaffected. Leave unset (default) for no
+# restriction. Only consulted by enable-fido2.sh at integration time; the
+# group must already exist (getent group) or enable-fido2.sh refuses.
+#fido2_required_group=fido2-users

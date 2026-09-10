@@ -28,14 +28,18 @@ cp -a "$PAMFILE" "$BACKUP/sddm.pam.orig"
 sha256sum /etc/pam.d/common-auth /etc/pam.d/sudo /etc/pam.d/sshd > "$BACKUP/common-auth-sudo-sshd.sha256" 2>/dev/null || true
 
 TMPFILE=$(mktemp)
-# Exactly 4 lines follow the marker comment line matched below (see
-# enable-fido2.sh's own print sequence): the 2nd/3rd comment lines, the
-# pam_u2f.so auth line, and a trailing blank line - always remove all 4
-# regardless of their content, never conditionally, so a stray blank line
-# or comment-shaped text can't accidentally survive or over-consume.
+# Consumes the whole block enable-fido2.sh can produce, in either shape:
+# marker comment, 1-2 more comment lines, an optional group-gating
+# pam_succeed_if.so guard line (only present when fido2_required_group
+# was set), the pam_u2f.so line itself, then exactly one trailing blank
+# line - classified by content (not a fixed line count) so both the
+# gated and ungated variants round-trip byte-identically.
 awk '
-    /^# Native FIDO2\/U2F security key path/ { skip = 4; next }
-    skip > 0 { skip--; next }
+    /^# Native FIDO2\/U2F security key path/ { insection = 1; next }
+    insection && /^#/ { next }
+    insection && /pam_succeed_if\.so.*notingroup/ { next }
+    insection && /pam_u2f\.so/ { insection = 0; sawline = 1; next }
+    sawline && $0 == "" { sawline = 0; next }
     { print }
 ' "$PAMFILE" > "$TMPFILE"
 

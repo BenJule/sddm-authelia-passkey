@@ -3,6 +3,37 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0]
+
+### Added
+- `scripts/disable-pam.sh`: symmetric counterpart to `enable-pam.sh`,
+  removing just the `pam_authelia_passkey.so` PAM integration (refuses
+  while FIDO2 is still layered on top - run `disable-fido2.sh` first).
+- `fido2_required_group` (optional): restricts the FIDO2 path to members
+  of a named group via an additive `pam_succeed_if.so user notingroup`
+  guard, computed and verified the same way as every other PAM edit in
+  this project. `enable-fido2.sh`/`disable-fido2.sh` round-trip
+  byte-identically in both the gated and ungated shape. See
+  `docs/fido2.md`'s "Group policy" section.
+- `scripts/break-glass.sh`: zero-dependency emergency recovery that
+  neutralizes (comments out, never deletes) any
+  `pam_authelia_passkey.so`/`pam_u2f.so` line, with a matching
+  `--restore`. Does not depend on locating any prior backup - see
+  `docs/rollback.md`.
+- `sddm-authelia-passkey-admin` (installed to `/usr/sbin`): fixed-dispatch
+  read-only admin CLI (`status`/`health`, `test-config`, `list-users`,
+  `audit-log`), delegating entirely to existing tooling.
+- Broker: `--check-config` flag validates `config.conf` and exits (no
+  root required, nothing started) - backs the admin CLI's `test-config`.
+- Broker: authorization denials and successful approvals are now also
+  `SECURITY:`-tagged in the log (alongside the existing identity-mismatch
+  line), enabling `audit-log` to show a real, minimal audit trail.
+- An explicit test proving an unreachable `provider_kind=oidc` provider
+  never yields a fabricated success at any of the three dispatch points
+  (`TestProviderDispatch_UnreachableProviderNeverApproves`), the
+  provider-layer counterpart to the existing PAM-layer
+  marker-absence proof.
+
 ## [0.7.0]
 
 ### Added
