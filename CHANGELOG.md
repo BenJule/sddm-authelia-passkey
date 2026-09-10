@@ -3,6 +3,27 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0]
+
+### Added
+- Visible remaining time in the Smartphone-Login panel: a live,
+  locally-ticking countdown (`Läuft ab in M:SS`) and a slim progress
+  bar, shared between the QR and alternate-code views. Purely a UX
+  value derived from the broker's own `expires_in` deadline
+  (`flowState.ExpiresAt`, new `expires_at` field on `/status`) - never
+  itself an authority on when a flow actually expires, which remains
+  `pollAndDecide`'s own server-side deadline.
+- Higher-quality QR rendering: explicit 512px size (`qrPixelSize`,
+  previously the qrcode library's small default) and `qrcode.High`
+  error correction (previously `Medium`) for better real-world phone
+  camera scan resilience.
+
+### Unchanged (explicitly preserved)
+- No automatic/uncontrolled creation of new device flows - a new flow
+  still only ever starts from an explicit user action (`pixelFlow.open()`
+  via the Smartphone-Login button or an explicit retry button).
+- No login-method selector added.
+
 ## [1.1.0]
 
 ### Added

@@ -1,3 +1,13 @@
+sddm-authelia-passkey (1.2.0-1) unstable; urgency=medium
+
+  * Add visible remaining time (live countdown + progress bar) to the
+    Smartphone-Login panel, derived from the broker's own expires_in
+    deadline (new /status expires_at field).
+  * Higher-quality QR rendering: explicit 512px size + High error
+    correction (previously library default size + Medium).
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 11:05:53 +0200
+
 sddm-authelia-passkey (1.1.0-1) unstable; urgency=medium
 
   * Add Identity Awareness to the Smartphone-Login panel: avatar,
