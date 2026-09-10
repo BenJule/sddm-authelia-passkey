@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,639 @@
+@@ -529,4 +561,646 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -463,16 +463,23 @@
 +                }
 +                radius: Kirigami.Units.gridUnit * 0.6
 +                color: "white"
-+                // Subtle pulse while genuinely waiting on the phone - not
-+                // during starting/approved/expired, and never a distraction
-+                // (a border glow, not a flashing fill).
-+                border.width: 2
-+                border.color: Kirigami.Theme.highlightColor
-+                SequentialAnimation on border.opacity {
-+                    running: pixelFlow.state === "waiting"
-+                    loops: Animation.Infinite
-+                    NumberAnimation { from: 0.15; to: 0.6; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
-+                    NumberAnimation { from: 0.6; to: 0.15; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
++                // Subtle pulse while genuinely waiting on the phone - a
++                // separate overlay (Rectangle.border has no "opacity" of
++                // its own to animate directly) with just a border, never
++                // a distraction, never a flashing fill.
++                Rectangle {
++                    anchors.fill: parent
++                    radius: parent.radius
++                    color: "transparent"
++                    border.width: 2
++                    border.color: Kirigami.Theme.highlightColor
++                    visible: pixelFlow.state === "waiting"
++                    SequentialAnimation on opacity {
++                        running: pixelFlow.state === "waiting"
++                        loops: Animation.Infinite
++                        NumberAnimation { from: 0.15; to: 0.6; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
++                        NumberAnimation { from: 0.6; to: 0.15; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
++                    }
 +                }
 +
 +                Image {
