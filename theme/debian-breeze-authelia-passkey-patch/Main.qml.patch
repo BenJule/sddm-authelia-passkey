@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,890 @@
+@@ -529,4 +561,986 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -123,6 +123,16 @@
 +        // re-deriving a shrinking total every tick.
 +        property real totalSecondsForFlow: 0
 +
++        // v1.3.0 Service/Connection UX: a small, explicit, generically-
++        // worded set of states distinct from `state` above (which tracks
++        // flow *progress* - idle/starting/waiting/approved/...) -
++        // "connectionState" tracks whether the broker/upstream provider
++        // is actually reachable right now: ready|connecting|waiting|
++        // rate_limited|offline|error. Never shows a hostname, HTTP code,
++        // or OIDC/LDAP term - those stay in the broker's own journal
++        // (see docs/architecture.md).
++        property string connectionState: "ready"
++
 +        // The local account SDDM itself currently has selected - the
 +        // avatar list's highlighted user, or whatever is typed into the
 +        // manual username field when that prompt is showing instead.
@@ -163,6 +173,7 @@
 +            }
 +            targetUsername = sddmSelectedUsername
 +            state = "starting"
++            connectionState = "connecting"
 +            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
 +            qrPath = ""
 +            verificationUri = ""
@@ -234,8 +245,19 @@
 +            xhr.open("POST", url)
 +            xhr.onreadystatechange = function() {
 +                if (xhr.readyState !== XMLHttpRequest.DONE) return
++                if (xhr.status === 0) {
++                    // A real network-level failure (connection refused/
++                    // timed out) - distinct from any HTTP response at
++                    // all, e.g. the broker isn't running. Deliberately
++                    // generic wording: never a hostname/port/errno.
++                    pixelFlow.state = "error"
++                    pixelFlow.connectionState = "offline"
++                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldedienst nicht erreichbar.")
++                    return
++                }
 +                if (xhr.status === 429) {
 +                    pixelFlow.state = "error"
++                    pixelFlow.connectionState = "rate_limited"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
 +                    return
 +                }
@@ -244,16 +266,19 @@
 +                    // from SDDM's own selection) - 403 means this specific
 +                    // account is not allowed, not "ambiguous, please ask".
 +                    pixelFlow.state = "error"
++                    pixelFlow.connectionState = "error"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Smartphone-Login ist für dieses Konto nicht verfügbar.")
 +                    return
 +                }
 +                if (xhr.status !== 200) {
 +                    pixelFlow.state = "error"
++                    pixelFlow.connectionState = "error"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung konnte nicht gestartet werden.")
 +                    return
 +                }
 +                pixelFlow.sessionId = JSON.parse(xhr.responseText).session_id
 +                pixelFlow.state = "waiting"
++                pixelFlow.connectionState = "waiting"
 +                pixelPollTimer.start()
 +            }
 +            xhr.send()
@@ -291,6 +316,17 @@
 +            xhr.open("GET", "http://127.0.0.1:7899/status?session_id=" + pollingSessionId)
 +            xhr.onreadystatechange = function() {
 +                if (xhr.readyState !== XMLHttpRequest.DONE) return
++                if (xhr.status === 0) {
++                    // Transient network failure mid-flow (e.g. broker
++                    // briefly unreachable) - never tears the flow down
++                    // itself, pixelPollTimer just tries again next
++                    // interval; only the connection indicator changes,
++                    // and clears back to "waiting" on the next success.
++                    if (pollingSessionId === pixelFlow.sessionId && pixelFlow.state === "waiting") {
++                        pixelFlow.connectionState = "offline"
++                    }
++                    return
++                }
 +                if (xhr.status !== 200) return
 +                // The session/flow this response belongs to may no longer
 +                // be the current one (superseded, cancelled) by the time
@@ -319,12 +355,19 @@
 +                    // authorization_pending's plain "still waiting on the
 +                    // user" case, so the UI can tell them apart.
 +                    if (resp.rate_limited) {
++                        pixelFlow.connectionState = "rate_limited"
 +                        pixelFlow.statusText = pixelFlow.rateLimitedWaitingText(resp.retry_after_seconds || 0)
 +                    } else {
++                        // Recovers from a prior transient "offline" poll
++                        // failure, or a rate-limited stretch that has
++                        // since cleared - this poll succeeded, so the
++                        // service is reachable and responsive again.
++                        pixelFlow.connectionState = "waiting"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Warte auf Bestätigung…")
 +                    }
 +                    break
 +                case "approved":
++                    pixelFlow.connectionState = "ready"
 +                    pixelFlow.handleApproved(resp.username)
 +                    break
 +                case "denied":
@@ -333,6 +376,7 @@
 +                    var reason = resp.error || ""
 +                    if (reason.indexOf("expired") !== -1) {
 +                        pixelFlow.state = "expired"
++                        pixelFlow.connectionState = "ready"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "QR-Code abgelaufen.")
 +                    } else if (reason.indexOf("rate_limited") !== -1) {
 +                        // Distinct from the still-pending rate_limited
@@ -341,12 +385,15 @@
 +                        // longer succeed - a fresh explicit retry (new
 +                        // flow) is the only way forward now.
 +                        pixelFlow.state = "error"
++                        pixelFlow.connectionState = "rate_limited"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Dieser Anmeldeversuch kann nicht mehr abgeschlossen werden. Bitte später erneut versuchen.")
 +                    } else if (reason.indexOf("temporarily_unavailable") !== -1 || reason.indexOf("slow_down") !== -1) {
 +                        pixelFlow.state = "error"
++                        pixelFlow.connectionState = "rate_limited"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
 +                    } else {
 +                        pixelFlow.state = "error"
++                        pixelFlow.connectionState = "error"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
 +                    }
 +                    break
@@ -419,6 +466,7 @@
 +            totalSecondsForFlow = 0
 +            remainingSeconds = 0
 +            remainingFraction = 1.0
++            connectionState = "ready"
 +            state = "idle"
 +            pixelPanel.open = false
 +        }
@@ -528,6 +576,54 @@
 +                wrapMode: Text.WordWrap
 +                color: "white"
 +                text: i18nd("plasma-desktop-sddm-theme", "Mit Smartphone anmelden")
++            }
++
++            // v1.3.0 Service/Connection UX: a compact, always-generic
++            // status chip (dot + short label, never color alone - see
++            // docs/architecture.md) for pixelFlow.connectionState. Only
++            // shown once a flow is actually active and not in the plain
++            // "ready"/"waiting" happy path, so it never adds noise to
++            // the common case - only calls out CONNECTING/RATE_LIMITED/
++            // OFFLINE/ERROR, which is exactly when a user benefits from
++            // an explicit "what's going on" signal beyond the detailed
++            // statusText below the QR card.
++            RowLayout {
++                Layout.topMargin: Kirigami.Units.smallSpacing / 2
++                spacing: Kirigami.Units.smallSpacing / 2
++                visible: pixelFlow.state !== "idle" &&
++                    (pixelFlow.connectionState === "connecting" ||
++                     pixelFlow.connectionState === "rate_limited" ||
++                     pixelFlow.connectionState === "offline" ||
++                     pixelFlow.connectionState === "error")
++
++                Rectangle {
++                    Layout.preferredWidth: 8
++                    Layout.preferredHeight: 8
++                    radius: 4
++                    color: {
++                        switch (pixelFlow.connectionState) {
++                        case "connecting": return Kirigami.Theme.neutralTextColor
++                        case "rate_limited": return Kirigami.Theme.neutralTextColor
++                        case "offline": return Kirigami.Theme.negativeTextColor
++                        case "error": return Kirigami.Theme.negativeTextColor
++                        default: return "white"
++                        }
++                    }
++                }
++                QQC2.Label {
++                    color: "white"
++                    opacity: 0.8
++                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
++                    text: {
++                        switch (pixelFlow.connectionState) {
++                        case "connecting": return i18nd("plasma-desktop-sddm-theme", "Verbinde…")
++                        case "rate_limited": return i18nd("plasma-desktop-sddm-theme", "Begrenzt")
++                        case "offline": return i18nd("plasma-desktop-sddm-theme", "Nicht erreichbar")
++                        case "error": return i18nd("plasma-desktop-sddm-theme", "Fehler")
++                        default: return ""
++                        }
++                    }
++                }
 +            }
 +            // v1.1.0 Identity Awareness: avatar + display name + username
 +            // (+ a "directory account" badge for account_source=nss), so
