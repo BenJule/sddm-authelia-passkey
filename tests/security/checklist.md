@@ -71,3 +71,20 @@ independently of trusting that the tests above are correct:
       account gets exactly the same cross-user/UID-reuse protections a
       local account does, since `authorizeAccount` is the only thing
       that changes; everything downstream is untouched.
+- [ ] FIDO2/U2F (`pam_u2f.so`) is looked up strictly by the username PAM
+      itself is authenticating - a credential enrolled for one user can
+      never authenticate a different one, and the enrollment/revocation
+      scripts only ever touch the named user's own authfile line
+      (verified: `tests/integration/fido2-authfile-test.sh`'s
+      cross-user-isolation case).
+- [ ] `setup-fido2-credential.sh` refuses to register root.
+- [ ] `enable-fido2.sh`/`disable-fido2.sh` re-verify
+      `common-auth`/sudo/sshd PAM hashes unchanged after editing,
+      rolling back on any unexpected difference, and round-trip to a
+      byte-identical `/etc/pam.d/sddm` (verified live on VM124).
+- [ ] A missing FIDO2 device, unenrolled user, or failed touch/PIN/UV
+      falls through to the smartphone/passkey path and then the
+      password fallback - never a hard denial, never a silent
+      authentication grant (verified: the full existing
+      `tests/integration/pam-flow-test.sh` suite still passes unchanged
+      with the FIDO2 line present but no credential enrolled, on VM124).

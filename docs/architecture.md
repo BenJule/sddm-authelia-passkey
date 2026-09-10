@@ -301,6 +301,21 @@ that here would only add a second, likely-inconsistent source of truth.
 A host without SSSD configured (or with `account_source=local`, the
 default) is entirely unaffected - this is opt-in, not a new requirement.
 
+## Native FIDO2/U2F hardware security keys
+
+Optional, opt-in, off by default - see `docs/fido2.md` for the full
+design, enrollment/revocation workflow, and PAM stacking detail. In
+short: `pam_u2f.so` (Debian package `libpam-u2f`, upstream Yubico
+project - never reimplemented by this project) is wired in additively,
+ahead of `pam_authelia_passkey.so`, using the same dynamic
+`[success=N default=ignore]` skip-count computation already used
+throughout this project. A missing device, unenrolled user, or failed
+touch/PIN/UV falls through to the smartphone/passkey path and then the
+password fallback exactly as if FIDO2 support were not installed -
+`pam_u2f` is looked up strictly by the username PAM itself is
+authenticating, giving it the same structural cross-user isolation as
+every other identity source here.
+
 ## Trust boundaries
 
 - The broker's HTTP API is localhost-only and never itself authenticates
