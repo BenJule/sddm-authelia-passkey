@@ -7,7 +7,7 @@
 [![release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey?include_prereleases)](https://github.com/BenJule/sddm-authelia-passkey/releases)
 [![license](https://img.shields.io/github/license/BenJule/sddm-authelia-passkey)](LICENSE)
 
-**Status: v1.0.0, stable.** No known P0/P1 bugs within the documented
+**Status: v1.10.0, stable.** No known P0/P1 bugs within the documented
 validated scope (see `docs/validated-environment.md`); `config.conf`,
 the admin CLI, and the shipped scripts' exit codes/status lines are
 covered by a stability commitment going forward (`docs/stability.md`).
@@ -74,8 +74,10 @@ stack. See `docs/installation.md`.
 - KWallet auto-unlock is KDE-specific and optional; it is off by default
   and a failure there can never turn a successful login into a failed
   one (see `docs/architecture.md`).
-- No packages are published to a Debian/APT repository yet - install
-  from a signed GitHub release `.deb`, see `docs/installation.md`.
+- Signed `.deb` packages are published on GitHub Releases and are
+  additionally mirrored to the project's internal Debian 13 (Trixie)
+  APT repository; see `docs/installation.md` and
+  `docs/apt-repository.md`.
 - Multi-user support: `allowed_users` may list more than one account,
   each with independent flows, approval markers, and KWallet
   credentials, bound to whichever account SDDM's own existing user
