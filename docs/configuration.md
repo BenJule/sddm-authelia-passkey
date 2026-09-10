@@ -29,6 +29,9 @@ ambiguous or insecure configuration:
   rather than silently treated as "no group check".
 - Any other `account_source` value is refused outright.
 - All timing/limit values must be positive.
+- An unrecognized key anywhere in the file (a typo, or a key from a
+  version newer than this build) is refused rather than silently
+  ignored - see `docs/stability.md`.
 
 ## `account_source=nss`: LDAP/Active Directory accounts
 

@@ -106,6 +106,43 @@ func defaultConfig() Config {
 	}
 }
 
+// knownConfigKeys is every key documented in
+// config/examples/config.conf.example - including the four fido2_*
+// keys, which this broker never reads itself (they're consumed
+// directly by scripts/enable-fido2.sh) but which are still a
+// legitimate part of the file. An unrecognized key is refused rather
+// than silently ignored, since a typo'd key name would otherwise look
+// like it took effect while actually just leaving the corresponding
+// setting at its default - a config.conf-stability guarantee (see
+// docs/stability.md).
+var knownConfigKeys = map[string]bool{
+	"authelia_base_url":               true,
+	"allowed_verification_host":       true,
+	"oidc_client_id":                  true,
+	"oidc_scopes":                     true,
+	"provider_kind":                   true,
+	"oidc_discovery_url":              true,
+	"oidc_identity_claim":             true,
+	"allowed_users":                   true,
+	"account_source":                  true,
+	"deny_users":                      true,
+	"allowed_groups":                  true,
+	"authelia_dev_insecure_http":      true,
+	"approval_ttl_seconds":            true,
+	"user_cooldown_seconds":           true,
+	"max_parallel_flows":              true,
+	"failure_lockout_threshold":       true,
+	"failure_lockout_seconds":         true,
+	"kwallet_auto_unlock":             true,
+	"minimum_uid":                     true,
+	"require_group_match":             true,
+	"kwallet_credential_name":         true,
+	"fido2_authfile":                  true,
+	"fido2_require_user_verification": true,
+	"fido2_require_pin_verification":  true,
+	"fido2_required_group":            true,
+}
+
 func LoadConfig(path string) (Config, error) {
 	cfg := defaultConfig()
 
@@ -130,6 +167,11 @@ func LoadConfig(path string) (Config, error) {
 	}
 	if err := sc.Err(); err != nil {
 		return cfg, err
+	}
+	for key := range raw {
+		if !knownConfigKeys[key] {
+			return cfg, fmt.Errorf("unknown config key %q - see config/examples/config.conf.example for the full list (refusing rather than silently ignoring a possible typo)", key)
+		}
 	}
 
 	getInt := func(key string, cur int) (int, error) {

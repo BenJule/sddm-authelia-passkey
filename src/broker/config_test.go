@@ -83,6 +83,57 @@ allowed_users=alice,root
 	}
 }
 
+func TestLoadConfig_RejectsUnknownKey(t *testing.T) {
+	p := writeTempConfig(t, `
+authelia_base_url=https://idp.example.com
+allowed_verification_host=idp.example.com
+oidc_client_id=pam-authelia
+allowed_users=alice
+alowed_groups=admins
+`)
+	if _, err := LoadConfig(p); err == nil {
+		t.Fatal("a typo'd/unrecognized config key must be refused, not silently ignored")
+	}
+}
+
+func TestLoadConfig_AcceptsShellOnlyFido2Keys(t *testing.T) {
+	// The broker itself never reads these (scripts/enable-fido2.sh
+	// parses them directly from the file), but they are a documented,
+	// legitimate part of config.conf and must not be rejected as
+	// "unknown" just because this package has no field for them.
+	p := writeTempConfig(t, `
+authelia_base_url=https://idp.example.com
+allowed_verification_host=idp.example.com
+oidc_client_id=pam-authelia
+allowed_users=alice
+fido2_authfile=/etc/sddm-authelia-passkey/fido2_mappings
+fido2_require_user_verification=true
+fido2_require_pin_verification=false
+fido2_required_group=fido2-users
+`)
+	if _, err := LoadConfig(p); err != nil {
+		t.Fatalf("shell-only fido2_* keys must be accepted: %v", err)
+	}
+}
+
+// TestLoadConfig_ShippedExampleFileLoadsAndValidates guards against the
+// shipped config/examples/config.conf.example drifting out of sync with
+// what LoadConfig actually accepts (e.g. a renamed key, or the new
+// unknown-key rejection above catching a stale example) - if this test
+// ever fails, the example file is broken for every real user who copies
+// it verbatim.
+func TestLoadConfig_ShippedExampleFileLoadsAndValidates(t *testing.T) {
+	// Repo layout: src/broker/config_test.go -> ../../config/examples/
+	p := filepath.Join("..", "..", "config", "examples", "config.conf.example")
+	c, err := LoadConfig(p)
+	if err != nil {
+		t.Fatalf("shipped config.conf.example must load cleanly: %v", err)
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("shipped config.conf.example must validate: %v", err)
+	}
+}
+
 func TestLoadConfig_RejectsMalformedLine(t *testing.T) {
 	p := writeTempConfig(t, "not_a_key_value_line\n")
 	if _, err := LoadConfig(p); err == nil {
