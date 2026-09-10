@@ -19,6 +19,34 @@ follows [Keep a Changelog](https://keepachangelog.com/).
   down - it clears back to `waiting` automatically once the broker
   responds again.
 
+### Fixed
+- A normally-left-open QR code no longer risks being misreported as
+  "Zu viele Anmeldeversuche" (too many login attempts). That phrasing
+  is now reserved exclusively for the broker's own local per-user
+  start-limiter (`/start` returning 429 from repeated *start* clicks) -
+  every other upstream-throttle-related case was reworded:
+  - **Still pending, upstream momentarily throttling status polls**
+    (Authelia's own token-endpoint rate limiter, RFC 8628
+    `slow_down`/HTTP 429 - normal and expected for a single open device
+    flow, not a sign of repeated login attempts): now reads "Der
+    Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte
+    kurz warten."
+  - **Flow can no longer succeed** (RFC 8628 deadline passed, OR the
+    upstream throttle's own Retry-After would exceed the flow's
+    remaining lifetime, OR too many ambiguous/infrastructure errors in
+    a row): all three now collapse to the same "QR-Code abgelaufen." +
+    "Neuen Code anfordern" treatment already used for plain expiry -
+    the broker's log keeps the precise reason, the greeter doesn't need
+    it.
+- No broker-side behavior changed - `rateLimitDecision`,
+  `outcomeRateLimit`/`outcomeAmbiguous` classification, and
+  `releaseNeutral` for every one of these outcomes (never counted as
+  an auth failure) were already correct; this was a presentation-layer
+  fix only. Confirmed against real Authelia (4.39.23) token-endpoint
+  rate-limiter behavior observed live (delays up to ~55 minutes during
+  this session's own repeated testing) - read-only, no Authelia config
+  or restart involved.
+
 ### Unchanged (explicitly preserved)
 - No technical backend/OIDC/LDAP detail is ever shown in the greeter -
   all six connection states use fixed, generic wording; hostnames/HTTP

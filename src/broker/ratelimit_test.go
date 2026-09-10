@@ -459,3 +459,154 @@ func TestPollAndDecide_AccessDeniedCountsAsAuthFailure(t *testing.T) {
 		t.Fatal("timeout")
 	}
 }
+
+// --- v1.3.0 rate-limit UX fix: a single QR code left open normally is
+// one device flow, not a sequence of user login attempts. These prove
+// the backend side of that distinction (already correct before this
+// fix - see docs/architecture.md) stays correct, complementing the
+// theme-side wording fix (rateLimitedWaitingText / the "denied"/"error"
+// switch in Main.qml no longer say "Zu viele Anmeldeversuche" for any
+// of these). ---------------------------------------------------------
+
+// TestPollAndDecide_LongPendingFlow_NoRateLimit_NeverCountsAsFailure
+// proves the plain, expected case - a user who simply hasn't scanned
+// yet - never touches the ambiguous-error counter, the rate-limit path,
+// or the failure-lockout counter, no matter how many authorization_pending
+// polls happen over the flow's lifetime.
+func TestPollAndDecide_LongPendingFlow_NoRateLimit_NeverCountsAsFailure(t *testing.T) {
+	withFastPolling(t)
+	var calls int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		// RFC 8628: authorization_pending is returned with a non-200
+		// status (Authelia uses 400) - without this, pollToken would
+		// treat the 200-default response as outcomeOK with an empty
+		// access token instead of outcomeOAuth/authorization_pending.
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(tokenResponse{Error: "authorization_pending"})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	dev.ExpiresIn = 1 // short-lived on purpose: let it run out naturally
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-long-pending", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	select {
+	case got := <-released:
+		if got != releaseNeutral {
+			t.Fatalf("got release outcome %v, want neutral - repeated authorization_pending must never count as a failure", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout")
+	}
+	if atomic.LoadInt32(&calls) < 2 {
+		t.Fatalf("got %d polls, want at least 2 - the flow must keep polling normally, not bail out early", calls)
+	}
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	if fs.Status != "error" || fs.Error != "expired" {
+		t.Fatalf("got status=%q error=%q, want error/expired once the flow's own deadline (not any rate limit) passes", fs.Status, fs.Error)
+	}
+}
+
+// TestPollAndDecide_AmbiguousExhaustion_IsNeutral_NotFailure proves the
+// OTHER terminal give-up path (repeated malformed/connection-level
+// responses, maxConsecutiveAmbiguous exceeded - an infrastructure
+// problem) is exactly as neutral as the rate-limit terminal path
+// (TestPollAndDecide_RateLimitTerminalIsNeutral above) - "Infrastrukturfehler
+// != Auth Denial" applies equally to both terminal reasons.
+func TestPollAndDecide_AmbiguousExhaustion_IsNeutral_NotFailure(t *testing.T) {
+	withFastPolling(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		// Non-JSON body, non-429: outcomeAmbiguous every time (see
+		// pollToken's doc comment).
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("<html>bad gateway</html>"))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-ambiguous", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	select {
+	case got := <-released:
+		if got != releaseNeutral {
+			t.Fatalf("got release outcome %v, want neutral - repeated ambiguous/infrastructure errors must never count as a failure", got)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout")
+	}
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	if fs.Status != "error" || fs.Error != "temporarily_unavailable" {
+		t.Fatalf("got status=%q error=%q, want error/temporarily_unavailable", fs.Status, fs.Error)
+	}
+}
+
+// TestSupersedePriorFlow_InterruptsLongBackoff proves supersede (a new
+// /start for the same user, superseding this one) interrupts an
+// in-progress rate-limit backoff exactly as immediately as an explicit
+// cancel does (TestPollAndDecide_CancelInterruptsLongBackoff) - both
+// go through the same markPendingFlowCancelled/cancelCh mechanism, but
+// supersede is a distinct production entry point (supersedePriorFlow,
+// called from handleStart) worth proving directly rather than only by
+// implication.
+func TestSupersedePriorFlow_InterruptsLongBackoff(t *testing.T) {
+	resetFlowState(t)
+	withFastPolling(t)
+	var calls int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/oidc/token", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.Header().Set("Retry-After", "5")
+		w.WriteHeader(http.StatusTooManyRequests)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	prev := cfg.AutheliaBaseURL
+	cfg.AutheliaBaseURL = srv.URL
+	defer func() { cfg.AutheliaBaseURL = prev }()
+
+	fs, dev := newTestFlow("benlue")
+	flowsMu.Lock()
+	flows["sess-supersede"] = fs
+	lastSessionForUser["benlue"] = "sess-supersede"
+	flowsMu.Unlock()
+
+	released := make(chan releaseOutcome, 1)
+	go pollAndDecide("sess-supersede", fs, dev, "benlue", func(o releaseOutcome) { released <- o })
+
+	deadline := time.Now().Add(2 * time.Second)
+	for atomic.LoadInt32(&calls) == 0 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if atomic.LoadInt32(&calls) == 0 {
+		t.Fatal("first rate-limited poll never happened")
+	}
+
+	start := time.Now()
+	supersedePriorFlow("benlue")
+	select {
+	case got := <-released:
+		if got != releaseNeutral {
+			t.Fatalf("got %v, want neutral", got)
+		}
+		if time.Since(start) > 500*time.Millisecond {
+			t.Fatalf("supersede too slow: %v", time.Since(start))
+		}
+	case <-time.After(time.Second):
+		t.Fatal("supersede did not interrupt backoff")
+	}
+}
