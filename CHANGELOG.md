@@ -3,7 +3,18 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [0.4.2]
+## [0.5.0]
+
+### Added
+- Broker: `account_source=nss` config mode authorizes any NSS-resolvable
+  account (local, or - with SSSD/nss-ldap configured in
+  `/etc/nsswitch.conf` - Samba AD/OpenLDAP/FreeIPA) instead of requiring
+  a static `allowed_users` entry, subject to `minimum_uid`, `deny_users`,
+  and optional `allowed_groups`/`require_group_match`. The broker never
+  talks to LDAP/AD/SSSD directly and implements no directory-credential
+  caching of its own - see `docs/architecture.md`'s new "LDAP/Active
+  Directory accounts (NSS)" section. `account_source=local` (the
+  default) is unchanged from v0.1-v0.4.
 
 ### Changed
 - Theme: the smartphone/passkey sidebar now animates (slide-in/out, QR

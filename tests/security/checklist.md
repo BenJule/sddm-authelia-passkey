@@ -51,3 +51,23 @@ independently of trusting that the tests above are correct:
       `TestHandleStart_AliceAndBobFlowsAreIndependent`,
       `TestSupersedePriorFlow_NewAliceFlowDoesNotSupersedeBobFlow`,
       `TestHandleCancel_CancellingAliceSessionLeavesBobActive`).
+- [ ] `account_source=nss`: root is rejected by both UID `0` and literal
+      name `root`, independent of `deny_users` config (verified:
+      `TestAuthorizeAccount_NSSMode_RootByNameRejected`,
+      `TestAuthorizeAccount_NSSMode_UIDZeroAliasRejectedEvenIfNotNamedRoot`).
+- [ ] `account_source=nss`: an NSS lookup error or a group-membership
+      lookup error (SSSD/LDAP unavailable) fails closed, never treated
+      as authorized or as a group match (verified:
+      `TestAuthorizeAccount_NSSMode_UserLookupErrorFailsClosed`,
+      `TestAuthorizeAccount_NSSMode_GroupLookupErrorFailsClosed`).
+- [ ] `account_source=nss`: an account below `minimum_uid`, in
+      `deny_users`, or in none of `allowed_groups` is rejected even with
+      an otherwise valid NSS resolution (verified:
+      `TestAuthorizeAccount_NSSMode_BelowMinimumUIDRejected`,
+      `TestAuthorizeAccount_NSSMode_DenyUsersRejected`,
+      `TestAuthorizeAccount_NSSMode_MissingGroupRejected`).
+- [ ] Identity binding, UID re-check at PAM consumption, and per-user
+      isolation are all unaware of `account_source` - an NSS/LDAP
+      account gets exactly the same cross-user/UID-reuse protections a
+      local account does, since `authorizeAccount` is the only thing
+      that changes; everything downstream is untouched.

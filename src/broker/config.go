@@ -22,6 +22,42 @@ type Config struct {
 
 	AllowedUsers map[string]bool
 
+	// AccountSource selects how a requested username is authorized:
+	//   "local" (default) - exactly the v0.1-v0.4 behavior: the account
+	//     must be a literal entry in AllowedUsers, nothing else checked.
+	//   "nss" - any account NSS can resolve (local /etc/passwd, or via
+	//     SSSD/nss-ldap against Samba AD/OpenLDAP/FreeIPA - whatever the
+	//     host's own nsswitch.conf is configured for; this broker never
+	//     talks to LDAP/AD directly) is eligible, subject to MinimumUID,
+	//     DenyUsers, and AllowedGroups/RequireGroupMatch below. AllowedUsers
+	//     becomes an *optional additional* allowlist in this mode - if
+	//     non-empty, it still further restricts which resolved accounts
+	//     are accepted, on top of the other checks.
+	AccountSource string
+
+	// MinimumUID rejects any account whose NSS-resolved UID is below it -
+	// UID 0 (root) is always rejected regardless of this value. Only
+	// enforced when AccountSource is "nss".
+	MinimumUID int
+
+	// DenyUsers is a fixed denylist checked before any other "nss" mode
+	// authorization logic - "root" is always implicitly a member of this
+	// set, whether or not the config lists it.
+	DenyUsers map[string]bool
+
+	// AllowedGroups, if non-empty, requires the resolved account to be a
+	// member (via NSS getgrouplist - real group membership, not a stored
+	// cache this project maintains itself) of at least one named group.
+	// Only consulted when AccountSource is "nss".
+	AllowedGroups map[string]bool
+	// RequireGroupMatch existing only as an explicit, readable on/off
+	// switch: true (the only supported value once AllowedGroups is
+	// non-empty) means group membership is mandatory. Having
+	// AllowedGroups set with this false would silently disable the group
+	// check, which is exactly the kind of ambiguous half-configuration
+	// this project refuses to start with - see Validate().
+	RequireGroupMatch bool
+
 	ApprovalTTLSeconds      int
 	UserCooldownSeconds     int
 	MaxParallelFlows        int
@@ -36,6 +72,11 @@ func defaultConfig() Config {
 	return Config{
 		OIDCScopes:              "openid authelia.pam",
 		AllowedUsers:            map[string]bool{},
+		AccountSource:           "local",
+		MinimumUID:              1000,
+		DenyUsers:               map[string]bool{},
+		AllowedGroups:           map[string]bool{},
+		RequireGroupMatch:       true,
 		ApprovalTTLSeconds:      30,
 		UserCooldownSeconds:     10,
 		MaxParallelFlows:        3,
@@ -118,6 +159,27 @@ func LoadConfig(path string) (Config, error) {
 			}
 		}
 	}
+	if v, ok := raw["account_source"]; ok {
+		cfg.AccountSource = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := raw["deny_users"]; ok {
+		cfg.DenyUsers = map[string]bool{}
+		for _, u := range strings.Split(v, ",") {
+			u = strings.TrimSpace(u)
+			if u != "" {
+				cfg.DenyUsers[u] = true
+			}
+		}
+	}
+	if v, ok := raw["allowed_groups"]; ok {
+		cfg.AllowedGroups = map[string]bool{}
+		for _, g := range strings.Split(v, ",") {
+			g = strings.TrimSpace(g)
+			if g != "" {
+				cfg.AllowedGroups[g] = true
+			}
+		}
+	}
 
 	var err2 error
 	if cfg.DevInsecureHTTP, err2 = getBool("authelia_dev_insecure_http", cfg.DevInsecureHTTP); err2 != nil {
@@ -139,6 +201,12 @@ func LoadConfig(path string) (Config, error) {
 		return cfg, err2
 	}
 	if cfg.KWalletAutoUnlock, err2 = getBool("kwallet_auto_unlock", cfg.KWalletAutoUnlock); err2 != nil {
+		return cfg, err2
+	}
+	if cfg.MinimumUID, err2 = getInt("minimum_uid", cfg.MinimumUID); err2 != nil {
+		return cfg, err2
+	}
+	if cfg.RequireGroupMatch, err2 = getBool("require_group_match", cfg.RequireGroupMatch); err2 != nil {
 		return cfg, err2
 	}
 	if v, ok := raw["kwallet_credential_name"]; ok {
@@ -168,8 +236,25 @@ func (c Config) Validate() error {
 	if c.OIDCClientID == "" {
 		return fmt.Errorf("oidc_client_id is required")
 	}
-	if len(c.AllowedUsers) == 0 {
-		return fmt.Errorf("allowed_users must list at least one local account")
+	switch c.AccountSource {
+	case "local":
+		if len(c.AllowedUsers) == 0 {
+			return fmt.Errorf("allowed_users must list at least one local account (or set account_source=nss)")
+		}
+	case "nss":
+		if c.MinimumUID <= 0 {
+			return fmt.Errorf("minimum_uid must be positive when account_source=nss (UID 0/root is always rejected regardless)")
+		}
+		if c.RequireGroupMatch && len(c.AllowedGroups) == 0 {
+			// An explicit true with nothing to match against is not "no
+			// restriction" - it is a config mistake that would either
+			// reject everyone or (if the code silently ignored an empty
+			// list) accidentally stop enforcing group membership. Refuse
+			// to start rather than guess which one was meant.
+			return fmt.Errorf("require_group_match=true needs at least one allowed_groups entry")
+		}
+	default:
+		return fmt.Errorf("account_source must be %q or %q, got %q", "local", "nss", c.AccountSource)
 	}
 	if c.AllowedUsers["root"] {
 		// The PAM stack's own `pam_succeed_if.so user != root` line
@@ -179,6 +264,13 @@ func (c Config) Validate() error {
 		// immediately and loudly instead of relying solely on PAM
 		// control-flow ordering never changing.
 		return fmt.Errorf("allowed_users must not include root")
+	}
+	if !c.DenyUsers["root"] {
+		// Belt-and-suspenders: DenyUsers always implicitly contains root,
+		// this just makes it explicit/observable in the parsed struct too
+		// (authorizeAccount does not rely on this - it independently
+		// checks resolved UID/username == root either way).
+		c.DenyUsers["root"] = true
 	}
 	if c.ApprovalTTLSeconds <= 0 || c.UserCooldownSeconds < 0 || c.MaxParallelFlows <= 0 ||
 		c.FailureLockoutThreshold <= 0 || c.FailureLockoutSeconds <= 0 {
