@@ -74,6 +74,15 @@ func TestHandleStart_SetsExpiresAtFromProviderResponse(t *testing.T) {
 	if expiresAt < wantMin || expiresAt > wantMax {
 		t.Fatalf("expires_at = %d, want between %d and %d (now + 600s)", expiresAt, wantMin, wantMax)
 	}
+
+	// handleStart spawned a real pollAndDecide goroutine (its mock token
+	// endpoint returns 502, so left alone it would keep retrying for
+	// minutes) - cancel it explicitly so it doesn't outlive this test
+	// and race with a later test's package-level var mutations (e.g.
+	// withFastPolling's minPollInterval), the exact race this comment
+	// itself was added to fix. markPendingFlowCancelled closes cancelCh,
+	// which pollAndDecide's poll-wait select observes immediately.
+	markPendingFlowCancelled(fs)
 }
 
 func TestHandleStatus_ExposesExpiresAtAsJSON(t *testing.T) {
