@@ -649,6 +649,20 @@ password fallback exactly as if FIDO2 support were not installed -
 authenticating, giving it the same structural cross-user isolation as
 every other identity source here.
 
+## Native theme (v1.9.0, experimental)
+
+`theme/native/` is a second, independent SDDM Qt6 theme - an original,
+from-scratch implementation, not a variant of the Debian Breeze
+compatibility patch above. It is installed alongside (never replacing)
+the compatibility theme, is not selected by package install/upgrade,
+and does not implement any authentication logic itself: it calls the
+same `sddm.login(username, password, sessionIndex)` primitive, so PAM
+remains the sole authentication authority exactly as with the
+compatibility theme. See `docs/native-theme.md` for what v1.9.0
+foundation-level actually covers, and the private roadmap repository's
+`NATIVE-THEME-ROADMAP.md` for the full v1.9.0 -> v2.0.0 track
+(authoritative wherever older planning conflicts with it).
+
 ## Trust boundaries
 
 - The broker's HTTP API is localhost-only and never itself authenticates

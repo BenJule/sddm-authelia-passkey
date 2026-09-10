@@ -51,12 +51,28 @@ override_dh_auto_install:
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/Main.qml.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/Main.qml.patch
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/metadata.desktop.patch debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch
 	install -D -m 0644 theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme/theme.conf.user.example
+	# v1.9.0: the native theme is fully original, static content (no
+	# patch against a pristine system theme, unlike the compatibility
+	# theme above) - install it directly as regular package-owned
+	# files. dpkg then tracks and removes them automatically on
+	# purge/remove, no runtime install/cleanup script needed. Package
+	# installation never touches /etc/sddm.conf(.d) - this only makes
+	# the theme available, it does not select it.
+	install -D -m 0644 theme/native/Main.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml
+	install -D -m 0644 theme/native/metadata.desktop debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop
+	install -D -m 0644 theme/native/theme.conf debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
+	install -D -m 0644 theme/native/components/UserAvatar.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml
+	install -D -m 0644 theme/native/components/PowerActionsRow.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
+	install -D -m 0644 theme/native/components/SmartphoneLoginPreview.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPreview.qml
 
 override_dh_installdocs:
 	dh_installdocs docs/*.md README.md
 
 override_dh_installsystemd:
-	dh_installsystemd --no-enable --no-start
+	# Do not start/enable services on a fresh install, but if an admin
+	# already has a project service running, an in-place package upgrade
+	# must not stop it and leave it inactive.
+	dh_installsystemd --no-enable --no-start --no-stop-on-upgrade
 
 override_dh_dwz:
 	# Go binaries carry compressed .debug_abbrev sections dwz cannot

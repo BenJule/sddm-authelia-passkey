@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.9.0]
+
+### Added
+- Native Theme Foundation (experimental, opt-in): a new, original,
+  from-scratch Qt6 SDDM theme at `theme/native/`, installed alongside
+  the existing Debian Breeze compatibility theme (never replacing it,
+  never selected automatically). Password login wired to
+  `sddm.login()`, real session selection, real user display with a
+  safe avatar fallback, power actions gated by SDDM's own
+  `canSuspend`/`canReboot`/`canPowerOff`, a keyboard-layout affordance,
+  and a `Smartphone-Login` action that opens a clearly-labelled
+  preview/placeholder panel - it does not talk to the broker and does
+  not claim a login occurred. Full QR/device-code parity is v1.10.0.
+  See `docs/native-theme.md` and `theme/native/PROVENANCE.md`.
+- New `native-theme` CI workflow validating source-file presence,
+  provenance (no dependency on the installed Debian Breeze theme, no
+  copied artwork, no remote resources), `qmllint`, a real
+  `sddm-greeter-qt6 --test-mode` runtime check, and that
+  `src/broker`/`src/pam`/`src/kwallet-secretd` are unchanged versus the
+  PR base.
+
+### Fixed
+- Preserve already-running project systemd services across package upgrades.
+  Fresh installs still do not enable or start the services automatically.
+
 ## [1.8.0]
 
 ### Added

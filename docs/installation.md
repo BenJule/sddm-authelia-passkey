@@ -99,6 +99,11 @@ release instead of a fresh install? See `docs/upgrade.md`. Have
 accessibility needs (screen reader, keyboard-only)? See
 `docs/accessibility.md`.
 
+- **Native SDDM theme** (experimental, opt-in, not selected by
+  install/upgrade) - an original from-scratch Qt6 theme installed
+  alongside the compatibility theme. Foundation-level as of v1.9.0 -
+  see `docs/native-theme.md`.
+
 ## Build from source (alternative)
 
 1. `scripts/preflight.sh` (read-only, safe to re-run)
