@@ -6,8 +6,25 @@ sddm-authelia-passkey (0.5.0-1) unstable; urgency=medium
     deny_users, and optional allowed_groups/require_group_match. Never
     talks to LDAP/AD/SSSD directly; no directory-credential caching of
     its own. account_source=local (default) is unchanged.
+  * Theme: animate the smartphone-login sidebar (slide-in/out, QR
+    fade-in, per-state cross-fades, a brief "Bestätigt" checkmark beat
+    before login, dimmed/labeled expired-code state, subtle waiting
+    pulse, explicit hover/pressed/focus/disabled styling on the
+    custom-styled alternate-code button). Purely visual; no change to
+    the flow/security state machine, PAM, broker, or KWallet logic.
 
- -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 02:30:00 +0200
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 02:50:00 +0200
+
+sddm-authelia-passkey (0.4.2-1) unstable; urgency=medium
+
+  * Theme: animate the smartphone-login sidebar (slide-in/out, QR
+    fade-in, per-state cross-fades, a brief "Bestätigt" checkmark beat
+    before login, dimmed/labeled expired-code state, subtle waiting
+    pulse, explicit hover/pressed/focus/disabled styling on the
+    custom-styled alternate-code button). Purely visual; no change to
+    the flow/security state machine, PAM, broker, or KWallet logic.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 02:45:00 +0200
 
 sddm-authelia-passkey (0.4.1-1) unstable; urgency=medium
 

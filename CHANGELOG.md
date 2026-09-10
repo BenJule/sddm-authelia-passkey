@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.5.0]
 
 ### Added
 - Broker: `account_source=nss` config mode authorizes any NSS-resolvable
@@ -15,6 +15,15 @@ follows [Keep a Changelog](https://keepachangelog.com/).
   caching of its own - see `docs/architecture.md`'s new "LDAP/Active
   Directory accounts (NSS)" section. `account_source=local` (the
   default) is unchanged from v0.1-v0.4.
+
+### Changed
+- Theme: the smartphone/passkey sidebar now animates (slide-in/out, QR
+  fade-in, per-state cross-fades for idle/starting/waiting/approved/
+  error/expired, a brief "Bestätigt" checkmark beat before login, a
+  subtle pulse while waiting on the phone, and explicit hover/pressed/
+  focus/disabled styling on the custom-styled "Alternativ Code" button).
+  Purely visual - no change to the flow/security state machine, PAM,
+  broker, or KWallet logic.
 
 ## [0.4.1]
 
