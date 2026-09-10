@@ -18,11 +18,13 @@ installed by the `sddm-theme-debian-breeze` Debian package:
 - `metadata.desktop.patch` - renames the theme copy so it appears
   alongside (not instead of) the original in SDDM's theme picker.
 
-`scripts/install.sh` copies the user's own installed
-`/usr/share/sddm/themes/debian-breeze/` to a new
+For Debian package installs, `postinst` runs the packaged
+`install-theme.sh`, which copies the user's own installed
+`/usr/share/sddm/themes/debian-breeze/` to a generated
 `debian-breeze-authelia-passkey` theme directory and applies these
-patches to that copy - the original theme is never modified in place, and
-this repository never redistributes GPL-licensed KDE source itself.
+patches to that copy. Source installs use the same additive approach.
+The original theme is never modified in place, and this repository never
+redistributes GPL-licensed KDE source itself.
 
 If your distribution ships a different SDDM theme, these patches will
 not apply cleanly; see docs/troubleshooting.md.

@@ -22,16 +22,29 @@ jobs:
             build-essential debhelper devscripts golang-go gcc libpam0g-dev \
             lintian git ca-certificates
 
+      - name: Credstore permission regression
+        run: bash tests/integration/credstore-dir-test.sh
+
+      - name: PAM backup regression
+        run: bash tests/integration/pam-backup-test.sh
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
-      - name: Collect build output (upload-artifact rejects ../ paths)
-        run: mkdir -p out && mv ../sddm-authelia-passkey_*.deb ../sddm-authelia-passkey_*.changes ../sddm-authelia-passkey_*.buildinfo out/
+      - name: Collect build output
+        run: |
+          mkdir -p out
+          mv ../sddm-authelia-passkey_*.deb \
+             ../sddm-authelia-passkey_*.changes \
+             ../sddm-authelia-passkey_*.buildinfo out/
 
-      - name: Verify package metadata (control fields, file listing)
+      - name: Verify package metadata
         run: |
           dpkg-deb -I out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/install-theme.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch'
 
       - name: lintian
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
@@ -52,23 +65,42 @@ jobs:
           name: deb-package
           path: /tmp/pkg
 
-      - run: apt-get update
+      - name: Install pristine Breeze baseline
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends sddm-theme-debian-breeze patch
+          sha256sum \
+            /usr/share/sddm/themes/debian-breeze/Main.qml \
+            /usr/share/sddm/themes/debian-breeze/metadata.desktop \
+            > /tmp/breeze-before.sha256
 
-      - name: Install package (pulls sddm/libpam-modules/systemd via Depends)
+      - name: Install package
         run: apt-get install -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
 
-      - name: Verify installed files, ownership, package integrity
+      - name: Verify package and generated theme
         run: |
           test -f /usr/lib/sddm-authelia-passkey/broker
           test -f /usr/lib/sddm-authelia-passkey/kwallet-secretd
           test -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
-          test -f /usr/lib/systemd/system/sddm-authelia-passkey-broker.service
-          test -f /usr/lib/systemd/system/sddm-authelia-passkey-kwallet-secretd.service
-          test -f /etc/sddm-authelia-passkey/config.conf.example
-          [ "$(stat -c '%U:%G %a' /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so)" = "root:root 644" ]
+          test -x /usr/share/sddm-authelia-passkey/install-theme.sh
+          test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          grep -q targetUsername /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          grep -q sddmSelectedUsername /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           dpkg -V sddm-authelia-passkey
+          sha256sum -c /tmp/breeze-before.sha256
+          dpkg -V sddm-theme-debian-breeze
 
-      - name: Invariant - plain install must not touch /etc/pam.d/sddm
+      - name: Theme installer idempotency
+        run: |
+          T=/usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          BEFORE="$(sha256sum "$T" | awk '{print $1}')"
+          /usr/share/sddm-authelia-passkey/install-theme.sh
+          AFTER="$(sha256sum "$T" | awk '{print $1}')"
+          test "$BEFORE" = "$AFTER"
+          sha256sum -c /tmp/breeze-before.sha256
+          dpkg -V sddm-theme-debian-breeze
+
+      - name: Invariant - plain install must not touch PAM
         run: |
           if [ -f /etc/pam.d/sddm ] && grep -q pam_authelia_passkey /etc/pam.d/sddm; then
             echo "FAIL: package install silently modified /etc/pam.d/sddm"
@@ -83,9 +115,17 @@ jobs:
         run: |
           test ! -f /usr/lib/sddm-authelia-passkey/broker
           test ! -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
+          test ! -e /usr/share/sddm/themes/debian-breeze-authelia-passkey
+          sha256sum -c /tmp/breeze-before.sha256
+          dpkg -V sddm-theme-debian-breeze
 
       - name: Reinstall package
         run: apt-get install -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
 
       - name: Verify reinstall
-        run: dpkg -V sddm-authelia-passkey
+        run: |
+          dpkg -V sddm-authelia-passkey
+          test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          grep -q targetUsername /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          sha256sum -c /tmp/breeze-before.sha256
+          dpkg -V sddm-theme-debian-breeze

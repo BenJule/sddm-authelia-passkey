@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,9 +43,14 @@ const (
 	qrDir      = "/run/sddm-authelia-passkey/qr"
 	listenAddr = "127.0.0.1:7899"
 	maxFlowAge = 10 * time.Minute
-	// See pollAndDecide for why 15s, not RFC 8628's more typical 5s.
-	minPollInterval = 15 * time.Second
 )
+
+// minPollInterval is a var (not const) solely so tests can shrink it to
+// exercise pollAndDecide's real multi-iteration loop in milliseconds
+// instead of tens of seconds - production code never assigns it.
+//
+// See pollAndDecide for why 15s, not RFC 8628's more typical 5s.
+var minPollInterval = 15 * time.Second
 
 var cfg Config
 
@@ -73,11 +79,20 @@ func limiterFor(user string) *userLimiter {
 	return l
 }
 
+type releaseOutcome uint8
+
+const (
+	releaseNeutral releaseOutcome = iota
+	releaseSuccess
+	releaseAuthFailure
+)
+
 // checkAndReserve enforces per-user cooldown, the post-failure lockout,
 // and the global concurrency cap, atomically with reserving a slot. The
-// caller must call release() exactly once when the flow ends (success,
-// denial, or error).
-func checkAndReserve(user string) (release func(success bool), err error) {
+// caller must call release() exactly once. Only a genuine authentication
+// denial increments the failure-lockout counter. Cancellation, expiry,
+// upstream throttling and infrastructure errors are neutral.
+func checkAndReserve(user string) (release func(releaseOutcome), err error) {
 	l := limiterFor(user)
 	cooldown := time.Duration(cfg.UserCooldownSeconds) * time.Second
 	lockDur := time.Duration(cfg.FailureLockoutSeconds) * time.Second
@@ -103,20 +118,24 @@ func checkAndReserve(user string) (release func(success bool), err error) {
 	globalInFlight++
 	globalMu.Unlock()
 
-	return func(success bool) {
+	return func(outcome releaseOutcome) {
 		globalMu.Lock()
 		globalInFlight--
 		globalMu.Unlock()
 
 		l.mu.Lock()
-		if success {
+		switch outcome {
+		case releaseSuccess:
 			l.consecutiveFails = 0
-		} else {
+		case releaseAuthFailure:
 			l.consecutiveFails++
 			if l.consecutiveFails >= cfg.FailureLockoutThreshold {
 				l.lockedUntil = time.Now().Add(lockDur)
 				l.consecutiveFails = 0
 			}
+		case releaseNeutral:
+			// Preserve earlier genuine auth failures, but do not manufacture
+			// a new failure from cancellation/expiry/infrastructure.
 		}
 		l.mu.Unlock()
 	}, nil
@@ -131,7 +150,7 @@ func cleanupStaleFlows() {
 		flowsMu.Lock()
 		for id, fs := range flows {
 			fs.mu.Lock()
-			done := fs.Status != "pending"
+			done := fs.Status != "pending" || fs.cancelled
 			fs.mu.Unlock()
 			if done && fs.startedAt.Before(cutoff) {
 				delete(flows, id)
@@ -155,8 +174,19 @@ type flowState struct {
 	VerificationURI string `json:"verification_uri_complete,omitempty"`
 	QRPath          string `json:"qr_path,omitempty"`
 	Error           string `json:"error,omitempty"`
-	startedAt       time.Time
-	cancelled       bool
+	// RateLimited/RetryAfterSeconds are pure UX/diagnostic hints, never
+	// an authentication decision: Authelia's own token-endpoint rate
+	// limiter (independent of the device flow's own RFC 8628 state) can
+	// reject a poll while the flow is still genuinely pending. Without
+	// these, the theme has no way to tell "waiting on the user" apart
+	// from "waiting on Authelia's rate limiter" and would show a
+	// misleading spinner for the flow's whole remaining lifetime.
+	RateLimited       bool `json:"rate_limited,omitempty"`
+	RetryAfterSeconds int  `json:"retry_after_seconds,omitempty"`
+	startedAt         time.Time
+	cancelled         bool
+	cancelCh          chan struct{}
+	cancelOnce        sync.Once
 }
 
 var (
@@ -186,11 +216,23 @@ func supersedePriorFlow(username string) {
 	if !ok {
 		return
 	}
-	prior.mu.Lock()
-	if prior.Status == "pending" {
-		prior.cancelled = true
+	markPendingFlowCancelled(prior)
+}
+
+func markPendingFlowCancelled(fs *flowState) bool {
+	fs.mu.Lock()
+	if fs.Status != "pending" || fs.cancelled {
+		fs.mu.Unlock()
+		return false
 	}
-	prior.mu.Unlock()
+	fs.cancelled = true
+	cancelCh := fs.cancelCh
+	fs.mu.Unlock()
+
+	if cancelCh != nil {
+		fs.cancelOnce.Do(func() { close(cancelCh) })
+	}
+	return true
 }
 
 func main() {
@@ -280,7 +322,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	supersedePriorFlow(username)
 
 	sessionID := randomHex(16)
-	fs := &flowState{Status: "pending", Username: username, UID: localUser.Uid, startedAt: time.Now()}
+	fs := &flowState{Status: "pending", Username: username, UID: localUser.Uid, startedAt: time.Now(), cancelCh: make(chan struct{})}
 	flowsMu.Lock()
 	flows[sessionID] = fs
 	lastSessionForUser[username] = sessionID
@@ -292,7 +334,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		fs.Status, fs.Error = "error", "device authorization request failed"
 		fs.mu.Unlock()
 		log.Printf("session %s: device authorize failed: %v", sessionID, err)
-		release(false)
+		release(releaseNeutral)
 		writeJSON(w, map[string]string{"session_id": sessionID})
 		return
 	}
@@ -303,7 +345,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		fs.Status, fs.Error = "error", "server returned an unexpected verification URL"
 		fs.mu.Unlock()
 		log.Printf("session %s: REJECTED verification_uri_complete: %v", sessionID, err)
-		release(false)
+		release(releaseNeutral)
 		writeJSON(w, map[string]string{"session_id": sessionID})
 		return
 	}
@@ -359,11 +401,7 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	fs.mu.Lock()
-	if fs.Status == "pending" {
-		fs.cancelled = true
-	}
-	fs.mu.Unlock()
+	markPendingFlowCancelled(fs)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -439,97 +477,159 @@ type tokenResponse struct {
 	Error       string `json:"error"`
 }
 
-func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, username string, release func(bool)) {
-	defer func() {
-		fs.mu.Lock()
-		success := fs.Status == "approved"
-		fs.mu.Unlock()
-		release(success)
-	}()
-	interval := time.Duration(dev.Interval) * time.Second
-	if interval < minPollInterval {
-		// Authelia's default server.endpoints.rate_limits.openid_connect_token
-		// allows at most 50 requests per 10 minutes (the tightest of its
-		// stacked buckets); polling faster than that average rate over a
-		// full wait can exceed it purely through normal RFC 8628 polling,
-		// with nobody ever retrying anything. 15s keeps every bucket
-		// (1min/30, 2min/40, 10min/50, 1h/100) comfortably unreachable by
-		// polling alone, without touching Authelia's own rate-limit config.
-		interval = minPollInterval
+func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, username string, release func(releaseOutcome)) {
+	releaseResult := releaseNeutral
+	defer func() { release(releaseResult) }()
+
+	normalInterval := time.Duration(dev.Interval) * time.Second
+	if normalInterval < minPollInterval {
+		normalInterval = minPollInterval
 	}
+	interval := normalInterval
+
 	deadline := time.Now().Add(time.Duration(dev.ExpiresIn) * time.Second)
 	if time.Until(deadline) > maxFlowAge {
 		deadline = time.Now().Add(maxFlowAge)
 	}
 
-	// Bounded retry for genuinely ambiguous/malformed responses only -
-	// authorization_pending and slow_down (spec-defined or rate-limit)
-	// never increment this and may legitimately repeat for the whole
-	// flow lifetime. This prevents a real, persistent backend problem
-	// (a 5xx, a broken proxy) from silently showing "waiting" to the
-	// user for the full maxFlowAge instead of surfacing as an error.
 	const maxConsecutiveAmbiguous = 8
 	consecutiveAmbiguous := 0
+	loggedRateLimit := false
+	loggedRetryAfter := 0
 
-	for time.Now().Before(deadline) {
-		time.Sleep(interval)
-
+	for {
 		fs.mu.Lock()
 		cancelled := fs.cancelled
+		cancelCh := fs.cancelCh
 		fs.mu.Unlock()
 		if cancelled {
-			log.Printf("session %s: superseded by a newer flow for %s, stopping", sessionID, username)
+			log.Printf("session %s: cancelled/superseded for %s, stopping", sessionID, username)
 			return
 		}
 
-		tok, status, outcome, err := pollToken(dev.DeviceCode)
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			errorFlow(fs, "expired")
+			return
+		}
+
+		waitFor := interval
+		if waitFor > remaining {
+			waitFor = remaining
+		}
+
+		timer := time.NewTimer(waitFor)
+		if cancelCh != nil {
+			select {
+			case <-timer.C:
+			case <-cancelCh:
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				log.Printf("session %s: cancelled/superseded for %s during poll wait, stopping", sessionID, username)
+				return
+			}
+		} else {
+			<-timer.C
+		}
+
+		fs.mu.Lock()
+		cancelled = fs.cancelled
+		fs.mu.Unlock()
+		if cancelled {
+			return
+		}
+		if !time.Now().Before(deadline) {
+			errorFlow(fs, "expired")
+			return
+		}
+
+		tok, status, outcome, retryAfter, err := pollToken(dev.DeviceCode)
 		if err != nil {
 			log.Printf("session %s: token poll error: %v", sessionID, err)
 			consecutiveAmbiguous++
 			if consecutiveAmbiguous >= maxConsecutiveAmbiguous {
-				fail(fs, "temporarily_unavailable")
-				log.Printf("session %s: giving up after %d consecutive poll errors", sessionID, consecutiveAmbiguous)
+				errorFlow(fs, "temporarily_unavailable")
 				return
 			}
 			continue
 		}
 
+		if outcome != outcomeRateLimit {
+			fs.mu.Lock()
+			wasRateLimited := fs.RateLimited
+			fs.RateLimited = false
+			fs.RetryAfterSeconds = 0
+			fs.mu.Unlock()
+			if wasRateLimited {
+				interval = normalInterval
+				loggedRateLimit, loggedRetryAfter = false, 0
+				log.Printf("session %s: upstream token endpoint recovered from rate limit", sessionID)
+			}
+		}
+
 		switch outcome {
 		case outcomeRateLimit:
-			// See pollToken: does not count toward consecutiveAmbiguous.
-			interval += 5 * time.Second
+			effectiveRetry, newInterval, giveUp := rateLimitDecision(retryAfter, interval, time.Until(deadline))
+			if giveUp {
+				errorFlow(fs, "rate_limited")
+				log.Printf("session %s: giving up, rate-limit backoff (%ds) does not fit remaining flow lifetime",
+					sessionID, effectiveRetry)
+				return
+			}
+			fs.mu.Lock()
+			fs.RateLimited = true
+			fs.RetryAfterSeconds = effectiveRetry
+			fs.mu.Unlock()
+			if !loggedRateLimit || absInt(effectiveRetry-loggedRetryAfter) > loggedRetryAfter/2+5 {
+				log.Printf("session %s: upstream token endpoint rate limited, retry_after=%ds", sessionID, effectiveRetry)
+				loggedRateLimit, loggedRetryAfter = true, effectiveRetry
+			}
+			interval = newInterval
 			continue
+
 		case outcomeAmbiguous:
 			consecutiveAmbiguous++
-			log.Printf("session %s: ambiguous poll response (%d/%d)", sessionID, consecutiveAmbiguous, maxConsecutiveAmbiguous)
 			if consecutiveAmbiguous >= maxConsecutiveAmbiguous {
-				fail(fs, "temporarily_unavailable")
-				log.Printf("session %s: giving up after %d consecutive ambiguous responses", sessionID, consecutiveAmbiguous)
+				errorFlow(fs, "temporarily_unavailable")
 				return
 			}
 			continue
+
 		case outcomeOAuth:
 			consecutiveAmbiguous = 0
 			switch status {
 			case "authorization_pending":
 				continue
 			case "slow_down":
-				// RFC 8628 6.1.
-				interval += 5 * time.Second
+				normalInterval += 5 * time.Second
+				interval = normalInterval
 				continue
+			case "access_denied":
+				denyFlow(fs, "device flow failed: access_denied")
+				releaseResult = releaseAuthFailure
+				return
+			case "expired_token":
+				errorFlow(fs, "expired")
+				return
 			default:
-				fail(fs, "device flow failed: "+status)
+				errorFlow(fs, "device flow failed: "+status)
 				return
 			}
+
 		case outcomeOK:
 			gotUser, err := verifyUserinfo(tok)
 			if err != nil {
-				fail(fs, "userinfo verification failed")
+				errorFlow(fs, "userinfo verification failed")
 				log.Printf("session %s: userinfo error: %v", sessionID, err)
 				return
 			}
 			if gotUser != username {
-				fail(fs, "username mismatch")
+				denyFlow(fs, "username mismatch")
+				releaseResult = releaseAuthFailure
 				log.Printf("session %s: SECURITY: token username %q != requested %q", sessionID, gotUser, username)
 				return
 			}
@@ -537,11 +637,11 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			fs.mu.Lock()
 			fs.Status = "approved"
 			fs.mu.Unlock()
+			releaseResult = releaseSuccess
 			log.Printf("session %s: approved for user %s", sessionID, username)
 			return
 		}
 	}
-	fail(fs, "expired")
 }
 
 // pollTokenResult distinguishes genuinely retryable conditions (rate
@@ -559,7 +659,40 @@ const (
 	outcomeAmbiguous                    // non-200 with no decodable OAuth error - not a spec-defined outcome
 )
 
-func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome pollOutcome, err error) {
+// maxParsableRetryAfter bounds what pollToken will accept out of a
+// Retry-After header as a sanity ceiling against a malformed or
+// deliberately huge upstream value - not a functional limit (the flow's
+// own remaining lifetime is what actually decides whether a wait is
+// worth continuing for, in pollAndDecide).
+const maxParsableRetryAfter = 24 * time.Hour
+
+// parseRetryAfter parses an RFC 7231 Retry-After header value (either
+// delta-seconds or an HTTP-date) relative to now. Returns ok=false for
+// anything empty, malformed, non-positive, or past maxParsableRetryAfter -
+// callers must fall back to their own safe default rather than trust a
+// zero value here.
+func parseRetryAfter(header string, now time.Time) (seconds int, ok bool) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return 0, false
+	}
+	if n, err := strconv.Atoi(header); err == nil {
+		if n <= 0 || time.Duration(n)*time.Second > maxParsableRetryAfter {
+			return 0, false
+		}
+		return n, true
+	}
+	if t, err := http.ParseTime(header); err == nil {
+		d := t.Sub(now)
+		if d <= 0 || d > maxParsableRetryAfter {
+			return 0, false
+		}
+		return int(d.Seconds()), true
+	}
+	return 0, false
+}
+
+func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome pollOutcome, retryAfterSeconds int, err error) {
 	form := url.Values{
 		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
 		"device_code": {deviceCode},
@@ -567,7 +700,7 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 	}
 	resp, err := http.PostForm(cfg.AutheliaBaseURL+"/api/oidc/token", form)
 	if err != nil {
-		return "", "", outcomeAmbiguous, err
+		return "", "", outcomeAmbiguous, 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
@@ -583,8 +716,9 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 		// consecutive-failure limit - Authelia's bucket state is out of
 		// this flow's control and can legitimately stay active for a long
 		// time without indicating anything is actually broken.
+		ra, _ := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		io.Copy(io.Discard, resp.Body)
-		return "", "slow_down", outcomeRateLimit, nil
+		return "", "slow_down", outcomeRateLimit, ra, nil
 	}
 	var t tokenResponse
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&t); decodeErr != nil {
@@ -592,17 +726,17 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 		// unexpected intermediary/server error (e.g. a proxy's HTML error
 		// page, a 5xx), not a spec-defined device-flow outcome. Bounded
 		// retry only - see pollAndDecide.
-		return "", "", outcomeAmbiguous, nil
+		return "", "", outcomeAmbiguous, 0, nil
 	}
 	if resp.StatusCode != http.StatusOK {
 		if t.Error == "" {
 			// Well-formed JSON, non-200, but no recognizable OAuth error
 			// code: same reasoning as above, bounded retry only.
-			return "", "", outcomeAmbiguous, nil
+			return "", "", outcomeAmbiguous, 0, nil
 		}
-		return "", t.Error, outcomeOAuth, nil
+		return "", t.Error, outcomeOAuth, 0, nil
 	}
-	return t.AccessToken, "", outcomeOK, nil
+	return t.AccessToken, "", outcomeOK, 0, nil
 }
 
 func verifyUserinfo(accessToken string) (string, error) {
@@ -628,9 +762,54 @@ func verifyUserinfo(accessToken string) (string, error) {
 	return u, nil
 }
 
-func fail(fs *flowState, reason string) {
+// rateLimitDecision is the pure decision logic for a single HTTP 429 from
+// the token endpoint: given what Authelia told us to wait (retryAfter,
+// possibly 0 if it sent no Retry-After header) and how much longer this
+// flow can still run (remaining), decide whether continuing to wait is
+// still worthwhile, and what the next poll interval should be. No I/O,
+// no locking - kept separate from pollAndDecide so this decision is
+// directly unit-testable without real sleeps.
+func rateLimitDecision(retryAfter int, interval, remaining time.Duration) (effectiveRetry int, newInterval time.Duration, giveUp bool) {
+	newInterval = interval
+	if retryAfter > 0 {
+		serverWait := time.Duration(retryAfter) * time.Second
+		if serverWait > newInterval {
+			newInterval = serverWait
+		}
+	} else {
+		newInterval += 5 * time.Second
+	}
+
+	effectiveRetry = int(newInterval / time.Second)
+	if newInterval%time.Second != 0 {
+		effectiveRetry++
+	}
+	if effectiveRetry < 1 {
+		effectiveRetry = 1
+	}
+
+	if newInterval >= remaining {
+		return effectiveRetry, newInterval, true
+	}
+	return effectiveRetry, newInterval, false
+}
+
+func absInt(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+func denyFlow(fs *flowState, reason string) {
 	fs.mu.Lock()
 	fs.Status, fs.Error = "denied", reason
+	fs.mu.Unlock()
+}
+
+func errorFlow(fs *flowState, reason string) {
+	fs.mu.Lock()
+	fs.Status, fs.Error = "error", reason
 	fs.mu.Unlock()
 }
 
