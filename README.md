@@ -74,6 +74,13 @@ stack. See `docs/installation.md`.
   used in end-to-end testing so far; multi-user proof beyond that uses
   synthetic local accounts and unit-level identity mocks, not two real
   people.
+- LDAP/Active Directory accounts: `account_source=nss` (opt-in,
+  `local` remains the default) authorizes any account this host's own
+  NSS/SSSD setup can resolve, instead of requiring a static
+  `allowed_users` entry - see `docs/architecture.md`'s "LDAP/Active
+  Directory accounts (NSS)" section. This project never talks to
+  LDAP/AD/SSSD directly and implements no directory-credential caching
+  of its own.
 
 ## Requirements
 
