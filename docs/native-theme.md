@@ -1,64 +1,77 @@
-# Native theme (experimental, v1.9.0 Foundation)
+# Native SDDM Theme
 
-This project now ships two SDDM theme options side by side:
+The package ships two SDDM themes side by side:
 
-- **Debian Breeze compatibility theme**
-  (`/usr/share/sddm/themes/debian-breeze-authelia-passkey`) - the
-  existing additive patch against the system's Debian Breeze theme.
-  Fully supported, feature-complete, unaffected by anything below.
-- **Native theme** (`/usr/share/sddm/themes/sddm-authelia-passkey-native`)
-  - an original, from-scratch Qt6 theme. **Experimental and opt-in**
-    as of v1.9.0 - not selected by package install/upgrade, not the
-    default anywhere.
+- the existing compatibility theme
+- the original Qt6 Native Theme at
+  `/usr/share/sddm/themes/sddm-authelia-passkey-native`
 
-See `theme/native/README.md` and `theme/native/PROVENANCE.md` in the
-repository for the theme's own scope statement and explicit provenance
-(what was, and explicitly was not, used to build it).
+The Native Theme remains opt-in in v1.10.0. Package installation and upgrade
+do not select it automatically and do not restart SDDM.
 
-## What v1.9.0 is
+## v1.10.0 feature parity
 
-A **foundation** release: password login wired to the real
-`sddm.login()`, real session selection, real user display with a safe
-avatar fallback, real power actions gated by SDDM's own
-`canSuspend`/`canReboot`/`canPowerOff`, a keyboard-layout affordance,
-and a `Smartphone-Login` action.
+v1.10.0 moves the Native Theme from foundation status to functional parity
+with the existing compatibility theme.
 
-## What v1.9.0 is not
+It includes:
 
-The `Smartphone-Login` action opens a clearly-labelled **preview**
-panel only - it does not talk to the broker, does not render a QR
-code, and does not claim a login occurred. The full QR/device-code/
-approval flow, matching the compatibility theme's existing behaviour,
-is deferred to v1.10.0 (Native Theme Feature Parity). A switchable
-multi-user list is also v1.10.0 scope - v1.9.0 shows only the
-SDDM-selected/last user.
+- SDDM user list and manual username prompt
+- password login and generic failure feedback
+- session and keyboard-layout selection
+- avatar handling
+- supported power actions
+- complete broker-backed Smartphone-Login
+- QR code and alternate device code
+- local/NSS identity information
+- device-flow countdown
+- connection/service state
+- provider-throttle presentation
+- approval-to-SDDM transition
+- explicit cancellation
+- stale response isolation
+- retry/recovery states
+- password fallback
 
-Responsive layout, accessibility hardening, and native branding
-configuration (equivalent to the v1.8.0 compatibility-theme
-`ui_brand_*` keys) are later releases in the same track - see the
-private roadmap repository's `NATIVE-THEME-ROADMAP.md` (authoritative)
-for the full v1.9.0 -> v2.0.0 plan.
+## Security model
 
-## Trying it
+The Native Theme communicates only with the local broker at
+`127.0.0.1:7899`.
 
-The native theme is installed but not selected. To try it in a lab
-environment (never on a production host with an active session):
+It does not contact LDAP, AD, FIDO hardware or an OIDC provider directly.
 
-```
-sudo sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/sddm-authelia-passkey-native
-```
+The local broker HTTP interface is not the authentication trust boundary.
+PAM remains the authority and must consume the protected, single-use approval
+marker before the login succeeds.
 
-To make it SDDM's active theme (lab only), set
-`Current=sddm-authelia-passkey-native` in `/etc/sddm.conf.d/10-theme.conf`
-and restart `sddm.service`. This project does not do this
-automatically at any point in the v1.9.0 -> v2.0.0 track; see
-`NATIVE-THEME-ROADMAP.md`'s v2.0.0 section for the explicit,
-user-approved cutover this eventually requires.
+Every Smartphone flow captures the selected canonical username and session
+index when it starts. Late responses from an old generation or old broker
+session are ignored. Switching accounts cancels the current device flow.
 
-## Security
+The UI never interprets ordinary provider polling throttling as repeated user
+login attempts.
 
-The native theme implements no authentication logic. It calls
-`sddm.login(username, password, sessionIndex)` exactly as the
-compatibility theme does; PAM remains the sole authentication
-authority. See `docs/architecture.md` and `docs/security.md` for the
-full model, unchanged by this theme.
+## Expiry
+
+The broker's `expires_at` value is used for the visible countdown. The QML
+timer is display-only and never decides whether authentication has expired.
+The broker remains authoritative.
+
+## Provenance
+
+The Native Theme is from scratch. See `theme/native/PROVENANCE.md`.
+
+No compatibility-theme QML is copied into the Native Theme.
+
+## Current roadmap position
+
+v1.10.0 is feature parity.
+
+Later releases separately address:
+
+- v1.11 responsive UX
+- v1.12 accessibility hardening
+- v1.13 native branding
+- later recovery, visual regression and cutover work
+
+The compatibility theme remains supported throughout.

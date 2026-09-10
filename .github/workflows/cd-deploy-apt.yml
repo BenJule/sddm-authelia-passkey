@@ -117,3 +117,76 @@ jobs:
           PUBLISHED_VERSION=$(dpkg-deb --field "rc/$DEB" Version)
           curl -fsS "https://apt.s3-dev.ovh/pool/main/s/sddm-authelia-passkey/sddm-authelia-passkey_${PUBLISHED_VERSION}_amd64.deb" -o /dev/null
           echo "HTTPS_VALIDATION=GREEN version=$PUBLISHED_VERSION"
+
+      - name: Post-publish Debian 13 APT signature validation
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+
+          curl -fsSL \
+            https://apt.s3-dev.ovh/trixie-KEY.gpg \
+            -o "$TMP/repository.key"
+
+          gpg --batch --yes --dearmor \
+            --output "$TMP/repository.gpg" \
+            "$TMP/repository.key"
+
+          EXPECTED_VERSION="$(dpkg-deb --field "rc/$DEB" Version)"
+
+          docker run --rm \
+            -e EXPECTED_VERSION="$EXPECTED_VERSION" \
+            -v "$TMP:/verify:ro" \
+            debian:13 \
+            bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+
+              apt-get update >/dev/null
+              apt-get install -y --no-install-recommends \
+                ca-certificates >/dev/null
+
+              install -D -m 0644 \
+                /verify/repository.gpg \
+                /usr/share/keyrings/sddm-authelia-passkey-repo.gpg
+
+              rm -f /etc/apt/sources.list
+              rm -rf /etc/apt/sources.list.d/*
+              install -d /etc/apt/sources.list.d
+
+              printf "%s\n" \
+                "deb [signed-by=/usr/share/keyrings/sddm-authelia-passkey-repo.gpg] https://apt.s3-dev.ovh trixie main" \
+                > /etc/apt/sources.list.d/sddm-authelia-passkey.list
+
+              ACCEPTED=0
+
+              for ATTEMPT in 1 2 3 4; do
+                rm -rf /var/lib/apt/lists/*
+                LOG="/tmp/apt-update.log"
+
+                apt-get update >"$LOG" 2>&1 || true
+                cat "$LOG"
+
+                if ! grep -Eiq \
+                  "OpenPGP signature verification failed|created after the --not-after date|Failed to fetch|previous index files will be used|repository .* is not signed|NO_PUBKEY|EXPKEYSIG|BADSIG" \
+                  "$LOG"
+                then
+                  ACCEPTED=1
+                  break
+                fi
+
+                sleep 10
+              done
+
+              test "$ACCEPTED" -eq 1
+
+              CANDIDATE="$(
+                apt-cache policy sddm-authelia-passkey |
+                awk "/Candidate:/ {print \$2}"
+              )"
+
+              echo "APT_CLIENT_CANDIDATE=$CANDIDATE"
+
+              test "$CANDIDATE" = "$EXPECTED_VERSION"
+
+              echo "APT_CLIENT_SIGNATURE_VALIDATION=GREEN"
+            '
