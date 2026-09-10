@@ -27,18 +27,46 @@ through a QR-scanning or hardware-key flow to reach their session.
   keyboard focus remains visible on them (see `CHANGELOG.md`'s v0.4.2
   entry).
 
-## What has not been specifically verified
+## Screen reader support (v1.5.0)
 
-- **Screen readers**: the custom QML elements this project adds (the
-  QR display panel, its approve/expire states) do not set explicit
-  `Accessible.role`/`Accessible.name` properties. Framework-provided
-  components this project reuses unmodified (Kirigami/Plasma buttons,
-  labels) inherit whatever accessibility support those frameworks
-  provide, but this has not been tested with an actual screen reader
-  against the patched theme - only visually and via keyboard. If you
-  rely on a screen reader, please test in a lab/VM environment before
-  relying on this for your only login path, and consider filing an
-  issue with what you find.
+The custom QML elements this project adds now set explicit
+`Accessible.role`/`Accessible.name`/`Accessible.description`:
+
+- The smartphone-login panel itself (`Accessible.Dialog` in the
+  narrow-display overlay layout, since it's modal there -
+  `Accessible.Pane` in the sidebar layout, since the rest of the
+  greeter stays reachable). See `docs/architecture.md`'s "Responsive
+  Greeter" section for the layouts themselves.
+- The icon-only back/cancel button, which previously had no
+  screen-reader-visible label at all.
+- The QR card: named and described, explicitly pointing an AT user at
+  the "Alternativ Code eingeben" button as the actual accessible
+  equivalent, rather than leaving them to discover it exists.
+- The countdown progress bar, the connection-status chip, and the
+  status-text label (flagged `Accessible.AlertMessage` for
+  error/expired/approved, since those are exactly the states where a
+  user needs to react).
+- Purely decorative elements that duplicate adjacent visible text (the
+  identity avatar image, the status-chip's color dot) are marked
+  `Accessible.ignored` instead of given a redundant name, so they
+  don't get double-announced.
+
+Framework-provided components this project reuses unmodified
+(Kirigami/Plasma buttons, labels) inherit whatever accessibility
+support those frameworks already provide.
+
+**What has not been specifically verified**: the properties above are
+structurally correct per the Qt Quick `Accessible` attached-property
+API and reviewed against Qt Quick Controls conventions, but have not
+been exercised with an actual screen reader (e.g. Orca via AT-SPI)
+against the patched theme running under SDDM - that would require
+interactive screen-reader tooling this project's CI/VM lab pipeline
+doesn't currently have. If you rely on a screen reader, please test in
+a lab/VM environment before relying on this for your only login path,
+and consider filing an issue with what you find.
+
+## What else has not been specifically verified
+
 - **High-contrast/large-text SDDM themes**: this project's patch
   targets `debian-breeze` specifically (see `docs/installation.md`
   "Supported platforms") - it has not been adapted for or tested

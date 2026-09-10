@@ -1,3 +1,12 @@
+sddm-authelia-passkey (1.5.0-1) unstable; urgency=medium
+
+  * Accessibility 2.0: add explicit Accessible.role/name/description to
+    the custom Smartphone-Login panel elements (panel, back button, QR
+    card, countdown, connection-status chip, status text). See
+    docs/accessibility.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 12:50:00 +0200
+
 sddm-authelia-passkey (1.4.0-1) unstable; urgency=medium
 
   * Add responsive layout for the Smartphone-Login panel: on narrow
