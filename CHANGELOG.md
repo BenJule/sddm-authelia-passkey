@@ -3,6 +3,14 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+- Native Theme runtime CI explicitly installs `xauth` alongside Xvfb,
+  removing reliance on an implicit/transitive test-runner dependency.
+- Documentation now reflects the v1.10.0 stable release, the internal
+  Debian 13 APT mirror, and Native Theme feature-parity status.
+
 ## [1.10.0]
 
 ### Added
