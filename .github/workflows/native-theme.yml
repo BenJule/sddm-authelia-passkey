@@ -114,18 +114,24 @@ jobs:
 
       - name: 9/10. sddm-greeter-qt6 test-mode runtime check, no fatal QML errors
         run: |
-          set -o pipefail
           for GEOMETRY in 1280x720x24 1920x1080x24; do
             echo "=== testing at $GEOMETRY ==="
             LOG="/tmp/greeter-$GEOMETRY.log"
-            xvfb-run -a --server-args="-screen 0 $GEOMETRY" \
-              timeout 10 sddm-greeter-qt6 --test-mode \
-                --theme theme/native > "$LOG" 2>&1
-            RC=$?
+            # This step runs under "sh -e": timeout(1)'s expected 124
+            # exit (greeter still running at the deadline, which is
+            # fine - it's meant to stay open) must never reach errexit
+            # as a bare non-zero status, or the whole step aborts right
+            # here before the tolerant check below ever runs. The
+            # if/then/else form consumes the exit status safely under
+            # any POSIX shell.
+            if xvfb-run -a --server-args="-screen 0 $GEOMETRY" \
+                timeout 10 sddm-greeter-qt6 --test-mode \
+                  --theme theme/native > "$LOG" 2>&1; then
+              RC=0
+            else
+              RC=$?
+            fi
             cat "$LOG"
-            # timeout(1) exits 124 when the greeter is still running at
-            # the deadline - expected and fine, the greeter is meant to
-            # stay open. Any other non-zero exit is a real failure.
             if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then
               echo "sddm-greeter-qt6 exited with unexpected status $RC" >&2
               exit 1
