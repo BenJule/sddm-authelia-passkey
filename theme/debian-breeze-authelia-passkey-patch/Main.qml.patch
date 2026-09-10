@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,986 @@
+@@ -529,4 +561,1004 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -284,26 +284,36 @@
 +            xhr.send()
 +        }
 +
-+        // Formats a still-pending, rate-limited wait for a human without
-+        // pretending to a precision we don't actually have - Authelia's
-+        // Retry-After (when present) is a lower bound, not a guarantee,
-+        // so this is deliberately "about X", never "in exactly X". Uses
-+        // plain i18nd (with manual singular/plural text) rather than a
-+        // plural-form i18n call - this theme has no established use of
-+        // one, and qmllint isn't available locally to double-check it.
++        // Formats a still-pending, upstream-throttled wait for a human
++        // without pretending to a precision we don't actually have -
++        // Authelia's Retry-After (when present) is a lower bound, not a
++        // guarantee, so this is deliberately "about X", never "in
++        // exactly X". Uses plain i18nd (with manual singular/plural
++        // text) rather than a plural-form i18n call - this theme has no
++        // established use of one, and qmllint isn't available locally
++        // to double-check it.
++        //
++        // Deliberately NEVER says "Zu viele Anmeldeversuche" here: this
++        // is Authelia's own token-endpoint polling throttle (an
++        // ordinary, expected part of one single still-open device flow -
++        // see /api/oidc/token rate limiting in Authelia's own
++        // middleware), not a consequence of the user attempting to log
++        // in repeatedly. That phrase is reserved for the broker's own
++        // local per-user start-limiter (see requestStart's xhr.status
++        // === 429 handling below), which IS about repeated attempts.
 +        function rateLimitedWaitingText(retryAfterSeconds) {
 +            if (retryAfterSeconds <= 0) {
-+                return i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Der Anmeldedienst begrenzt derzeit weitere Anfragen.")
++                return i18nd("plasma-desktop-sddm-theme", "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte kurz warten.")
 +            }
 +            if (retryAfterSeconds < 120) {
 +                return retryAfterSeconds === 1
-+                    ? i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa 1 Sekunde warten.")
-+                    : i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa %1 Sekunden warten.", retryAfterSeconds)
++                    ? i18nd("plasma-desktop-sddm-theme", "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte etwa 1 Sekunde warten.")
++                    : i18nd("plasma-desktop-sddm-theme", "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte etwa %1 Sekunden warten.", retryAfterSeconds)
 +            }
 +            var mins = Math.round(retryAfterSeconds / 60)
 +            return mins === 1
-+                ? i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa 1 Minute warten.")
-+                : i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte etwa %1 Minuten warten.", mins)
++                ? i18nd("plasma-desktop-sddm-theme", "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte etwa 1 Minute warten.")
++                : i18nd("plasma-desktop-sddm-theme", "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte etwa %1 Minuten warten.", mins)
 +        }
 +
 +        function poll() {
@@ -374,23 +384,31 @@
 +                case "error":
 +                    pixelPollTimer.stop()
 +                    var reason = resp.error || ""
-+                    if (reason.indexOf("expired") !== -1) {
++                    if (reason.indexOf("expired") !== -1 ||
++                        reason.indexOf("rate_limited") !== -1 ||
++                        reason.indexOf("temporarily_unavailable") !== -1) {
++                        // All three broker-side reasons collapse to the
++                        // same user-facing outcome: this specific code
++                        // can no longer succeed, a fresh one is needed.
++                        // - "expired": the RFC 8628 device-flow deadline
++                        //   itself passed.
++                        // - "rate_limited": the flow gave up because
++                        //   Authelia's own token-endpoint Retry-After
++                        //   exceeded the flow's remaining lifetime (see
++                        //   rateLimitDecision in src/broker/main.go) -
++                        //   NOT the user attempting to log in repeatedly,
++                        //   so this must never read as "too many login
++                        //   attempts".
++                        // - "temporarily_unavailable": too many
++                        //   ambiguous/malformed upstream responses in a
++                        //   row - an infrastructure hiccup, not a denial
++                        //   (see "Infrastrukturfehler != Auth Denial" in
++                        //   docs/threat-model.md).
++                        // The broker's own log keeps the precise reason
++                        // for diagnosis; the greeter never needs to.
 +                        pixelFlow.state = "expired"
 +                        pixelFlow.connectionState = "ready"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "QR-Code abgelaufen.")
-+                    } else if (reason.indexOf("rate_limited") !== -1) {
-+                        // Distinct from the still-pending rate_limited
-+                        // case above: this flow's own deadline is gone,
-+                        // waiting out the limiter inside it can no
-+                        // longer succeed - a fresh explicit retry (new
-+                        // flow) is the only way forward now.
-+                        pixelFlow.state = "error"
-+                        pixelFlow.connectionState = "rate_limited"
-+                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Dieser Anmeldeversuch kann nicht mehr abgeschlossen werden. Bitte später erneut versuchen.")
-+                    } else if (reason.indexOf("temporarily_unavailable") !== -1 || reason.indexOf("slow_down") !== -1) {
-+                        pixelFlow.state = "error"
-+                        pixelFlow.connectionState = "rate_limited"
-+                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
 +                    } else {
 +                        pixelFlow.state = "error"
 +                        pixelFlow.connectionState = "error"
