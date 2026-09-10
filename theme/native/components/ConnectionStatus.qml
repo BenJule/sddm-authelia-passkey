@@ -10,6 +10,12 @@ RowLayout {
 
     spacing: 7
 
+    Accessible.role: Accessible.StatusBar
+    Accessible.name:
+        qsTr("Verbindungsstatus: %1").arg(
+            root.labelForState(root.connectionState)
+        )
+
     function labelForState(value) {
         switch (value) {
         case "connecting":
@@ -49,6 +55,7 @@ RowLayout {
         Layout.preferredHeight: 9
         radius: 5
         color: root.colorForState(root.connectionState)
+        Accessible.ignored: true
     }
 
     QQC2.Label {
@@ -56,5 +63,6 @@ RowLayout {
         color: "white"
         opacity: 0.85
         font.pixelSize: 12
+        Accessible.ignored: true
     }
 }

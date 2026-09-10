@@ -10,6 +10,7 @@ Rectangle {
     property bool open: false
     property bool compactLayout: false
     property real qrSide: 210
+    property bool modalLayout: false
 
     signal closeRequested()
     signal cancelRequested()
@@ -23,6 +24,37 @@ Rectangle {
     color: Qt.rgba(0.07, 0.09, 0.12, 0.98)
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.16)
+
+    Accessible.role:
+        root.modalLayout
+            ? Accessible.Dialog
+            : Accessible.Pane
+
+    Accessible.name: qsTr("Smartphone-Login")
+
+    Accessible.description:
+        root.controller
+        && root.controller.targetUsername.length > 0
+            ? qsTr("Smartphone-Anmeldung für %1").arg(
+                root.controller.targetUsername
+            )
+            : qsTr("Smartphone-Anmeldung")
+
+    function statusNeedsAttention(value) {
+        return value === "error"
+            || value === "expired"
+            || value === "denied"
+            || value === "approved"
+    }
+
+    onOpenChanged: {
+        if (open) {
+            Qt.callLater(function() {
+                if (closeButton.enabled)
+                    closeButton.forceActiveFocus()
+            })
+        }
+    }
 
     Keys.onEscapePressed: {
         if (root.controller
@@ -49,7 +81,11 @@ Rectangle {
             }
 
             QQC2.ToolButton {
+                id: closeButton
+
                 text: qsTr("Schliessen")
+                Accessible.name: qsTr("Smartphone-Login schliessen")
+
                 enabled:
                     !root.controller
                     || (
@@ -144,6 +180,9 @@ Rectangle {
             QQC2.BusyIndicator {
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
+
+                Accessible.ignored: true
+
                 running:
                     root.controller
                     && (
@@ -156,6 +195,8 @@ Rectangle {
             }
 
             QQC2.Label {
+                id: statusLabel
+
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text:
@@ -165,6 +206,16 @@ Rectangle {
                 color: "white"
                 opacity: 0.90
                 font.pixelSize: 12
+
+                Accessible.role:
+                    root.controller
+                    && root.statusNeedsAttention(
+                        root.controller.state
+                    )
+                        ? Accessible.AlertMessage
+                        : Accessible.StaticText
+
+                Accessible.name: text
             }
         }
 
@@ -174,10 +225,21 @@ Rectangle {
             spacing: root.compactLayout ? 12 : 18
 
             Rectangle {
+                id: qrCard
+
                 Layout.preferredWidth: root.qrSide
                 Layout.preferredHeight: root.qrSide
                 radius: 10
                 color: "white"
+
+                Accessible.role: Accessible.Graphic
+                Accessible.name:
+                    qsTr("QR-Code für die Smartphone-Anmeldung")
+                Accessible.description:
+                    qsTr(
+                        "Alternativ kann der angezeigte Gerätecode "
+                        + "verwendet werden."
+                    )
 
                 Image {
                     id: qrImage
@@ -197,6 +259,7 @@ Rectangle {
                     smooth: false
                     mipmap: false
                     cache: false
+                    Accessible.ignored: true
                 }
 
                 QQC2.Label {
@@ -210,6 +273,7 @@ Rectangle {
                         || qrImage.status === Image.Error
                     text: qsTr("QR-Code wird vorbereitet…")
                     color: "#263238"
+                    Accessible.ignored: true
                 }
             }
 
@@ -238,6 +302,8 @@ Rectangle {
                 }
 
                 QQC2.Label {
+                    id: deviceCodeLabel
+
                     Layout.fillWidth: true
                     text:
                         root.controller
@@ -246,12 +312,18 @@ Rectangle {
                             : qsTr("Wird geladen…")
                     color: "white"
                     font.bold: true
+
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name:
+                        qsTr("Gerätecode: %1").arg(text)
                     font.pixelSize:
                         root.compactLayout ? 16 : 18
                     wrapMode: Text.WrapAnywhere
                 }
 
                 QQC2.Label {
+                    id: verificationUriLabel
+
                     Layout.fillWidth: true
                     visible:
                         root.controller
@@ -264,6 +336,10 @@ Rectangle {
                     opacity: 0.66
                     font.pixelSize: 10
                     wrapMode: Text.WrapAnywhere
+
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name:
+                        qsTr("Anmeldeadresse: %1").arg(text)
                 }
 
                 CountdownView {

@@ -19,6 +19,9 @@ Rectangle {
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.18)
 
+    // The adjacent account labels already convey this information.
+    Accessible.ignored: true
+
     readonly property bool hasImage: iconSource !== "" && avatarImage.status === Image.Ready
 
     function fallbackColor(seed) {

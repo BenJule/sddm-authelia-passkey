@@ -43,6 +43,8 @@ jobs:
           test -f theme/native/README.md
           test -f theme/native/PROVENANCE.md
           test -f tests/native/tst_ResponsiveMetrics.qml
+          test -f tests/native/tst_AccessibilitySemantics.qml
+          test -f tests/native/test_accessibility_contract.py
 
       - name: 2. metadata.desktop declares QtVersion=6
         run: grep -qx 'QtVersion=6' theme/native/metadata.desktop
@@ -105,12 +107,15 @@ jobs:
           find theme/native -name '*.qml' -print0 |
             xargs -0 -n1 /usr/lib/qt6/bin/qmllint
 
-      - name: 8b. Native parity, responsive geometry and deterministic flow tests
+      - name: 8b. Native parity, responsive, accessibility and deterministic flow tests
         run: |
           set -eu
+          export PYTHONPYCACHEPREFIX=/tmp/native-pycache
           python3 tests/native/test_feature_parity.py
+          python3 tests/native/test_accessibility_contract.py
           python3 -m py_compile \
             tests/native/test_feature_parity.py \
+            tests/native/test_accessibility_contract.py \
             tests/native/mock_broker.py
 
           python3 tests/native/mock_broker.py >/tmp/native-mock.log 2>&1 &

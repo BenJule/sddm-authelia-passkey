@@ -39,6 +39,7 @@ ColumnLayout {
             color: "white"
             opacity: 0.72
             font.pixelSize: 11
+            Accessible.ignored: true
         }
 
         QQC2.Label {
@@ -46,13 +47,23 @@ ColumnLayout {
             color: "white"
             font.pixelSize: 12
             font.bold: true
+            Accessible.ignored: true
         }
     }
 
     QQC2.ProgressBar {
+        id: countdownProgress
+
         Layout.fillWidth: true
         from: 0
         to: 1
         value: root.fraction
+
+        Accessible.role: Accessible.ProgressBar
+        Accessible.name: qsTr("Verbleibende Zeit")
+        Accessible.description:
+            qsTr("%1 verbleibend").arg(
+                root.formatted(root.remainingSeconds)
+            )
     }
 }

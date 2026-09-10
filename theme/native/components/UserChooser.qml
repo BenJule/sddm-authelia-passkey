@@ -24,6 +24,9 @@ Item {
 
     signal accountChanged()
 
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Benutzerkonto")
+
     implicitHeight:
         manualMode
             ? manualColumn.implicitHeight
@@ -86,6 +89,11 @@ Item {
         root.selectedIcon = root.lastListIcon
 
         root.accountChanged()
+
+        Qt.callLater(function() {
+            if (userList.currentItem)
+                userList.currentItem.forceActiveFocus()
+        })
     }
 
     // Materialize the model once to resolve the initial role values without
@@ -126,6 +134,7 @@ Item {
             color: "white"
             opacity: 0.76
             font.pixelSize: 12
+            Accessible.ignored: true
         }
 
         ListView {
@@ -145,6 +154,9 @@ Item {
             clip: true
             spacing: 2
             currentIndex: root.selectedIndex
+
+            Accessible.role: Accessible.List
+            Accessible.name: qsTr("Benutzerkonten")
 
             delegate: QQC2.ItemDelegate {
                 id: userDelegate
@@ -167,6 +179,26 @@ Item {
                 highlighted:
                     !root.manualMode
                     && index === root.selectedIndex
+
+                Accessible.role: Accessible.ListItem
+                Accessible.name:
+                    accountRealName.length > 0
+                        ? accountRealName
+                        : accountName
+                Accessible.description:
+                    accountRealName.length > 0
+                    && accountRealName !== accountName
+                        ? qsTr("Benutzername: %1").arg(accountName)
+                        : ""
+                Accessible.selected: highlighted
+                Accessible.focusable: true
+
+                Accessible.onPressAction: root.chooseAccount(
+                    index,
+                    accountName,
+                    accountRealName,
+                    accountIcon
+                )
 
                 onClicked: root.chooseAccount(
                     index,
@@ -204,6 +236,7 @@ Item {
                             elide: Text.ElideRight
                             font.pixelSize: 13
                             font.bold: true
+                            Accessible.ignored: true
                         }
 
                         QQC2.Label {
@@ -213,6 +246,7 @@ Item {
                             opacity: 0.58
                             elide: Text.ElideRight
                             font.pixelSize: 10
+                            Accessible.ignored: true
                         }
                     }
                 }
@@ -239,6 +273,7 @@ Item {
             color: "white"
             opacity: 0.76
             font.pixelSize: 12
+            Accessible.ignored: true
         }
 
         QQC2.TextField {
@@ -246,6 +281,11 @@ Item {
 
             Layout.fillWidth: true
             placeholderText: qsTr("Benutzername eingeben")
+
+            Accessible.name: qsTr("Benutzername")
+            Accessible.description:
+                qsTr("Benutzerkonto manuell eingeben")
+
             onTextChanged: root.setManualUsername(text)
         }
 
