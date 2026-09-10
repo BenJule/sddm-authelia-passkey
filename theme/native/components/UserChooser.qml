@@ -94,9 +94,7 @@ Item {
 
         delegate: Item {
             required property int index
-            required property string name
-            required property string realName
-            required property string icon
+            required property var model
 
             visible: false
 
@@ -105,9 +103,9 @@ Item {
                         && index === root.initialIndex) {
                     root.chooseAccount(
                         index,
-                        name,
-                        realName,
-                        icon
+                        model.name || "",
+                        model.realName || "",
+                        model.icon || ""
                     )
                 }
             }
@@ -148,9 +146,16 @@ Item {
                 id: userDelegate
 
                 required property int index
-                required property string name
-                required property string realName
-                required property string icon
+                required property var model
+
+                readonly property string accountName:
+                    model.name || ""
+
+                readonly property string accountRealName:
+                    model.realName || ""
+
+                readonly property string accountIcon:
+                    model.icon || ""
 
                 width: ListView.view.width
                 height: 44
@@ -161,9 +166,9 @@ Item {
 
                 onClicked: root.chooseAccount(
                     index,
-                    name,
-                    realName,
-                    icon
+                    accountName,
+                    accountRealName,
+                    accountIcon
                 )
 
                 contentItem: RowLayout {
@@ -172,11 +177,11 @@ Item {
                     UserAvatar {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
-                        iconSource: userDelegate.icon
+                        iconSource: userDelegate.accountIcon
                         label:
-                            userDelegate.realName.length > 0
-                                ? userDelegate.realName
-                                : userDelegate.name
+                            userDelegate.accountRealName.length > 0
+                                ? userDelegate.accountRealName
+                                : userDelegate.accountName
                     }
 
                     ColumnLayout {
@@ -186,9 +191,9 @@ Item {
                         QQC2.Label {
                             Layout.fillWidth: true
                             text:
-                                userDelegate.realName.length > 0
-                                    ? userDelegate.realName
-                                    : userDelegate.name
+                                userDelegate.accountRealName.length > 0
+                                    ? userDelegate.accountRealName
+                                    : userDelegate.accountName
                             color: "white"
                             elide: Text.ElideRight
                             font.pixelSize: 13
@@ -197,7 +202,7 @@ Item {
 
                         QQC2.Label {
                             Layout.fillWidth: true
-                            text: userDelegate.name
+                            text: userDelegate.accountName
                             color: "white"
                             opacity: 0.58
                             elide: Text.ElideRight
