@@ -1,0 +1,122 @@
+name: branding
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  branding:
+    runs-on: ubuntu-latest
+    container: debian:13
+    env:
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install theme validation dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates \
+            patch \
+            sddm-theme-debian-breeze \
+            qt6-declarative-dev-tools
+
+      - name: Apply compatibility theme patch
+        run: |
+          cp -a /usr/share/sddm/themes/debian-breeze /tmp/theme-test
+          patch --batch --forward -p1 \
+            -d /tmp/theme-test \
+            < theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+
+      - name: Validate SDDM typed branding configuration
+        run: |
+          grep -q 'config.stringValue("ui_brand_name")' /tmp/theme-test/Main.qml
+          grep -q 'config.stringValue("ui_brand_logo")' /tmp/theme-test/Main.qml
+          grep -q 'config.boolValue("ui_show_hostname")' /tmp/theme-test/Main.qml
+          grep -q 'config.boolValue("ui_show_domain")' /tmp/theme-test/Main.qml
+          grep -q 'config.boolValue("ui_show_avatar")' /tmp/theme-test/Main.qml
+          grep -q 'config.keys()' /tmp/theme-test/Main.qml
+          grep -q 'sddm.hostName' /tmp/theme-test/Main.qml
+
+      - name: Validate branding defaults and example
+        run: |
+          test -f theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_brand_name=$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_brand_logo=$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_show_hostname=false$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_show_domain=false$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_show_avatar=true$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+          grep -q '^ui_accent=system$' \
+            theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+
+      - name: Reject remote logo logic structurally
+        run: |
+          grep -q 'pixelBrandLogoLocal' /tmp/theme-test/Main.qml
+          grep -q 'indexOf("://") === -1' /tmp/theme-test/Main.qml
+
+      - name: Preserve safe root-owned theme.conf.user
+        run: |
+          DEST=/usr/share/sddm/themes/debian-breeze-authelia-passkey
+          mkdir -p "$DEST"
+          printf '[General]\nui_brand_name=CI Branding\n' > "$DEST/theme.conf.user"
+          chown root:root "$DEST/theme.conf.user"
+          chmod 0644 "$DEST/theme.conf.user"
+
+          scripts/install-theme.sh
+
+          grep -qx 'ui_brand_name=CI Branding' "$DEST/theme.conf.user"
+
+          test "$(stat -c '%u:%g' "$DEST/theme.conf.user")" = "0:0"
+
+          MODE="$(stat -c '%a' "$DEST/theme.conf.user")"
+          test "$MODE" = "644"
+
+      - name: Reject symlink theme.conf.user
+        run: |
+          DEST=/usr/share/sddm/themes/debian-breeze-authelia-passkey
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          printf '[General]\nui_brand_name=unsafe\n' > /tmp/unsafe-theme.conf
+          ln -s /tmp/unsafe-theme.conf "$DEST/theme.conf.user"
+
+          if scripts/install-theme.sh; then
+            echo "unsafe symlink was accepted" >&2
+            false
+          fi
+
+      - name: Reject group-writable theme.conf.user
+        run: |
+          DEST=/usr/share/sddm/themes/debian-breeze-authelia-passkey
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          printf '[General]\nui_brand_name=unsafe\n' > "$DEST/theme.conf.user"
+          chown root:root "$DEST/theme.conf.user"
+          chmod 0664 "$DEST/theme.conf.user"
+
+          if scripts/install-theme.sh; then
+            echo "group-writable override was accepted" >&2
+            false
+          fi
+
+      - name: qmllint patched theme
+        run: |
+          rm -rf /tmp/theme-lint
+          cp -a /usr/share/sddm/themes/debian-breeze /tmp/theme-lint
+          patch --batch --forward -p1 \
+            -d /tmp/theme-lint \
+            < theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+
+          /usr/lib/qt6/bin/qmllint /tmp/theme-lint/Main.qml || \
+            echo "qmllint findings are currently best-effort, matching theme.yml policy"
+
+      - name: Authentication implementation remains outside branding scope
+        run: |
+          git diff --exit-code HEAD^ -- src/broker src/pam src/kwallet-secretd
