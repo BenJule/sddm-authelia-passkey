@@ -77,6 +77,28 @@ SHA256SUMS.asc SHA256SUMS`, `sha256sum -c SHA256SUMS`).
 
 Nothing above restarts SDDM automatically - do that yourself when ready.
 
+## Optional features (all off by default)
+
+- **NSS/LDAP/Active Directory accounts** (`account_source=nss`) instead
+  of a fixed local `allowed_users` list - see `docs/configuration.md`'s
+  "account_source=nss" section.
+- **Native FIDO2/U2F hardware security keys** (YubiKey, Nitrokey,
+  SoloKey, ...), optionally restricted to a group - see `docs/fido2.md`.
+- **A generic OIDC provider** (`provider_kind=oidc`) instead of Authelia
+  - Keycloak, Authentik, or any other provider publishing an OIDC
+  discovery document - see `docs/architecture.md`'s "Provider
+  abstraction" section.
+
+`sudo /usr/sbin/sddm-authelia-passkey-admin test-config` validates
+`config.conf` at any point without starting anything, and
+`... status` reports whether the broker/sddm/kwallet-secretd stack is
+currently up - see `docs/rollback.md` for the full admin CLI reference.
+
+Already have this project installed and want to move to a newer
+release instead of a fresh install? See `docs/upgrade.md`. Have
+accessibility needs (screen reader, keyboard-only)? See
+`docs/accessibility.md`.
+
 ## Build from source (alternative)
 
 1. `scripts/preflight.sh` (read-only, safe to re-run)

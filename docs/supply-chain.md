@@ -2,13 +2,14 @@
 
 ## SBOM
 
-`release-build.yml` (manual `workflow_dispatch`) generates a CycloneDX
-SBOM per Go module (`broker.cdx.json`, `kwallet-secretd.cdx.json`) using
+`release-candidate.yml` (runs on every push to `main`, and
+`workflow_dispatch`) generates a CycloneDX SBOM per Go module
+(`broker.cdx.json`, `kwallet-secretd.cdx.json`) using
 [`cyclonedx-gomod`](https://github.com/CycloneDX/cyclonedx-gomod),
-uploaded as a build artifact alongside the `.deb`. Not yet attached to
-GitHub releases as a signed asset - see `docs/release-signing.md` for
-the current manual release process; adding SBOM signing to that process
-is a reasonable next step, not yet done.
+uploaded as part of the `release-candidate` build artifact alongside the
+`.deb`. Both SBOMs are attached to the GitHub release itself and covered
+by the same `SHA256SUMS`/`SHA256SUMS.asc` as the `.deb` - see
+`docs/release-signing.md` for the full release process.
 
 ## Reproducible builds
 
