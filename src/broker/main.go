@@ -263,17 +263,124 @@ func main() {
 	mux.HandleFunc("/start", handleStart)
 	mux.HandleFunc("/status", handleStatus)
 	mux.HandleFunc("/cancel", handleCancel)
-	log.Printf("sddm-authelia-passkey broker listening on %s (allowed users: %v)", listenAddr, allowedUsersList())
+	if cfg.AccountSource == "nss" {
+		log.Printf("sddm-authelia-passkey broker listening on %s (account_source=nss, minimum_uid=%d, allowed_groups=%v, extra allowed_users=%v)",
+			listenAddr, cfg.MinimumUID, allowedGroupsList(), allowedUsersList())
+	} else {
+		log.Printf("sddm-authelia-passkey broker listening on %s (allowed users: %v)", listenAddr, allowedUsersList())
+	}
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
 }
 
 // userLookup is a var so tests can stub it without needing real system accounts.
 var userLookup = func(name string) (*user.User, error) { return user.Lookup(name) }
 
+// groupIDsForUser is a var so tests can stub it without needing real
+// system groups. In production this is *user.User.GroupIds(), which (this
+// binary is cgo-enabled, see debian/rules) resolves via the same NSS path
+// as getpwnam/getgrouplist - local /etc/group or, on a host with SSSD/
+// nss-ldap configured in nsswitch.conf, Samba AD/OpenLDAP/FreeIPA group
+// membership. This broker never speaks LDAP itself.
+var groupIDsForUser = func(u *user.User) ([]string, error) { return u.GroupIds() }
+
+// lookupGroupName is a var so tests can stub it the same way.
+var lookupGroupName = func(gid string) (string, error) {
+	g, err := user.LookupGroupId(gid)
+	if err != nil {
+		return "", err
+	}
+	return g.Name, nil
+}
+
+// authorizeAccount is the single place that decides whether a requested
+// username may start a flow at all, independent of the later
+// AUTHENTICATED_AUTHELIA_USER == REQUESTED_LOCAL_USER identity-match check
+// in pollAndDecide (see docs/architecture.md) - this only answers "is this
+// local/NSS-resolved account even eligible", never anything about who
+// approves it later.
+//
+//   - AccountSource "local": unchanged from v0.1-v0.4 - username must be a
+//     literal entry in AllowedUsers, nothing else is checked.
+//   - AccountSource "nss": any account NSS can resolve is eligible,
+//     provided it isn't root (always rejected, UID or name), isn't in
+//     DenyUsers, has UID >= MinimumUID, and - if AllowedGroups is
+//     non-empty - is a member of at least one of them. AllowedUsers, if
+//     also non-empty, is then an *additional* allowlist on top of that,
+//     not a replacement for it.
+//
+// Fails closed: any NSS lookup error (lookup itself, or group resolution)
+// is treated as "not authorized", never as "assume yes"/"assume no
+// restriction".
+func authorizeAccount(username string) (*user.User, error) {
+	if cfg.AccountSource == "local" {
+		if !cfg.AllowedUsers[username] {
+			return nil, fmt.Errorf("not in allowed_users")
+		}
+		return userLookup(username)
+	}
+
+	u, err := userLookup(username)
+	if err != nil {
+		return nil, fmt.Errorf("NSS lookup failed: %w", err)
+	}
+
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return nil, fmt.Errorf("account has a non-numeric UID: %q", u.Uid)
+	}
+	if uid == 0 || username == "root" {
+		return nil, fmt.Errorf("root is never permitted")
+	}
+	if cfg.DenyUsers[username] {
+		return nil, fmt.Errorf("user is explicitly denied")
+	}
+	if uid < cfg.MinimumUID {
+		return nil, fmt.Errorf("uid %d is below minimum_uid %d", uid, cfg.MinimumUID)
+	}
+
+	if len(cfg.AllowedGroups) > 0 {
+		gids, err := groupIDsForUser(u)
+		if err != nil {
+			return nil, fmt.Errorf("group membership lookup failed: %w", err)
+		}
+		matched := false
+		for _, gid := range gids {
+			name, err := lookupGroupName(gid)
+			if err != nil {
+				// A single unresolvable GID (stale/orphaned group) is not
+				// itself fatal - other GIDs may still resolve and match -
+				// but it is never silently treated as a match.
+				continue
+			}
+			if cfg.AllowedGroups[name] {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return nil, fmt.Errorf("account is not a member of any allowed_groups")
+		}
+	}
+
+	if len(cfg.AllowedUsers) > 0 && !cfg.AllowedUsers[username] {
+		return nil, fmt.Errorf("not in allowed_users")
+	}
+
+	return u, nil
+}
+
 func allowedUsersList() []string {
 	out := make([]string, 0, len(cfg.AllowedUsers))
 	for u := range cfg.AllowedUsers {
 		out = append(out, u)
+	}
+	return out
+}
+
+func allowedGroupsList() []string {
+	out := make([]string, 0, len(cfg.AllowedGroups))
+	for g := range cfg.AllowedGroups {
+		out = append(out, g)
 	}
 	return out
 }
@@ -292,22 +399,20 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 			username = u
 		}
 	}
-	if !cfg.AllowedUsers[username] {
-		// Deliberately do not distinguish "wrong user" from any other
-		// failure in the response body - avoid username enumeration.
-		http.Error(w, "not permitted", http.StatusForbidden)
-		return
-	}
-
-	// Re-resolve the account fresh via NSS for every flow, not just once
-	// at broker startup: if the account was deleted and recreated (e.g.
-	// UID reuse/rename) between startup and this request, the UID we
-	// bind into the marker below must reflect the *current* account, not
-	// a stale one - this is what lets PAM detect and reject a marker
-	// minted for an account that no longer exists in its original form.
-	localUser, err := userLookup(username)
+	// authorizeAccount re-resolves the account fresh via NSS for every
+	// flow, not just once at broker startup (or not at all, in "nss"
+	// mode): if the account was deleted and recreated (e.g. UID reuse/
+	// rename) between startup and this request, the UID we bind into the
+	// marker below must reflect the *current* account, not a stale one -
+	// this is what lets PAM detect and reject a marker minted for an
+	// account that no longer exists in its original form.
+	localUser, err := authorizeAccount(username)
 	if err != nil {
-		log.Printf("session start: NSS lookup failed for allowed user %q: %v", username, err)
+		// Deliberately do not distinguish the many possible reasons (not
+		// allowlisted, unknown to NSS, root, denied, below minimum_uid,
+		// wrong/no group) in the response body - avoid both username
+		// enumeration and leaking which specific policy rule fired.
+		log.Printf("session start: %q not authorized: %v", username, err)
 		http.Error(w, "not permitted", http.StatusForbidden)
 		return
 	}

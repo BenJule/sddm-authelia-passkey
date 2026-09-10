@@ -237,6 +237,70 @@ rather than silently retargeting - a stale `/status` "approved" response
 can then never reach `handleApproved` for the newly-selected account,
 because `state` is no longer `"waiting"` by the time it would arrive.
 
+## LDAP/Active Directory accounts (NSS)
+
+`account_source=nss` (config-only; `local` remains the default and is
+unchanged from v0.1-v0.4) lifts the "must be a literal `allowed_users`
+entry" requirement for accounts NSS can resolve - the same mechanism any
+other PAM-integrated login path already relies on, not a new one this
+project invents:
+
+```mermaid
+flowchart LR
+    B[Broker: authorizeAccount] -->|user.Lookup / GroupIds| N[NSS]
+    N --> F["files (/etc/passwd, /etc/group)"]
+    N --> S["sss (SSSD)"]
+    S --> AD[Samba AD / OpenLDAP / FreeIPA]
+```
+
+**The broker never speaks LDAP, Kerberos, or any directory protocol
+itself, and never caches a directory credential.** It only calls
+`os/user.Lookup`/`(*user.User).GroupIds` - the same libc NSS entry points
+(`getpwnam_r`, `getgrouplist`) `login`, `sshd`, or `sudo` would use. This
+binary is built cgo-enabled (`debian/rules`, external linking already
+required for the PAM hardening flags) specifically so these calls go
+through the *system's* NSS/`/etc/nsswitch.conf`, not a pure-Go fallback
+that would only ever see `/etc/passwd`. Whatever `passwd:`/`group:` lines
+in `nsswitch.conf` resolve to - `files`, `sss`, or both - is exactly what
+this project sees, nothing more.
+
+**`authorizeAccount` (`src/broker/main.go`) is the single gate**, called
+fresh on every `/start`, never cached:
+
+1. `local` mode: username must be a literal `allowed_users` entry -
+   identical to every prior release.
+2. `nss` mode: the account must resolve via NSS at all (a lookup error -
+   SSSD down, LDAP unreachable, truly unknown user - fails closed, never
+   "assume allowed"); must not be `root` (checked by both UID `0` *and*
+   name, so a second account sharing UID 0 can't slip through either);
+   must not be in `deny_users` (which always implicitly contains `root`
+   regardless of config); must have UID `>= minimum_uid`; and, if
+   `allowed_groups` is non-empty, must be a member (via a fresh
+   `GroupIds()` call, resolved against `allowed_groups` by name, not
+   GID number, since GID numbering is directory-specific) of at least
+   one of them. A non-empty `allowed_users` in this mode is then an
+   *additional*, not alternative, restriction.
+
+**Everything downstream of that gate is unchanged.** The UID resolved
+here is embedded in the v2 approval marker exactly as before, and PAM
+re-resolves it fresh via `getpwnam_r` at consumption time - an NSS/LDAP
+account renamed, deleted, or given a different UID between approval and
+login fails exactly the same way a local account would (see "Multi-user
+readiness" above). The `AUTHENTICATED_AUTHELIA_USER ==
+REQUESTED_LOCAL_USER` exact-match check in `pollAndDecide` is completely
+unaware of `account_source` - identity binding does not care where the
+account came from. Per-user rate limiting, flow supersession, and
+cancellation are keyed by username exactly as before, so an NSS-resolved
+account gets the same per-user isolation a local one does.
+
+**What this project deliberately does not do**: implement its own LDAP
+client, its own directory credential cache, or its own group-membership
+cache. SSSD (or whatever NSS module is configured) already solves
+caching, offline behavior, and connection pooling correctly; duplicating
+that here would only add a second, likely-inconsistent source of truth.
+A host without SSSD configured (or with `account_source=local`, the
+default) is entirely unaffected - this is opt-in, not a new requirement.
+
 ## Trust boundaries
 
 - The broker's HTTP API is localhost-only and never itself authenticates

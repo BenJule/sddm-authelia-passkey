@@ -27,10 +27,55 @@ allowed_verification_host=idp.example.com
 # instance. Refused by the broker at startup otherwise (fail closed).
 authelia_dev_insecure_http=false
 
+# How a requested username is authorized to use the smartphone/passkey
+# path at all (separate from the later exact-match check against the
+# OIDC identity Authelia actually approves - see docs/architecture.md):
+#
+#   local (default) - unchanged from v0.1-v0.4: the account must be a
+#     literal entry in allowed_users below, nothing else is checked.
+#
+#   nss - any account NSS can resolve is eligible (local /etc/passwd, or
+#     - if this host's own /etc/nsswitch.conf has "passwd: files sss" and
+#     SSSD is configured against Samba AD/OpenLDAP/FreeIPA - a directory
+#     account), subject to minimum_uid/deny_users/allowed_groups below.
+#     This broker never talks to LDAP/AD/SSSD directly and never caches
+#     directory credentials itself - it only ever calls the same NSS
+#     lookups (getpwnam/getgrouplist) any other PAM-aware program would,
+#     and fails closed if they error or are unavailable.
+account_source=local
+
 # Comma-separated local usernames allowed to use the smartphone/passkey
 # passwordless path. Every other account (including root, always) keeps password-only
 # login - this list is additive, never a replacement for the password path.
+#
+# Required (non-empty) when account_source=local. Optional when
+# account_source=nss - if set there, it further restricts an
+# already-NSS-eligible account to just these names; if left empty, any
+# account passing the checks below is eligible.
 allowed_users=alice,bob
+
+# The following four settings are only consulted when account_source=nss.
+
+# Reject any resolved account whose UID is below this value. UID 0
+# (root) is always rejected regardless of this setting.
+minimum_uid=1000
+
+# Comma-separated usernames never eligible, checked before anything else
+# below. "root" is always implicitly included whether or not it is
+# listed here.
+deny_users=root
+
+# Comma-separated group names - if non-empty, the resolved account must
+# be a member of at least one of them (via real NSS group membership,
+# e.g. an AD/LDAP "linux-login" group via SSSD - never a cache this
+# project maintains itself).
+allowed_groups=linux-login
+
+# Must be true (the only supported value) whenever allowed_groups is
+# non-empty - an explicit switch rather than silently ignoring an empty
+# allowed_groups list, so a half-finished config fails to start instead
+# of guessing what was meant.
+require_group_match=true
 
 # Device-authorization approval marker lifetime, in seconds. A completed
 # approval must be consumed by PAM within this window or it is discarded.
