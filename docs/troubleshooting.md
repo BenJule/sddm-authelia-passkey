@@ -29,3 +29,30 @@ the password branch (it falls through unchanged on `default=ignore`).
 **QR code looks blurry but still scans** - cosmetic; the QML `Image`
 element must have `smooth: false` (already set in the shipped patch) to
 avoid bilinear upscaling of the small PNG.
+
+**Broker refuses to start after editing config.conf** - run
+`sudo /usr/sbin/sddm-authelia-passkey-admin test-config` first; it runs
+the exact same `LoadConfig`/`Validate` logic the real broker uses,
+without starting anything. `CONFIG_INVALID: unknown config key "..."`
+almost always means a typo in a key name - compare against
+`config/examples/config.conf.example`.
+
+**A specific user isn't offered the smartphone/passkey path** - run
+`sudo /usr/sbin/sddm-authelia-passkey-admin list-users` to see exactly
+who is currently eligible under your `account_source`/`allowed_users`/
+`minimum_uid`/`deny_users`/`allowed_groups` settings, and which accounts
+have a FIDO2 credential enrolled.
+
+**FIDO2 key doesn't work / isn't tried** - confirm `pam_u2f.so` is
+actually integrated (`grep pam_u2f /etc/pam.d/sddm`), that the user has
+an enrolled credential (`list-fido2-credentials.sh`), and - if you set
+`fido2_required_group` - that the user is actually a member of that
+group. A missing device, unenrolled user, or non-membership all fall
+through to the smartphone/passkey path silently by design, not an
+error - see `docs/fido2.md`.
+
+**Something is broken and you need password-only login back
+immediately** - `sudo /usr/share/sddm-authelia-passkey/break-glass.sh`
+neutralizes this project's PAM lines without needing to locate any
+backup; `... --restore` undoes it once you've fixed the underlying
+issue. See `docs/rollback.md`.

@@ -7,11 +7,19 @@
 [![release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey?include_prereleases)](https://github.com/BenJule/sddm-authelia-passkey/releases)
 [![license](https://img.shields.io/github/license/BenJule/sddm-authelia-passkey)](LICENSE)
 
-**Status: pre-1.0, experimental.** Proven end-to-end on one production
-host and one lab VM, including a real host reboot and a full password +
-smartphone/passkey login regression on both; not yet tested across
-multiple independent installs or hardware configurations. Read
-`docs/threat-model.md` and `docs/security.md` before deploying.
+**Status: v1.0.0, stable.** No known P0/P1 bugs within the documented
+validated scope (see `docs/validated-environment.md`); `config.conf`,
+the admin CLI, and the shipped scripts' exit codes/status lines are
+covered by a stability commitment going forward (`docs/stability.md`).
+Proven end-to-end on one production host and one lab VM, including a
+real host reboot and a full password + smartphone/passkey login
+regression on both, plus extensive lab-VM verification of every
+optional feature (NSS/LDAP, FIDO2, generic OIDC providers, policy/
+recovery tooling) added since. Still a single-maintainer project not
+yet tested across multiple independent installs, hardware
+configurations, or a real distro/display-manager matrix - read
+`docs/threat-model.md`, `docs/security.md`, and
+`docs/validated-environment.md` before deploying.
 
 Passwordless SDDM login via Authelia's OIDC Device Authorization Grant
 and WebAuthn/Passkey user verification - approve a login on your phone
@@ -139,6 +147,10 @@ See `docs/security.md`, `docs/threat-model.md`, and `SECURITY.md`. For
 what has actually been exercised end-to-end vs. merely expected to work,
 see `docs/validated-environment.md`. For SBOM/dependency/provenance
 status, see `docs/supply-chain.md`.
+
+## Accessibility
+
+See `docs/accessibility.md`.
 
 ## Upgrading
 

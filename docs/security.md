@@ -37,6 +37,12 @@ WebAuthn itself, not something this project adds or removes.
   credential.secret` itself. This is a real, documented limitation, not
   an oversight - see `docs/threat-model.md`.
 
+- The optional FIDO2/U2F path (`docs/fido2.md`) similarly has **no
+  persistent secret** at rest: `fido2_mappings` holds only public-key
+  material (key handle + public key + COSE type) `pamu2fcfg` produces -
+  the authenticator's private key never leaves the hardware token, and
+  its PIN/biometric data never reaches this project or the host at all.
+
 ## Never present, by design
 
 - No secret ever appears in process argv (`ps` output), environment

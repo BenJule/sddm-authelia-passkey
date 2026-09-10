@@ -3,6 +3,46 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.0]
+
+First stable release. No known P0/P1 bugs within the documented
+validated scope (`docs/validated-environment.md`).
+
+### Added
+- `docs/stability.md`: a stability commitment for `config.conf` (every
+  key added since the first release has a backward-compatible default;
+  existing keys' meanings won't silently change), the admin CLI, and
+  the shipped scripts' exit codes/status lines. The broker's HTTP API
+  and the on-disk approval marker format are explicitly *not* covered -
+  private implementation details, never meant to be consumed outside
+  this project's own components.
+- `LoadConfig` now refuses an unrecognized key in `config.conf` (a typo,
+  or a key from a newer version than this build) instead of silently
+  ignoring it, closing a real gap the stability commitment above
+  depends on. The four `fido2_*` keys the broker never reads itself
+  (consumed by `scripts/enable-fido2.sh`) are explicitly allowlisted so
+  they are never mistakenly rejected.
+- A regression test guarding that the shipped
+  `config/examples/config.conf.example` always loads and validates.
+- `docs/accessibility.md`: what's actually keyboard-operable today
+  (the alternative-code path, Escape-to-cancel, explicit focus styling
+  on custom buttons), and what has not been specifically verified
+  (screen readers, high-contrast themes).
+
+### Changed
+- `docs/threat-model.md` and `docs/security.md` updated with the
+  attack surface introduced since v0.5.0 (NSS/LDAP account resolution,
+  FIDO2 hardware keys and group-gating, the generic OIDC provider path,
+  `break-glass.sh`/`disable-pam.sh`, and the admin CLI).
+- `docs/supply-chain.md` corrected: it referenced a workflow file
+  (`release-build.yml`) that doesn't exist (the real one is
+  `release-candidate.yml`) and understated that SBOMs are already
+  attached to GitHub releases and covered by the release signature.
+- `docs/installation.md` and `docs/troubleshooting.md` updated to
+  reference every optional feature added since v0.5.0 (NSS/LDAP,
+  FIDO2, generic OIDC providers, the admin CLI, `break-glass.sh`),
+  which they previously didn't mention at all.
+
 ## [0.9.0]
 
 ### Added

@@ -136,3 +136,16 @@ independently of trusting that the tests above are correct:
       identity mismatches, successful approvals) never include a secret
       value (token, credential, marker content) - only usernames,
       session IDs, and policy-decision outcomes.
+- [ ] `LoadConfig` refuses a `config.conf` containing any key not in
+      `knownConfigKeys` (`src/broker/config.go`) - a typo'd key name
+      (e.g. `alowed_groups=`) is refused at startup, never silently
+      left at its default while the admin believes it took effect
+      (verified: `TestLoadConfig_RejectsUnknownKey`). The four
+      shell-only `fido2_*` keys the broker itself never reads are
+      explicitly included in the allowlist so they are never
+      mistakenly rejected (verified:
+      `TestLoadConfig_AcceptsShellOnlyFido2Keys`).
+- [ ] The shipped `config/examples/config.conf.example` itself always
+      loads and validates cleanly (verified:
+      `TestLoadConfig_ShippedExampleFileLoadsAndValidates`) - it cannot
+      silently drift out of sync with what the broker actually accepts.
