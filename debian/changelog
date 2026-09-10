@@ -1,3 +1,11 @@
+sddm-authelia-passkey (1.8.0-1) unstable; urgency=medium
+
+  * Add optional vendor-neutral SDDM theme branding via theme.conf.user.
+  * Preserve safe root-owned theme overrides across generated-theme updates.
+  * Keep the unconfigured Debian Breeze appearance fully backward compatible.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 13:35:11 +0200
+
 sddm-authelia-passkey (1.7.0-1) unstable; urgency=medium
 
   * Login Transition: dim and input-block the rest of the greeter

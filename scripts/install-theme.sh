@@ -42,6 +42,33 @@ trap cleanup EXIT
 
 cp -a --no-preserve=ownership "$BASE/." "$TMP/"
 
+# v1.8.0: SDDM intentionally stores administrator theme overrides in
+# theme.conf.user. Preserve a safe existing override when regenerating
+# the additive theme so package upgrades do not erase local branding.
+# Never follow a symlink or preserve a file writable by an unprivileged
+# owner: that would turn presentation customization into an unsafe
+# greeter-code/config injection boundary.
+USER_THEME_CONF="$DEST/theme.conf.user"
+if [ -e "$USER_THEME_CONF" ] || [ -L "$USER_THEME_CONF" ]; then
+    if [ ! -f "$USER_THEME_CONF" ] || [ -L "$USER_THEME_CONF" ]; then
+        echo "refusing unsafe theme.conf.user: not a regular file" >&2
+        exit 1
+    fi
+    [ "$(stat -c '%u:%g' "$USER_THEME_CONF")" = "0:0" ] || {
+        echo "refusing unsafe theme.conf.user: must be root:root" >&2
+        exit 1
+    }
+
+    THEME_CONF_MODE="$(stat -c '%a' "$USER_THEME_CONF")"
+    THEME_CONF_MODE_DEC=$((8#$THEME_CONF_MODE))
+    if (( THEME_CONF_MODE_DEC & 022 )); then
+        echo "refusing unsafe theme.conf.user: group/world writable" >&2
+        exit 1
+    fi
+
+    cp --no-preserve=ownership "$USER_THEME_CONF" "$TMP/theme.conf.user"
+fi
+
 patch --batch --forward --reject-file=- -p1 -d "$TMP" < "$PATCH_DIR/Main.qml.patch"
 patch --batch --forward --reject-file=- -p1 -d "$TMP" < "$PATCH_DIR/metadata.desktop.patch"
 

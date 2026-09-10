@@ -678,3 +678,24 @@ HTTP 429 backoff never becomes shorter than the current poll interval and
 grows conservatively while throttling continues. Cancellation wakes a poller
 even during a long Retry-After wait so stale flows do not retain global
 concurrency slots.
+
+## Optional Branding (v1.8.0)
+
+Branding is strictly presentation configuration and does not enter an
+authentication trust boundary.
+
+The greeter reads optional values through SDDM's native `theme.conf.user`
+configuration interface. Authentication/policy `config.conf` is deliberately
+not extended with visual settings.
+
+With no branding settings configured, the v1.7.0 Debian Breeze appearance is
+unchanged.
+
+Remote branding assets are not supported. A logo must be an absolute local
+file path. Hostname comes from SDDM's own local `sddm.hostName` property;
+domain/realm text is explicitly administrator configured and is never inferred
+from an OIDC claim.
+
+The installer preserves a safe existing root-owned regular
+`theme.conf.user` when rebuilding the additive theme, while refusing symlinks
+or non-root-owned override files.
