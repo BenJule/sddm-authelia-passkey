@@ -105,7 +105,7 @@
                      }
                  ]
              }
-@@ -529,4 +590,1045 @@
+@@ -529,4 +590,1063 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -635,6 +635,11 @@
 +        color: Qt.rgba(0.13, 0.20, 0.27, 0.72)
 +        z: 200
 +        focus: open
++        // Defense in depth: even if content is taller than the card (a
++        // long translated string, a state with extra lines), nothing may
++        // ever paint outside the card's own bounds - see the ScrollView
++        // wrapper below, which is the primary mechanism.
++        clip: true
 +
 +        Behavior on x {
 +            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic }
@@ -654,10 +659,22 @@
 +            anchors.fill: parent
 +        }
 +
-+        ColumnLayout {
++        // Content can be taller than the card (long translated strings,
++        // states with extra lines, a small overlay height on a short
++        // display) - scrolls internally rather than overflowing past the
++        // card's edges, which the "nothing outside the card" requirement
++        // demands. In sidebar layout the card is full-height and content
++        // normally fits without ever showing a scrollbar.
++        QQC2.ScrollView {
++            id: pixelPanelScroll
 +            anchors.fill: parent
 +            anchors.margins: Kirigami.Units.gridUnit * 1.5
-+            spacing: Kirigami.Units.smallSpacing
++            clip: true
++            contentWidth: availableWidth
++
++            ColumnLayout {
++                width: pixelPanelScroll.availableWidth
++                spacing: Kirigami.Units.smallSpacing
 +
 +            QQC2.ToolButton {
 +                icon.name: "go-previous"
@@ -1128,6 +1145,7 @@
 +                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                text: i18nd("plasma-desktop-sddm-theme", "Abbrechen")
 +                onClicked: pixelFlow.cancel()
++            }
 +            }
 +        }
 +    }
