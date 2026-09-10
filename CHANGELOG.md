@@ -3,7 +3,18 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.4.2]
+
+### Changed
+- Theme: the smartphone/passkey sidebar now animates (slide-in/out, QR
+  fade-in, per-state cross-fades for idle/starting/waiting/approved/
+  error/expired, a brief "Bestätigt" checkmark beat before login, a
+  subtle pulse while waiting on the phone, and explicit hover/pressed/
+  focus/disabled styling on the custom-styled "Alternativ Code" button).
+  Purely visual - no change to the flow/security state machine, PAM,
+  broker, or KWallet logic.
+
+## [0.4.1]
 
 ### Fixed
 - Local failure lockout now counts only genuine authentication denials.

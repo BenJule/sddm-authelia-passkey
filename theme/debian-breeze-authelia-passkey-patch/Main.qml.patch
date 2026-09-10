@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,514 @@
+@@ -529,4 +561,646 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -119,13 +119,13 @@
 +        function open() {
 +            if (state !== "idle" && state !== "error" && state !== "expired") {
 +                console.log("PHONE_FLOW: open() ignored, flow already in progress, state=", state)
-+                pixelPanel.visible = true
++                pixelPanel.open = true
 +                return
 +            }
 +            if (sddmSelectedUsername.length === 0) {
 +                state = "error"
 +                statusText = i18nd("plasma-desktop-sddm-theme", "Bitte zuerst ein Konto auswählen oder eingeben.")
-+                pixelPanel.visible = true
++                pixelPanel.open = true
 +                return
 +            }
 +            targetUsername = sddmSelectedUsername
@@ -136,7 +136,7 @@
 +            userCode = ""
 +            showAltCode = false
 +            resolvedUsername = ""
-+            pixelPanel.visible = true
++            pixelPanel.open = true
 +            requestStart(targetUsername)
 +        }
 +
@@ -284,8 +284,6 @@
 +        function handleApproved(username) {
 +            if (state !== "waiting") return
 +            pixelPollTimer.stop()
-+            state = "logging_in"
-+            statusText = i18nd("plasma-desktop-sddm-theme", "Bestätigt – Anmeldung läuft…")
 +
 +            resolvedUsername = username || ""
 +            console.log("PHONE_FLOW: approved")
@@ -307,8 +305,17 @@
 +                return
 +            }
 +
-+            console.log("PHONE_FLOW: calling sddm.login")
-+            sddm.login(resolvedUsername, "", idx)
++            // Brief "confirmed" beat before the actual login call - purely
++            // cosmetic (a short checkmark moment), gated by the exact same
++            // state machine as everything else: pixelApprovedTimer only
++            // acts if state is still "approved" when it fires, so a cancel
++            // or account switch landing in this window (both already
++            // legal at any non-idle/error/expired state, see
++            // onSddmSelectedUsernameChanged/cancel()) still safely prevents
++            // sddm.login() from ever being called - exactly-once holds.
++            state = "approved"
++            statusText = i18nd("plasma-desktop-sddm-theme", "Bestätigt")
++            pixelApprovedTimer.start()
 +        }
 +
 +        // Phase 9: a real server-side cancel for the specific session,
@@ -325,22 +332,54 @@
 +            resolvedUsername = ""
 +            targetUsername = ""
 +            state = "idle"
-+            pixelPanel.visible = false
++            pixelPanel.open = false
 +        }
 +    }
 +
 +    Timer { id: pixelPollTimer; interval: 2000; repeat: true; onTriggered: pixelFlow.poll() }
++    Timer {
++        id: pixelApprovedTimer
++        interval: 700
++        repeat: false
++        onTriggered: {
++            // See handleApproved: only ever fires the actual login if
++            // nothing (cancel, account switch, escape) moved the flow out
++            // of "approved" during this cosmetic delay.
++            if (pixelFlow.state !== "approved") return
++            pixelFlow.state = "logging_in"
++            pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung läuft…")
++            console.log("PHONE_FLOW: calling sddm.login")
++            sddm.login(pixelFlow.resolvedUsername, "", sessionButton.currentIndex)
++        }
++    }
 +
 +    Rectangle {
 +        id: pixelPanel
-+        visible: false
++        // Slide-in/out from the right edge: "open" is the single source of
++        // truth (set by pixelFlow), x/opacity are purely derived+animated
++        // from it - never assigned directly anywhere else, so there is
++        // exactly one place ("pixelPanel.open = ...") that can show/hide
++        // the panel, matching the "one flow, one intent" spirit of the
++        // rest of this file.
++        property bool open: false
 +        anchors.top: parent.top
 +        anchors.bottom: parent.bottom
-+        anchors.right: parent.right
 +        width: Math.max(320, Math.min(420, root.width * 0.24))
++        x: parent.width - (open ? width : 0)
++        opacity: open ? 1 : 0
++        // Stays interactive/rendered through the whole close animation,
++        // then truly gone - never a hard cut that would clip the slide.
++        visible: open || x < parent.width
 +        color: Qt.rgba(0.13, 0.20, 0.27, 0.72)
 +        z: 200
-+        focus: visible
++        focus: open
++
++        Behavior on x {
++            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic }
++        }
++        Behavior on opacity {
++            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++        }
 +
 +        Keys.onEscapePressed: pixelFlow.cancel()
 +
@@ -406,21 +445,86 @@
 +            // QR card - white rounded background, generous padding, so the
 +            // code itself keeps a clean quiet zone and high contrast edge.
 +            Rectangle {
++                id: pixelQrCard
 +                Layout.alignment: Qt.AlignHCenter
 +                Layout.preferredWidth: Math.max(220, Math.min(260, pixelPanel.width - Kirigami.Units.gridUnit * 4))
 +                Layout.preferredHeight: Layout.preferredWidth
-+                visible: (pixelFlow.state === "waiting" || pixelFlow.state === "approved") && !pixelFlow.showAltCode
++                visible: opacity > 0.01 && !pixelFlow.showAltCode
++                opacity: {
++                    if (pixelFlow.showAltCode) return 0
++                    switch (pixelFlow.state) {
++                    case "waiting": case "approved": return 1
++                    case "expired": return 0.4 // stale code left visible, clearly dimmed
++                    default: return 0
++                    }
++                }
++                Behavior on opacity {
++                    NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++                }
 +                radius: Kirigami.Units.gridUnit * 0.6
 +                color: "white"
++                // Subtle pulse while genuinely waiting on the phone - a
++                // separate overlay (Rectangle.border has no "opacity" of
++                // its own to animate directly) with just a border, never
++                // a distraction, never a flashing fill.
++                Rectangle {
++                    anchors.fill: parent
++                    radius: parent.radius
++                    color: "transparent"
++                    border.width: 2
++                    border.color: Kirigami.Theme.highlightColor
++                    visible: pixelFlow.state === "waiting"
++                    SequentialAnimation on opacity {
++                        running: pixelFlow.state === "waiting"
++                        loops: Animation.Infinite
++                        NumberAnimation { from: 0.15; to: 0.6; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
++                        NumberAnimation { from: 0.6; to: 0.15; duration: Kirigami.Units.veryLongDuration; easing.type: Easing.InOutSine }
++                    }
++                }
 +
 +                Image {
++                    id: pixelQrImage
 +                    anchors.centerIn: parent
 +                    width: parent.width - Kirigami.Units.gridUnit * 1.4
 +                    height: width
 +                    fillMode: Image.PreserveAspectFit
 +                    smooth: false
 +                    source: pixelFlow.qrPath ? "file://" + pixelFlow.qrPath : ""
++                    // Fades in once the QR actually has image data, and
++                    // fades out for the "approved" checkmark beat instead
++                    // of an abrupt swap.
++                    opacity: (source !== "" && pixelFlow.state !== "approved") ? 1 : 0
++                    Behavior on opacity {
++                        NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
++                    }
 +                }
++
++                // Brief "confirmed" checkmark beat - see handleApproved().
++                Kirigami.Icon {
++                    anchors.centerIn: parent
++                    width: parent.width * 0.4
++                    height: width
++                    source: "emblem-ok-symbolic"
++                    color: Kirigami.Theme.positiveTextColor
++                    opacity: pixelFlow.state === "approved" ? 1 : 0
++                    scale: pixelFlow.state === "approved" ? 1 : 0.6
++                    Behavior on opacity {
++                        NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.InOutQuad }
++                    }
++                    Behavior on scale {
++                        NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.OutBack }
++                    }
++                }
++            }
++
++            QQC2.Label {
++                Layout.alignment: Qt.AlignHCenter
++                visible: pixelFlow.state === "expired"
++                opacity: pixelFlow.state === "expired" ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++                text: i18nd("plasma-desktop-sddm-theme", "Code abgelaufen")
++                color: Kirigami.Theme.negativeTextColor
++                font.bold: true
 +            }
 +
 +            // Secondary "enter code manually" view - shown instead of the QR
@@ -430,7 +534,9 @@
 +            // approval other than the QR/URL itself.
 +            ColumnLayout {
 +                Layout.fillWidth: true
-+                visible: pixelFlow.state === "waiting" && pixelFlow.showAltCode
++                visible: opacity > 0.01
++                opacity: (pixelFlow.state === "waiting" && pixelFlow.showAltCode) ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                spacing: Kirigami.Units.smallSpacing
 +
 +                Kirigami.Heading {
@@ -474,14 +580,18 @@
 +            QQC2.BusyIndicator {
 +                Layout.alignment: Qt.AlignHCenter
 +                running: pixelFlow.state === "starting"
-+                visible: running
++                visible: opacity > 0.01
++                opacity: running ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +            }
 +
 +            // "Oder" divider
 +            RowLayout {
 +                Layout.fillWidth: true
 +                Layout.topMargin: Kirigami.Units.gridUnit
-+                visible: pixelFlow.state === "waiting"
++                visible: opacity > 0.01
++                opacity: pixelFlow.state === "waiting" ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                Rectangle { Layout.fillWidth: true; height: 1; color: "white"; opacity: 0.3 }
 +                QQC2.Label {
 +                    text: i18nd("plasma-desktop-sddm-theme", "Oder")
@@ -493,25 +603,35 @@
 +                Rectangle { Layout.fillWidth: true; height: 1; color: "white"; opacity: 0.3 }
 +            }
 +
-+            // Real outlined button, not plain text.
++            // Real outlined button, not plain text. Custom background+
++            // contentItem means the platform's default focus/hover/press
++            // styling is bypassed, so all four interaction states are
++            // drawn explicitly here rather than assumed.
 +            QQC2.Button {
++                id: pixelAltCodeButton
 +                Layout.fillWidth: true
 +                Layout.topMargin: Kirigami.Units.smallSpacing
-+                visible: pixelFlow.state === "waiting" && pixelFlow.verificationUri !== ""
++                visible: opacity > 0.01
++                opacity: (pixelFlow.state === "waiting" && pixelFlow.verificationUri !== "") ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++                enabled: pixelFlow.state === "waiting"
 +                text: pixelFlow.showAltCode
 +                    ? i18nd("plasma-desktop-sddm-theme", "Zurück zum QR-Code")
 +                    : i18nd("plasma-desktop-sddm-theme", "Alternativ Code eingeben")
 +                onClicked: pixelFlow.showAltCode = !pixelFlow.showAltCode
 +                background: Rectangle {
 +                    radius: Kirigami.Units.gridUnit * 0.4
-+                    color: "transparent"
-+                    border.color: "white"
-+                    border.width: 1
-+                    opacity: parent.hovered ? 0.9 : 0.6
++                    color: pixelAltCodeButton.pressed ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
++                    border.color: pixelAltCodeButton.activeFocus ? Kirigami.Theme.highlightColor : "white"
++                    border.width: pixelAltCodeButton.activeFocus ? 2 : 1
++                    opacity: !pixelAltCodeButton.enabled ? 0.35 : (pixelAltCodeButton.hovered || pixelAltCodeButton.activeFocus ? 0.9 : 0.6)
++                    Behavior on opacity { NumberAnimation { duration: Kirigami.Units.shortDuration } }
++                    Behavior on border.width { NumberAnimation { duration: Kirigami.Units.shortDuration } }
 +                }
 +                contentItem: QQC2.Label {
-+                    text: parent.text
++                    text: pixelAltCodeButton.text
 +                    color: "white"
++                    opacity: pixelAltCodeButton.enabled ? 1 : 0.5
 +                    horizontalAlignment: Text.AlignHCenter
 +                }
 +            }
@@ -521,11 +641,13 @@
 +                Layout.topMargin: Kirigami.Units.smallSpacing
 +                wrapMode: Text.WordWrap
 +                horizontalAlignment: Text.AlignHCenter
-+                visible: text.length > 0
++                visible: opacity > 0.01
++                opacity: text.length > 0 ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                text: pixelFlow.statusText
 +                color: (pixelFlow.state === "error" || pixelFlow.state === "expired")
 +                       ? Kirigami.Theme.negativeTextColor
-+                       : "white"
++                       : (pixelFlow.state === "approved" ? Kirigami.Theme.positiveTextColor : "white")
 +            }
 +
 +            Item { Layout.fillHeight: true }
@@ -535,23 +657,33 @@
 +                Layout.bottomMargin: Kirigami.Units.smallSpacing
 +                wrapMode: Text.WordWrap
 +                horizontalAlignment: Text.AlignLeft
-+                visible: pixelFlow.state === "waiting" && !pixelFlow.showAltCode
++                visible: opacity > 0.01
++                opacity: (pixelFlow.state === "waiting" && !pixelFlow.showAltCode) ? 0.65 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                color: "white"
-+                opacity: 0.65
 +                font.pointSize: Kirigami.Theme.defaultFont.pointSize
 +                text: i18nd("plasma-desktop-sddm-theme", "Stellen Sie sicher, dass sich Ihr Smartphone im selben Netzwerk befindet.")
 +            }
 +
 +            QQC2.Button {
 +                Layout.alignment: Qt.AlignHCenter
-+                visible: pixelFlow.state === "error" || pixelFlow.state === "expired"
-+                text: i18nd("plasma-desktop-sddm-theme", "Erneut versuchen")
++                visible: opacity > 0.01
++                opacity: (pixelFlow.state === "error" || pixelFlow.state === "expired") ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++                // Distinct copy for "your code timed out" vs. any other
++                // failure - same action (pixelFlow.open() always starts a
++                // clean new flow), clearer expectation for the user.
++                text: pixelFlow.state === "expired"
++                    ? i18nd("plasma-desktop-sddm-theme", "Neuen Code anfordern")
++                    : i18nd("plasma-desktop-sddm-theme", "Erneut versuchen")
 +                onClicked: pixelFlow.open()
 +            }
 +            QQC2.Button {
 +                Layout.alignment: Qt.AlignHCenter
 +                Layout.bottomMargin: Kirigami.Units.largeSpacing
-+                visible: pixelFlow.state !== "idle"
++                visible: opacity > 0.01
++                opacity: pixelFlow.state !== "idle" ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
 +                text: i18nd("plasma-desktop-sddm-theme", "Abbrechen")
 +                onClicked: pixelFlow.cancel()
 +            }
@@ -573,7 +705,7 @@
 +        }
 +        function onLoginSucceeded() {
 +            console.log("PHONE_FLOW: SDDM loginSucceeded")
-+            pixelPanel.visible = false
++            pixelPanel.open = false
 +        }
 +    }
  }
