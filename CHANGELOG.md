@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.4.0]
+
+### Added
+- Responsive Greeter: the Smartphone-Login panel now adapts to screen
+  width, with exactly one layout active at a time (never both). Wide
+  enough for the sidebar and a usable main login column side by side:
+  unchanged right-anchored sidebar. Otherwise: a centered, size-capped
+  modal overlay card (never full-screen), with the rest of the greeter
+  dimmed and made fully non-interactive/non-focusable behind it.
+  Escape or the Cancel button close it; a stray click on the dimmed
+  background does not, to avoid discarding an in-progress flow. Purely
+  a geometry change; the flow's own state machine, content, and all
+  existing interactions are unchanged in both layouts.
+- Documented (no new code needed): multi-monitor support, since SDDM
+  already instantiates one independent QML scene per screen, so the
+  responsive threshold is evaluated per screen automatically; HiDPI
+  support, since all sizing already goes through Kirigami's own
+  DPI-aware units or Qt's standard logical-pixel scaling.
+
+### Fixed
+- The Smartphone-Login panel's "make sure your phone is on the same
+  network" hint was factually wrong - the device only needs to reach
+  the configured OIDC/Authelia endpoint, not be on the same LAN/WLAN.
+  Replaced with neutral, correct wording.
+
 ## [1.3.0]
 
 ### Added
