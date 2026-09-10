@@ -1,6 +1,6 @@
 --- a/Main.qml
 +++ b/Main.qml
-@@ -31,6 +31,23 @@
+@@ -31,6 +31,33 @@
  
      property string notificationMessage
  
@@ -21,10 +21,20 @@
 +    readonly property real pixelMainAreaMinWidth: 560
 +    readonly property bool pixelOverlayLayout: width < (pixelSidebarWidth + pixelMainAreaMinWidth)
 +
++    // v1.7.0 Login Transition: true for the brief window between a
++    // confirmed smartphone approval and sddm.login() actually being
++    // called (the "Bestätigt" checkmark beat, then "Anmeldung
++    // läuft…" - see pixelApprovedTimer/handleApproved). A session
++    // hand-off is imminent, so the rest of the greeter dims and stops
++    // accepting input here too - previously that only happened while
++    // the overlay card was open, never in sidebar layout, and never
++    // for this specific window.
++    readonly property bool pixelLoginTransitioning: pixelFlow.state === "approved" || pixelFlow.state === "logging_in"
++
      LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
      LayoutMirroring.childrenInherit: true
  
-@@ -66,6 +83,14 @@
+@@ -66,6 +93,20 @@
          property bool uiVisible: true
          property bool blockUI: mainStack.depth > 1 || userListComponent.mainPasswordBox.text.length > 0 || inputPanel.keyboardActive || config.type !== "image"
  
@@ -34,12 +44,18 @@
 +        // visually dimmed - Qt Quick disabling an Item disables mouse,
 +        // keyboard and focus for it and all its children. Never disabled
 +        // in sidebar layout, where the main area stays fully usable.
-+        enabled: !(root.pixelOverlayLayout && pixelPanel.open)
++        //
++        // v1.7.0 Login Transition: also disabled during
++        // root.pixelLoginTransitioning, in *both* layouts - a session
++        // hand-off is imminent, so nothing else in the greeter should
++        // be clickable/focusable right up to the moment sddm.login()
++        // is actually called.
++        enabled: !((root.pixelOverlayLayout && pixelPanel.open) || root.pixelLoginTransitioning)
 +
          hoverEnabled: true
          drag.filterChildren: true
          onPressed: uiVisible = true;
-@@ -134,7 +159,15 @@
+@@ -134,7 +175,15 @@
              id: clock
              property Item shadow: clockShadow
              visible: y > 0 && config.showClock === "true"
@@ -56,7 +72,7 @@
              y: (userListComponent.userList.y + mainStack.y)/2 - height/2
              Layout.alignment: Qt.AlignBaseline
          }
-@@ -144,6 +177,17 @@
+@@ -144,6 +193,17 @@
              anchors {
                  left: parent.left
                  right: parent.right
@@ -74,7 +90,7 @@
              }
              height: root.height + Kirigami.Units.gridUnit * 3
  
-@@ -226,6 +270,16 @@
+@@ -226,6 +286,16 @@
                          text: i18ndc("plasma-desktop-sddm-theme", "For switching to a username and password prompt", "Other…")
                          onClicked: mainStack.push(userPromptComponent)
                          visible: !userListComponent.showUsernamePrompt
@@ -91,7 +107,7 @@
                      }]
  
                  onLoginRequest: {
-@@ -364,6 +418,13 @@
+@@ -364,6 +434,13 @@
                          icon.name: "system-user-list"
                          text: i18nd("plasma-desktop-sddm-theme", "List Users")
                          onClicked: mainStack.pop()
@@ -105,7 +121,7 @@
                      }
                  ]
              }
-@@ -529,4 +590,1221 @@
+@@ -529,4 +606,1234 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -651,12 +667,19 @@
 +    // sidebar narrows the main area instead of covering it). Deliberately
 +    // does not close the panel on click - only Escape/Cancel does, so a
 +    // stray tap can't discard an in-progress flow.
++    //
++    // v1.7.0 Login Transition: also dims (more lightly, since the
++    // sidebar's own panel stays fully legible either way) during
++    // root.pixelLoginTransitioning, in sidebar layout too - the same
++    // "a hand-off is imminent, stop interacting with the rest of the
++    // greeter" signal loginScreenRoot.enabled enforces functionally.
 +    Rectangle {
 +        id: pixelOverlayScrim
 +        anchors.fill: parent
 +        color: "black"
 +        z: 199
-+        opacity: (root.pixelOverlayLayout && pixelPanel.open) ? 0.55 : 0
++        opacity: (root.pixelOverlayLayout && pixelPanel.open) ? 0.55
++            : (root.pixelLoginTransitioning ? 0.35 : 0)
 +        visible: opacity > 0.01
 +        Behavior on opacity {
 +            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.InOutQuad }
@@ -1155,7 +1178,13 @@
 +
 +            QQC2.BusyIndicator {
 +                Layout.alignment: Qt.AlignHCenter
-+                running: pixelFlow.state === "starting"
++                // v1.7.0 Login Transition: also spins through
++                // "logging_in" (previously only "starting"), so there's
++                // continuous progress feedback right up to the moment
++                // sddm.login() actually switches away - the QR card
++                // (including its "approved" checkmark) is already
++                // hidden by then, so nothing else fills that gap.
++                running: pixelFlow.state === "starting" || pixelFlow.state === "logging_in"
 +                visible: opacity > 0.01
 +                opacity: running ? 1 : 0
 +                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }

@@ -1,3 +1,12 @@
+sddm-authelia-passkey (1.7.0-1) unstable; urgency=medium
+
+  * Login Transition: dim and input-block the rest of the greeter
+    during the confirmed-approval-to-session-handoff window, in both
+    the sidebar and overlay layouts; keep the busy indicator spinning
+    through that window too.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 13:12:00 +0200
+
 sddm-authelia-passkey (1.6.0-1) unstable; urgency=medium
 
   * Error/Recovery UX: add a short client-side cooldown on the panel's
