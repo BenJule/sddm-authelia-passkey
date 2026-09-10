@@ -43,11 +43,11 @@ jobs:
       - name: Shellcheck all shipped scripts
         run: |
           apt-get install -y --no-install-recommends shellcheck
-          shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh tests/integration/*.sh
+          shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh tests/*.sh tests/integration/*.sh
 
       - name: bash -n syntax check all shipped scripts
         run: |
-          for f in scripts/*.sh scripts/lib/*.sh tests/integration/*.sh; do
+          for f in scripts/*.sh scripts/lib/*.sh tests/*.sh tests/integration/*.sh; do
             bash -n "$f"
           done
 
@@ -80,6 +80,67 @@ jobs:
           name: deb-package
           path: out/sddm-authelia-passkey_*.deb
           retention-days: 7
+
+  upgrade:
+    runs-on: ubuntu-latest
+    needs: build-and-lintian
+    container: debian:13
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-package
+          path: /tmp/pkg
+
+      - name: Install pristine Breeze baseline + curl
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends sddm-theme-debian-breeze patch curl ca-certificates
+
+      - name: Install the previous published release (v0.7.0)
+        run: |
+          curl -fsSL -o /tmp/prev.deb \
+            https://github.com/BenJule/sddm-authelia-passkey/releases/download/v0.7.0/sddm-authelia-passkey_0.7.0-1_amd64.deb
+          apt-get install -y --no-install-recommends /tmp/prev.deb
+
+      - name: Configure and integrate PAM as an admin would have, on that older version
+        run: |
+          # Pre-v0.5.0-shaped config.conf on purpose (matches
+          # TestLoadConfig_PreV050ConfigStillLoadsWithNewDefaults in
+          # src/broker/config_test.go) - proves an admin's untouched,
+          # years-old config.conf survives an in-place upgrade.
+          cat > /etc/sddm-authelia-passkey/config.conf <<'EOF'
+          authelia_base_url=https://idp.example.com
+          allowed_verification_host=idp.example.com
+          oidc_client_id=pam-authelia
+          allowed_users=alice,bob
+          approval_ttl_seconds=45
+          EOF
+          sed -i 's/^ *//' /etc/sddm-authelia-passkey/config.conf
+          /usr/share/sddm-authelia-passkey/enable-pam.sh
+          sha256sum /etc/pam.d/sddm > /tmp/pam-before-upgrade.sha256
+          sha256sum /etc/sddm-authelia-passkey/config.conf > /tmp/config-before-upgrade.sha256
+          dpkg -l sddm-authelia-passkey | grep ^ii
+
+      - name: Upgrade in place to the newly-built package
+        run: apt-get install -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
+
+      - name: Verify upgrade did not touch PAM or the existing config.conf
+        run: |
+          EXPECTED_VERSION="$(dpkg-deb -f /tmp/pkg/sddm-authelia-passkey_*.deb Version)"
+          INSTALLED_VERSION="$(dpkg-query -W -f='${Version}' sddm-authelia-passkey)"
+          [ "$INSTALLED_VERSION" = "$EXPECTED_VERSION" ]
+          [ "$INSTALLED_VERSION" != "0.7.0-1" ]
+          sha256sum -c /tmp/pam-before-upgrade.sha256
+          sha256sum -c /tmp/config-before-upgrade.sha256
+          grep -q pam_authelia_passkey.so /etc/pam.d/sddm
+
+      - name: Verify the new admin CLI accepts the preserved old-shaped config
+        run: /usr/sbin/sddm-authelia-passkey-admin test-config | grep -q CONFIG_VALID
+
+      - name: Verify new scripts are present after upgrade
+        run: |
+          test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
+          test -x /usr/share/sddm-authelia-passkey/break-glass.sh
 
   lifecycle:
     runs-on: ubuntu-latest

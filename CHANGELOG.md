@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.0]
+
+### Added
+- Explicit config-migration proof:
+  `TestLoadConfig_PreV050ConfigStillLoadsWithNewDefaults` loads a
+  config.conf containing only the handful of keys that existed before
+  v0.5.0 and asserts every since-added key resolves to its documented
+  backward-compatible default.
+- A new CI `upgrade` job installs the previously-published release,
+  writes that same pre-v0.5.0-shaped config.conf, integrates PAM, then
+  performs a real in-place `apt install --only-upgrade` to the
+  newly-built package and asserts `/etc/pam.d/sddm` and `config.conf`
+  are byte-for-byte unchanged, and that the new admin CLI accepts the
+  untouched old config.
+- `docs/upgrade.md`: the supported upgrade path, what an upgrade does
+  and does not touch, and how to recover if something looks wrong
+  afterward.
+- `tests/run-all.sh`: a single entry point that runs the entire test
+  corpus (unit + every root-requiring integration test) in one pass on
+  a lab VM/CI container - see `docs/testing.md`.
+- `docs/validated-environment.md` corrected and expanded: the previous
+  "no multi-user configuration has been exercised" claim was stale
+  (v0.5.0 onward has exercised multi-user/NSS extensively on the lab
+  VM) and is now accurate, alongside an honest note that no real
+  distro/display-manager/desktop-environment matrix exists.
+
 ## [0.8.0]
 
 ### Added
