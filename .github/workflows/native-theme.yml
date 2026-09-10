@@ -167,7 +167,13 @@ jobs:
           # Resolve the exact filename once into $GITHUB_ENV rather than
           # re-globbing "out/sddm-authelia-passkey_*.deb" in every later
           # step - avoids any ambiguity/quoting issue across steps.
-          echo "DEB=$(ls out/sddm-authelia-passkey_*.deb)" >> "$GITHUB_ENV"
+          # Must be an ABSOLUTE path: apt-get install's local-.deb-file
+          # detection does not reliably recognize a bare relative path
+          # without a "./" prefix and instead misparses it as an
+          # attempted package name ("E: Unable to locate package out")
+          # - package.yml's own working install step has always used an
+          # absolute /tmp/pkg/... path for exactly this reason.
+          echo "DEB=$(readlink -f out/sddm-authelia-passkey_*.deb)" >> "$GITHUB_ENV"
 
       - name: 11. Package contains both the compatibility and native theme
         run: |
