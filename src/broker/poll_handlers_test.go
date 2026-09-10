@@ -47,7 +47,7 @@ func TestPollToken_OutcomeOK(t *testing.T) {
 	withTokenEndpoint(t, func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(tokenResponse{AccessToken: "tok-123"})
 	})
-	tok, oauthErr, outcome, err := pollToken("dev-code")
+	tok, oauthErr, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeOK || tok != "tok-123" || oauthErr != "" {
 		t.Fatalf("got tok=%q oauthErr=%q outcome=%v err=%v", tok, oauthErr, outcome, err)
 	}
@@ -58,7 +58,7 @@ func TestPollToken_OutcomeOAuth_AuthorizationPending(t *testing.T) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(tokenResponse{Error: "authorization_pending"})
 	})
-	_, oauthErr, outcome, err := pollToken("dev-code")
+	_, oauthErr, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeOAuth || oauthErr != "authorization_pending" {
 		t.Fatalf("got oauthErr=%q outcome=%v err=%v", oauthErr, outcome, err)
 	}
@@ -69,7 +69,7 @@ func TestPollToken_OutcomeOAuth_SlowDown(t *testing.T) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(tokenResponse{Error: "slow_down"})
 	})
-	_, oauthErr, outcome, err := pollToken("dev-code")
+	_, oauthErr, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeOAuth || oauthErr != "slow_down" {
 		t.Fatalf("got oauthErr=%q outcome=%v err=%v", oauthErr, outcome, err)
 	}
@@ -80,7 +80,7 @@ func TestPollToken_OutcomeOAuth_ExpiredToken(t *testing.T) {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(tokenResponse{Error: "expired_token"})
 	})
-	_, oauthErr, outcome, err := pollToken("dev-code")
+	_, oauthErr, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeOAuth || oauthErr != "expired_token" {
 		t.Fatalf("got oauthErr=%q outcome=%v err=%v", oauthErr, outcome, err)
 	}
@@ -91,7 +91,7 @@ func TestPollToken_OutcomeRateLimit_429MustNotBeTreatedAsOAuthOrAmbiguous(t *tes
 		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write([]byte("rate limited"))
 	})
-	_, oauthErr, outcome, err := pollToken("dev-code")
+	_, oauthErr, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeRateLimit {
 		t.Fatalf("got outcome=%v err=%v, want outcomeRateLimit", outcome, err)
 	}
@@ -105,7 +105,7 @@ func TestPollToken_OutcomeAmbiguous_NonJSONBody(t *testing.T) {
 		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("<html>502 Bad Gateway</html>"))
 	})
-	_, _, outcome, err := pollToken("dev-code")
+	_, _, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeAmbiguous {
 		t.Fatalf("got outcome=%v err=%v, want outcomeAmbiguous", outcome, err)
 	}
@@ -116,7 +116,7 @@ func TestPollToken_OutcomeAmbiguous_JSONWithoutErrorCode(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"message": "internal error"})
 	})
-	_, _, outcome, err := pollToken("dev-code")
+	_, _, outcome, _, err := pollToken("dev-code")
 	if err != nil || outcome != outcomeAmbiguous {
 		t.Fatalf("got outcome=%v err=%v, want outcomeAmbiguous", outcome, err)
 	}
@@ -127,7 +127,7 @@ func TestPollToken_TransportError(t *testing.T) {
 	cfg.AutheliaBaseURL = "http://127.0.0.1:1" // nothing listens here
 	defer func() { cfg.AutheliaBaseURL = prevBase }()
 
-	_, _, _, err := pollToken("dev-code")
+	_, _, _, _, err := pollToken("dev-code")
 	if err == nil {
 		t.Fatal("expected a transport error when the endpoint is unreachable")
 	}

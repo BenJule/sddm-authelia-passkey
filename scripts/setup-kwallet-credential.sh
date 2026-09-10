@@ -1,10 +1,16 @@
 #!/bin/bash
 # Interactively creates (or replaces) the per-user KWallet auto-unlock
-# credential for one local account. Never accepts the secret as an
-# argument (would leak into argv/process listing/shell history) - always
-# reads it interactively, without echo. Run as: sudo bash
+# credential for one local account, and wires the running
+# kwallet-secretd daemon to it. Never accepts the secret as an argument
+# (would leak into argv/process listing/shell history) - always reads it
+# interactively, without echo. Run as: sudo bash
 # setup-kwallet-credential.sh <username>
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=lib/credstore-dir.sh
+source "$SCRIPT_DIR/lib/credstore-dir.sh"
 
 [ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
 
@@ -22,8 +28,11 @@ UID_NUM="$(cut -d: -f3 <<<"$PWLINE")"
 
 CREDSTORE=/etc/credstore.encrypted
 DEST="$CREDSTORE/kwallet.secret.$CANON_USER"
+SERVICE=sddm-authelia-passkey-kwallet-secretd.service
+DROPIN_DIR="/etc/systemd/system/$SERVICE.d"
+DROPIN_FILE="$DROPIN_DIR/50-credential-$CANON_USER.conf"
 
-install -d -m 0755 "$CREDSTORE"
+harden_credstore_dir "$CREDSTORE"
 
 echo "Creating KWallet auto-unlock credential for: $CANON_USER (uid $UID_NUM)"
 echo "This should be that user's real KWallet password (usually the same"
@@ -40,6 +49,25 @@ unset SECRET
 
 install -o root -g root -m 0600 -T "$TMP" "$DEST"
 rm -f "$TMP"
-
 echo "OK: $DEST"
-echo "Restart the daemon to pick it up: systemctl restart sddm-authelia-passkey-kwallet-secretd.service"
+
+# One drop-in file per user (never a shared/rewritten file) - setting
+# this up for alice can structurally never clobber bob's own drop-in.
+install -d -m 0755 -o root -g root "$DROPIN_DIR"
+DROPIN_TMP="$(mktemp "$DROPIN_DIR/.50-credential-$CANON_USER.XXXXXX")"
+trap 'rm -f "$TMP" "$DROPIN_TMP"' EXIT
+cat > "$DROPIN_TMP" <<EOF
+[Service]
+LoadCredentialEncrypted=kwallet.secret.$CANON_USER:$DEST
+EOF
+chmod 0644 "$DROPIN_TMP"
+mv -T "$DROPIN_TMP" "$DROPIN_FILE"
+echo "OK: $DROPIN_FILE"
+
+systemctl daemon-reload
+systemctl restart "$SERVICE"
+systemctl is-active --quiet "$SERVICE" || {
+  echo "FAIL: $SERVICE not active after credential setup - check systemctl status $SERVICE" >&2
+  exit 1
+}
+echo "OK: $SERVICE reloaded and active"
