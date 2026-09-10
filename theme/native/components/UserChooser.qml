@@ -1,0 +1,246 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls.Basic as QQC2
+
+Item {
+    id: root
+
+    property var userModelSource
+    property int initialIndex: 0
+
+    property int selectedIndex: -1
+    property string selectedUsername: ""
+    property string selectedDisplayName: ""
+    property string selectedIcon: ""
+
+    property bool manualMode: false
+
+    property int lastListIndex: -1
+    property string lastListUsername: ""
+    property string lastListDisplayName: ""
+    property string lastListIcon: ""
+
+    signal accountChanged()
+
+    implicitHeight:
+        manualMode
+            ? manualColumn.implicitHeight
+            : listColumn.implicitHeight
+
+    function chooseAccount(index, username, realName, iconSource) {
+        var display =
+            realName && realName.length > 0
+                ? realName
+                : username
+
+        root.manualMode = false
+        root.selectedIndex = index
+        root.selectedUsername = username || ""
+        root.selectedDisplayName = display || ""
+        root.selectedIcon = iconSource || ""
+
+        root.lastListIndex = index
+        root.lastListUsername = root.selectedUsername
+        root.lastListDisplayName = root.selectedDisplayName
+        root.lastListIcon = root.selectedIcon
+
+        root.accountChanged()
+    }
+
+    function beginManualEntry() {
+        root.manualMode = true
+        root.selectedIndex = -1
+        root.selectedUsername = ""
+        root.selectedDisplayName = ""
+        root.selectedIcon = ""
+        manualField.text = ""
+        root.accountChanged()
+        Qt.callLater(function() {
+            manualField.forceActiveFocus()
+        })
+    }
+
+    function setManualUsername(value) {
+        if (!root.manualMode)
+            return
+
+        var clean = value ? value.trim() : ""
+
+        if (root.selectedUsername === clean)
+            return
+
+        root.selectedUsername = clean
+        root.selectedDisplayName = clean
+        root.selectedIcon = ""
+        root.accountChanged()
+    }
+
+    function showUserList() {
+        root.manualMode = false
+
+        root.selectedIndex = root.lastListIndex
+        root.selectedUsername = root.lastListUsername
+        root.selectedDisplayName = root.lastListDisplayName
+        root.selectedIcon = root.lastListIcon
+
+        root.accountChanged()
+    }
+
+    // Materialize the model once to resolve the initial role values without
+    // inventing a second account database.
+    Repeater {
+        model: root.userModelSource
+
+        delegate: Item {
+            required property int index
+            required property string name
+            required property string realName
+            required property string icon
+
+            visible: false
+
+            Component.onCompleted: {
+                if (root.selectedUsername.length === 0
+                        && index === root.initialIndex) {
+                    root.chooseAccount(
+                        index,
+                        name,
+                        realName,
+                        icon
+                    )
+                }
+            }
+        }
+    }
+
+    ColumnLayout {
+        id: listColumn
+
+        width: root.width
+        visible: !root.manualMode
+        spacing: 6
+
+        QQC2.Label {
+            Layout.fillWidth: true
+            text: qsTr("Benutzerkonto")
+            color: "white"
+            opacity: 0.76
+            font.pixelSize: 12
+        }
+
+        ListView {
+            id: userList
+
+            Layout.fillWidth: true
+            Layout.preferredHeight:
+                Math.min(
+                    132,
+                    Math.max(44, contentHeight)
+                )
+
+            model: root.userModelSource
+            clip: true
+            spacing: 2
+            currentIndex: root.selectedIndex
+
+            delegate: QQC2.ItemDelegate {
+                id: userDelegate
+
+                required property int index
+                required property string name
+                required property string realName
+                required property string icon
+
+                width: ListView.view.width
+                height: 44
+
+                highlighted:
+                    !root.manualMode
+                    && index === root.selectedIndex
+
+                onClicked: root.chooseAccount(
+                    index,
+                    name,
+                    realName,
+                    icon
+                )
+
+                contentItem: RowLayout {
+                    spacing: 10
+
+                    UserAvatar {
+                        Layout.preferredWidth: 32
+                        Layout.preferredHeight: 32
+                        iconSource: userDelegate.icon
+                        label:
+                            userDelegate.realName.length > 0
+                                ? userDelegate.realName
+                                : userDelegate.name
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text:
+                                userDelegate.realName.length > 0
+                                    ? userDelegate.realName
+                                    : userDelegate.name
+                            color: "white"
+                            elide: Text.ElideRight
+                            font.pixelSize: 13
+                            font.bold: true
+                        }
+
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: userDelegate.name
+                            color: "white"
+                            opacity: 0.58
+                            elide: Text.ElideRight
+                            font.pixelSize: 10
+                        }
+                    }
+                }
+            }
+        }
+
+        QQC2.Button {
+            Layout.alignment: Qt.AlignLeft
+            text: qsTr("Anderes Konto eingeben")
+            onClicked: root.beginManualEntry()
+        }
+    }
+
+    ColumnLayout {
+        id: manualColumn
+
+        width: root.width
+        visible: root.manualMode
+        spacing: 7
+
+        QQC2.Label {
+            Layout.fillWidth: true
+            text: qsTr("Benutzername")
+            color: "white"
+            opacity: 0.76
+            font.pixelSize: 12
+        }
+
+        QQC2.TextField {
+            id: manualField
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("Benutzername eingeben")
+            onTextChanged: root.setManualUsername(text)
+        }
+
+        QQC2.Button {
+            text: qsTr("Zur Benutzerliste")
+            onClicked: root.showUserList()
+        }
+    }
+}

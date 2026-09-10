@@ -63,7 +63,11 @@ override_dh_auto_install:
 	install -D -m 0644 theme/native/theme.conf debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
 	install -D -m 0644 theme/native/components/UserAvatar.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml
 	install -D -m 0644 theme/native/components/PowerActionsRow.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
-	install -D -m 0644 theme/native/components/SmartphoneLoginPreview.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPreview.qml
+	install -D -m 0644 theme/native/components/UserChooser.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml
+	install -D -m 0644 theme/native/components/SmartphoneFlowController.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml
+	install -D -m 0644 theme/native/components/ConnectionStatus.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ConnectionStatus.qml
+	install -D -m 0644 theme/native/components/CountdownView.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/CountdownView.qml
+	install -D -m 0644 theme/native/components/SmartphoneLoginPanel.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml
 
 override_dh_installdocs:
 	dh_installdocs docs/*.md README.md

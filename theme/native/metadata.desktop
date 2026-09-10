@@ -1,11 +1,11 @@
 [SddmGreeterTheme]
 Name=SDDM Authelia Passkey Native
-Description=Native from-scratch SDDM Qt6 theme foundation for sddm-authelia-passkey (experimental, v1.9.0)
+Description=Original Qt6 SDDM theme with broker-backed Smartphone Login
 Author=BenJule
 Copyright=(c) 2026, Benjamin Lütker
 License=GPL-3
 Type=sddm-theme
-Version=1.9.0
+Version=1.10.0
 Website=https://github.com/BenJule/sddm-authelia-passkey
 MainScript=Main.qml
 ConfigFile=theme.conf
