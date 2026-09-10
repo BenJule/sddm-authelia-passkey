@@ -164,16 +164,26 @@ jobs:
         run: |
           mkdir -p out
           mv ../sddm-authelia-passkey_*.deb out/
+          # Resolve the exact filename once into $GITHUB_ENV rather than
+          # re-globbing "out/sddm-authelia-passkey_*.deb" in every later
+          # step - avoids any ambiguity/quoting issue across steps.
+          echo "DEB=$(ls out/sddm-authelia-passkey_*.deb)" >> "$GITHUB_ENV"
 
       - name: 11. Package contains both the compatibility and native theme
         run: |
-          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
-          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml'
-          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop'
-          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml'
+          # dpkg-deb -c piped straight into "grep -q" lets grep exit as
+          # soon as it finds a match, SIGPIPEing dpkg-deb's internal tar
+          # subprocess ("tar subprocess was killed by signal (Broken
+          # pipe)") - harmless for the grep itself, but avoided here by
+          # writing the full listing out first instead.
+          dpkg-deb -c "$DEB" > /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml' /tmp/deb-contents.txt
 
       - name: Install package
-        run: apt-get install -y --no-install-recommends out/sddm-authelia-passkey_*.deb
+        run: apt-get install -y --no-install-recommends "$DEB"
 
       - name: 12. Package install does not select the native theme
         run: |
@@ -209,7 +219,7 @@ jobs:
           test -f /usr/share/sddm/themes/debian-breeze/Main.qml
 
       - name: Reinstall for the upgrade check below
-        run: apt-get install -y --no-install-recommends out/sddm-authelia-passkey_*.deb
+        run: apt-get install -y --no-install-recommends "$DEB"
 
       - name: 14. Upgrade path remains GREEN with the native theme present
         run: |
@@ -219,7 +229,7 @@ jobs:
           # dedicated package.yml workflow already proves the real
           # cross-version upgrade path for everything except the new
           # native theme files added in this release).
-          apt-get install -y --reinstall --no-install-recommends out/sddm-authelia-passkey_*.deb
+          apt-get install -y --reinstall --no-install-recommends "$DEB"
           if [ -f /etc/pam.d/sddm ]; then
             sha256sum /etc/pam.d/sddm > /tmp/pam-after.sha256
           else
