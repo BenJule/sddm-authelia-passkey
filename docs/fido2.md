@@ -92,6 +92,38 @@ authenticator support FIDO2 user verification (PIN or biometric) at
 authentication time - set to `false` if your device only supports plain
 U2F presence ("touch") verification.
 
+## Group policy (optional)
+
+By default any account with an enrolled credential can use the FIDO2
+path. To restrict *who is even offered it* at all (e.g. only
+workstation admins, not every desktop user), set `fido2_required_group`
+in `config.conf` to an existing local/NSS group name before running
+`enable-fido2.sh`:
+
+```
+fido2_required_group=fido2-users
+```
+
+This inserts one additional, additive guard line directly above
+`pam_u2f.so`:
+
+```
+auth    [success=1 default=ignore]      pam_succeed_if.so user notingroup fido2-users quiet_success
+auth    [success=N+1 default=ignore]     pam_u2f.so authfile=... cue userverification=1
+```
+
+A user *not* in the group makes `pam_succeed_if.so` succeed (the
+"notingroup" test passes), which immediately skips the `pam_u2f.so` line
+entirely via `[success=1]` - it is never invoked for them, and they fall
+straight through to the smartphone/passkey path exactly as if FIDO2
+weren't installed. A user *in* the group falls through the guard
+(`default=ignore`) into `pam_u2f.so` as normal. `enable-fido2.sh` refuses
+to proceed if the named group doesn't exist (`getent group`), rather
+than silently creating or ignoring it; `disable-fido2.sh` removes the
+guard line along with the rest of the block, whether or not it's
+present, and either shape round-trips back to a byte-identical
+`/etc/pam.d/sddm`.
+
 ## Security model
 
 - **Per-user, per-credential isolation**: `pam_u2f` looks up the

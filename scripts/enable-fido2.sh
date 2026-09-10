@@ -44,10 +44,17 @@ fi
 AUTHFILE=/etc/sddm-authelia-passkey/fido2_mappings
 UV=true
 PINV=false
+GROUP=""
 if [ -f "$CONFIG" ]; then
     v=$(awk -F= '/^fido2_authfile=/{print $2; exit}' "$CONFIG") && [ -n "$v" ] && AUTHFILE="$v"
     v=$(awk -F= '/^fido2_require_user_verification=/{print $2; exit}' "$CONFIG") && [ -n "$v" ] && UV="$v"
     v=$(awk -F= '/^fido2_require_pin_verification=/{print $2; exit}' "$CONFIG") && [ -n "$v" ] && PINV="$v"
+    v=$(awk -F= '/^fido2_required_group=/{print $2; exit}' "$CONFIG") && [ -n "$v" ] && GROUP="$v"
+fi
+
+if [ -n "$GROUP" ] && ! getent group "$GROUP" >/dev/null 2>&1; then
+    bad "fido2_required_group=$GROUP does not exist (getent group failed) - refusing to guess"
+    exit 1
 fi
 
 MODULE_ARGS="authfile=$AUTHFILE cue"
@@ -69,11 +76,16 @@ sha256sum /etc/pam.d/common-auth /etc/pam.d/sudo /etc/pam.d/sshd > "$BACKUP/comm
 info "backup: $BACKUP"
 
 TMPFILE=$(mktemp)
-awk -v skip="$SKIP" -v args="$MODULE_ARGS" '
+awk -v skip="$SKIP" -v args="$MODULE_ARGS" -v group="$GROUP" '
     /^auth[ \t]+\[success=[0-9]+[ \t]+default=ignore\][ \t]+pam_authelia_passkey\.so/ && !done {
         print "# Native FIDO2/U2F security key path (optional, opt-in) -"
         print "# tried first: fastest local path, no phone/network needed."
-        print "# See docs/fido2.md."
+        if (group != "") {
+            print "# See docs/fido2.md. Restricted to group \x27" group "\x27 via fido2_required_group."
+            print "auth    [success=1 default=ignore]      pam_succeed_if.so user notingroup " group " quiet_success"
+        } else {
+            print "# See docs/fido2.md."
+        }
         print "auth    [success=" skip " default=ignore]      pam_u2f.so " args
         print ""
         print $0
@@ -105,5 +117,9 @@ install -d -m 0755 -o root -g root "$(dirname "$AUTHFILE")"
 [ -f "$AUTHFILE" ] || install -o root -g root -m 0600 /dev/null "$AUTHFILE"
 
 echo
-ok "FIDO2_PAM_INSTALL=GREEN (success=$SKIP computed fresh from live common-auth)"
+if [ -n "$GROUP" ]; then
+    ok "FIDO2_PAM_INSTALL=GREEN (success=$SKIP computed fresh from live common-auth, restricted to group '$GROUP')"
+else
+    ok "FIDO2_PAM_INSTALL=GREEN (success=$SKIP computed fresh from live common-auth, no group restriction)"
+fi
 echo "READY_FOR_SDDM_RESTART=YES (not done automatically - restart sddm yourself when ready)"

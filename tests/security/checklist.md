@@ -103,3 +103,36 @@ independently of trusting that the tests above are correct:
       talks to the broker's own `127.0.0.1:7899` API, unaware of
       `provider_kind` by construction (no QML change was made or needed
       for this feature).
+- [ ] An unreachable `provider_kind=oidc` provider (not merely a
+      misconfigured one) produces a hard error at every dispatch point
+      (device-authorization, token poll, identity verification), never a
+      fabricated success (verified:
+      `TestProviderDispatch_UnreachableProviderNeverApproves`) - the
+      failover-never-silently-grants invariant for the provider layer,
+      complementing the existing marker-absence proof at the PAM layer
+      (`tests/integration/pam-flow-test.sh`'s "no marker" case).
+- [ ] `fido2_required_group`: a user not in the configured group never
+      reaches `pam_u2f.so` at all (the `pam_succeed_if.so
+      user notingroup` guard skips it via `[success=1]`); a user in the
+      group is unaffected. `enable-fido2.sh` refuses to configure a group
+      that doesn't exist rather than silently accepting a typo.
+      `disable-fido2.sh` removes the guard line along with the rest of
+      the block in both the gated and ungated shape, round-tripping to a
+      byte-identical `/etc/pam.d/sddm` either way.
+- [ ] `disable-pam.sh` refuses to run while `pam_u2f.so` is still
+      integrated above `pam_authelia_passkey.so`, rather than removing
+      the wrong line or leaving `pam_u2f.so` pointing at a shifted
+      target.
+- [ ] `break-glass.sh` only ever neutralizes lines it can positively
+      identify (`pam_authelia_passkey.so`/`pam_u2f.so`), only ever
+      comments them out (never deletes), and only ever restores lines
+      carrying its own `# BREAK-GLASS-DISABLED: ` marker - a line an
+      admin commented out for an unrelated reason is never touched by
+      `--restore`.
+- [ ] `sddm-authelia-passkey-admin test-config` never requires root and
+      never starts the broker's listener - it only calls `LoadConfig`/
+      `Validate` and exits.
+- [ ] The broker's `SECURITY:`-tagged log lines (authorization denials,
+      identity mismatches, successful approvals) never include a secret
+      value (token, credential, marker content) - only usernames,
+      session IDs, and policy-decision outcomes.

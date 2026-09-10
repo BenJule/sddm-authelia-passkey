@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -236,6 +237,24 @@ func markPendingFlowCancelled(fs *flowState) bool {
 }
 
 func main() {
+	checkConfig := flag.Bool("check-config", false, "validate "+configPath+" and exit - no root required, no server started, no PAM/systemd touched. Used by the admin CLI's test-config subcommand.")
+	flag.Parse()
+
+	if *checkConfig {
+		c, err := LoadConfig(configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "CONFIG_INVALID: %v\n", err)
+			os.Exit(1)
+		}
+		providerKind := c.ProviderKind
+		if providerKind == "" {
+			providerKind = "authelia"
+		}
+		fmt.Printf("CONFIG_VALID account_source=%s provider_kind=%s account_count=%d\n",
+			c.AccountSource, providerKind, len(c.AllowedUsers))
+		os.Exit(0)
+	}
+
 	if os.Geteuid() != 0 {
 		log.Fatal("sddm-authelia-passkey broker must run as root (writes root-owned approval markers)")
 	}
@@ -412,7 +431,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		// allowlisted, unknown to NSS, root, denied, below minimum_uid,
 		// wrong/no group) in the response body - avoid both username
 		// enumeration and leaking which specific policy rule fired.
-		log.Printf("session start: %q not authorized: %v", username, err)
+		log.Printf("SECURITY: session start: %q not authorized: %v", username, err)
 		http.Error(w, "not permitted", http.StatusForbidden)
 		return
 	}
@@ -743,7 +762,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			fs.Status = "approved"
 			fs.mu.Unlock()
 			releaseResult = releaseSuccess
-			log.Printf("session %s: approved for user %s", sessionID, username)
+			log.Printf("SECURITY: session %s: approved for user %s", sessionID, username)
 			return
 		}
 	}
