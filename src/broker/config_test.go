@@ -95,3 +95,51 @@ func TestLoadConfig_MissingFile(t *testing.T) {
 		t.Fatal("expected error for missing file")
 	}
 }
+
+// TestLoadConfig_PreV050ConfigStillLoadsWithNewDefaults is the explicit
+// upgrade/config-migration proof for v0.9.0: a config.conf written
+// before account_source/provider_kind/FIDO2/policy keys existed (the
+// exact shape shipped up to v0.4.x) must still load correctly after an
+// in-place package upgrade, with every key introduced since then taking
+// its documented backward-compatible default - dpkg's conffile handling
+// preserves the admin's existing config.conf verbatim across an
+// upgrade, so this is the only thing standing between "apt upgrade" and
+// a broker that refuses to start.
+func TestLoadConfig_PreV050ConfigStillLoadsWithNewDefaults(t *testing.T) {
+	p := writeTempConfig(t, `
+authelia_base_url=https://idp.example.com
+allowed_verification_host=idp.example.com
+oidc_client_id=pam-authelia
+allowed_users=alice,bob
+approval_ttl_seconds=45
+`)
+	c, err := LoadConfig(p)
+	if err != nil {
+		t.Fatalf("a pre-v0.5.0-shaped config.conf must still load after upgrading: %v", err)
+	}
+	if c.AccountSource != "local" {
+		t.Fatalf("account_source default: got %q, want \"local\"", c.AccountSource)
+	}
+	if c.ProviderKind != "" && c.ProviderKind != "authelia" {
+		t.Fatalf("provider_kind default: got %q, want \"\" or \"authelia\"", c.ProviderKind)
+	}
+	if !isKnownProviderKind(c.ProviderKind) {
+		t.Fatalf("provider_kind default %q must be accepted by isKnownProviderKind", c.ProviderKind)
+	}
+	if c.ApprovalTTLSeconds != 45 {
+		t.Fatalf("an explicitly-set pre-existing value must survive unchanged: got %d, want 45", c.ApprovalTTLSeconds)
+	}
+	// require_group_match defaults to true, but is only consulted when
+	// account_source=nss (see Validate) - account_source=local here must
+	// still validate despite that default, since the nss-only check
+	// never fires for it.
+	if !c.RequireGroupMatch {
+		t.Fatalf("require_group_match default: got false, want true (its effect is gated on account_source=nss, not on this default)")
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("a pre-v0.5.0-shaped config.conf must still validate after upgrading: %v", err)
+	}
+	if !c.DenyUsers["root"] {
+		t.Fatalf("deny_users must implicitly cover root after Validate: got %+v", c.DenyUsers)
+	}
+}
