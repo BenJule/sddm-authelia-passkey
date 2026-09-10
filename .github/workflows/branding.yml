@@ -130,5 +130,5 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           test -n "$BASE_SHA"
-          git cat-file -e "${BASE_SHA}^{commit}"
-          git diff --exit-code "$BASE_SHA"...HEAD --             src/broker             src/pam             src/kwallet-secretd
+          git -c safe.directory="$GITHUB_WORKSPACE" cat-file -e "${BASE_SHA}^{commit}"
+          git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code "$BASE_SHA"...HEAD --             src/broker             src/pam             src/kwallet-secretd
