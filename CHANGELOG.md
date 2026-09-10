@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.0]
+
+### Added
+- Vendor-neutral optional branding through SDDM's native
+  `theme.conf.user`: local logo, brand name, hostname, administrator-set
+  domain/realm, avatar visibility and optional custom accent.
+- Safe upgrade preservation for an existing root-owned regular
+  `theme.conf.user`; symlink/non-root-owned overrides are refused.
+- Default configuration remains visually identical to v1.7.0 and no
+  authentication/PAM/OIDC/FIDO2 behaviour changes.
+
 ## [1.7.0]
 
 ### Added

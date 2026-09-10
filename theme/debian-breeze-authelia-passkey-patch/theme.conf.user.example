@@ -1,0 +1,25 @@
+[General]
+
+# Optional vendor-neutral branding.
+# Leave all values at defaults for the normal Debian Breeze appearance.
+
+ui_brand_name=
+ui_brand_logo=
+
+# SDDM's own hostname, not a remote/provider-supplied value.
+ui_show_hostname=false
+
+# Domain/realm is deliberately administrator supplied.
+# The theme never guesses one from OIDC/NSS data.
+ui_show_domain=false
+ui_brand_domain=
+
+# Existing behaviour remains enabled by default.
+ui_show_avatar=true
+
+# system or custom
+ui_accent=system
+
+# Used only with ui_accent=custom.
+# Exactly #RRGGBB, for example #3daee9.
+ui_accent_color=
