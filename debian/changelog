@@ -1,3 +1,17 @@
+sddm-authelia-passkey (1.10.0-1) unstable; urgency=medium
+
+  * Bring the original Native Theme to functional feature parity:
+    switchable users, manual username entry, broker-backed Smartphone
+    Login, QR/device code, identity display, countdown, status,
+    cancellation, retry/recovery and password fallback.
+  * Add deterministic Native Theme flow-state and localhost broker
+    contract tests.
+  * Add Debian 13 APT client signature validation to release publishing.
+  * Keep the Native Theme opt-in and preserve the compatibility theme,
+    PAM configuration, broker configuration and service lifecycle.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 16:37:03 +0200
+
 sddm-authelia-passkey (1.9.0-1) unstable; urgency=medium
 
   * Add an experimental, opt-in, from-scratch native Qt6 SDDM theme

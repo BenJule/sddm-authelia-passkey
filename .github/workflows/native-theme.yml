@@ -33,7 +33,12 @@ jobs:
           test -d theme/native/components
           test -f theme/native/components/UserAvatar.qml
           test -f theme/native/components/PowerActionsRow.qml
-          test -f theme/native/components/SmartphoneLoginPreview.qml
+          test -f theme/native/components/UserChooser.qml
+          test -f theme/native/components/SmartphoneFlowController.qml
+          test -f theme/native/components/ConnectionStatus.qml
+          test -f theme/native/components/CountdownView.qml
+          test -f theme/native/components/SmartphoneLoginPanel.qml
+          test ! -e theme/native/components/SmartphoneLoginPreview.qml
           test -f theme/native/README.md
           test -f theme/native/PROVENANCE.md
 
@@ -56,10 +61,17 @@ jobs:
           # theme immediately above them in the same file.
           ! awk '/theme\/native\//{print}' debian/rules | grep -q '^\s*patch '
 
-      - name: 6. No remote http:// or https:// resources in native QML
+      - name: 6. No remote resources; localhost broker is the only HTTP origin
         run: |
-          ! grep -n 'http://\|https://' \
-            theme/native/Main.qml theme/native/components/*.qml
+          BAD="$(
+            grep -RhoE 'https?://[^"[:space:]]+' \
+              theme/native/Main.qml theme/native/components/*.qml |
+            grep -vE '^http://127\.0\.0\.1:7899' || true
+          )"
+          if [ -n "$BAD" ]; then
+            echo "$BAD" >&2
+            exit 1
+          fi
 
       - name: 7. No Debian/KDE/provider artwork or copied assets
         run: |
@@ -80,14 +92,44 @@ jobs:
             qml6-module-qtquick \
             qml6-module-qtquick-controls \
             qml6-module-qtquick-layouts \
-            qml6-module-qtquick-window
+            qml6-module-qtquick-window \
+            qml6-module-qttest \
+            xvfb \
+            python3
 
       - name: 8. qmllint on all native QML
         run: |
-          /usr/lib/qt6/bin/qmllint theme/native/Main.qml
-          /usr/lib/qt6/bin/qmllint theme/native/components/UserAvatar.qml
-          /usr/lib/qt6/bin/qmllint theme/native/components/PowerActionsRow.qml
-          /usr/lib/qt6/bin/qmllint theme/native/components/SmartphoneLoginPreview.qml
+          find theme/native -name '*.qml' -print0 |
+            xargs -0 -n1 /usr/lib/qt6/bin/qmllint
+
+      - name: 8b. Native parity contract and deterministic flow tests
+        run: |
+          set -eu
+          python3 tests/native/test_feature_parity.py
+          python3 -m py_compile \
+            tests/native/test_feature_parity.py \
+            tests/native/mock_broker.py
+
+          python3 tests/native/mock_broker.py >/tmp/native-mock.log 2>&1 &
+          MOCK_PID=$!
+          trap 'kill "$MOCK_PID" >/dev/null 2>&1 || true' EXIT
+
+          python3 - <<'WAIT'
+import socket
+import time
+
+for _ in range(100):
+    try:
+        with socket.create_connection(("127.0.0.1", 17899), timeout=0.1):
+            break
+    except OSError:
+        time.sleep(0.05)
+else:
+    raise SystemExit("mock broker did not start")
+WAIT
+
+          xvfb-run -a /usr/lib/qt6/bin/qmltestrunner \
+            -input tests/native
 
       - name: 16. Auth implementation code unchanged versus PR base
         if: github.event_name == 'pull_request'
@@ -187,6 +229,9 @@ jobs:
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml' /tmp/deb-contents.txt
 
       - name: Install package
         run: apt-get install -y --no-install-recommends "$DEB"
@@ -213,7 +258,10 @@ jobs:
         run: |
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
-          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPreview.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml
+          test ! -e /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPreview.qml
           # Debian Breeze compatibility theme is untouched by native theme install.
           test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           dpkg -V sddm-authelia-passkey
