@@ -1,3 +1,15 @@
+sddm-authelia-passkey (1.9.0-1) unstable; urgency=medium
+
+  * Add an experimental, opt-in, from-scratch native Qt6 SDDM theme
+    (theme/native/), installed alongside the existing Debian Breeze
+    compatibility theme, never replacing it and never selected
+    automatically. Foundation-level: password login, session
+    selection, user display, power actions, keyboard-layout
+    affordance, and a clearly-labelled Smartphone-Login preview
+    (full flow parity deferred to v1.10.0). See docs/native-theme.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 15:20:00 +0200
+
 sddm-authelia-passkey (1.8.0-1) unstable; urgency=medium
 
   * Add optional vendor-neutral SDDM theme branding via theme.conf.user.
