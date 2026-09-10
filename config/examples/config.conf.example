@@ -7,13 +7,41 @@
 #
 # Lines starting with # are comments. No quoting, no multi-line values.
 
-# Base URL of your Authelia (or compatible OIDC provider) instance.
-# Must be https:// unless authelia_dev_insecure_http=true (see below).
+# Which OIDC Device Authorization Grant (RFC 8628) provider to talk to:
+#   authelia (default) - unchanged from v0.1-v0.6, uses authelia_base_url
+#     below with Authelia's own hardcoded endpoint paths and identity
+#     claim ("authelia.pam.username").
+#   oidc - any standards-compliant provider that publishes an OIDC
+#     discovery document advertising device_authorization_endpoint
+#     (Keycloak, Authentik, or any other OIDC Provider) - uses
+#     oidc_discovery_url/oidc_identity_claim below instead of
+#     authelia_base_url. See docs/architecture.md's "Provider
+#     abstraction" section.
+provider_kind=authelia
+
+# Base URL of your Authelia instance. Required (and only consulted) when
+# provider_kind=authelia. Must be https:// unless
+# authelia_dev_insecure_http=true (see below).
 authelia_base_url=https://idp.example.com
 
-# OIDC client configured in Authelia for the Device Authorization Grant
-# (RFC 8628). See docs/installation.md for the required Authelia client
-# config (grant type, scopes, redirect none needed).
+# Required (and only consulted) when provider_kind=oidc: the provider's
+# discovery document URL (its .well-known/openid-configuration). If it
+# does not advertise device_authorization_endpoint, the broker refuses
+# to start rather than guess at a conventional path.
+#oidc_discovery_url=https://idp.example.com/.well-known/openid-configuration
+
+# Which userinfo claim carries the local username to bind to. Only
+# consulted when provider_kind=oidc (authelia mode always uses its own
+# "authelia.pam.username"). Defaults to the standard OIDC
+# "preferred_username" claim if left unset - most providers, including
+# Keycloak and Authentik, populate it with the account's login name.
+#oidc_identity_claim=preferred_username
+
+# OIDC client configured on your provider for the Device Authorization
+# Grant (RFC 8628). See docs/installation.md for the required Authelia
+# client config (grant type, scopes, redirect none needed); for
+# Keycloak/Authentik/generic OIDC, configure a public client with the
+# Device Authorization Grant enabled and matching scopes.
 oidc_client_id=pam-authelia
 oidc_scopes=openid authelia.pam
 
