@@ -33,13 +33,13 @@ jobs:
 
       - name: Validate SDDM typed branding configuration
         run: |
-          grep -q 'config.stringValue("ui_brand_name")' /tmp/theme-test/Main.qml
-          grep -q 'config.stringValue("ui_brand_logo")' /tmp/theme-test/Main.qml
-          grep -q 'config.boolValue("ui_show_hostname")' /tmp/theme-test/Main.qml
-          grep -q 'config.boolValue("ui_show_domain")' /tmp/theme-test/Main.qml
-          grep -q 'config.boolValue("ui_show_avatar")' /tmp/theme-test/Main.qml
-          grep -q 'config.keys()' /tmp/theme-test/Main.qml
-          grep -q 'sddm.hostName' /tmp/theme-test/Main.qml
+          grep -Fq 'config.stringValue("ui_brand_name")' /tmp/theme-test/Main.qml
+          grep -Fq 'config.stringValue("ui_brand_logo")' /tmp/theme-test/Main.qml
+          grep -Fq 'config.boolValue("ui_show_hostname")' /tmp/theme-test/Main.qml
+          grep -Fq 'config.boolValue("ui_show_domain")' /tmp/theme-test/Main.qml
+          grep -Fq 'config.boolValue("ui_show_avatar")' /tmp/theme-test/Main.qml
+          grep -Fq 'config.keys()' /tmp/theme-test/Main.qml
+          grep -Fq 'sddm.hostName' /tmp/theme-test/Main.qml
 
       - name: Validate branding defaults and example
         run: |
@@ -59,8 +59,8 @@ jobs:
 
       - name: Reject remote logo logic structurally
         run: |
-          grep -q 'pixelBrandLogoLocal' /tmp/theme-test/Main.qml
-          grep -q 'indexOf("://") === -1' /tmp/theme-test/Main.qml
+          grep -Fq 'pixelBrandLogoLocal' /tmp/theme-test/Main.qml
+          grep -Fq 'indexOf("://") === -1' /tmp/theme-test/Main.qml
 
       - name: Preserve safe root-owned theme.conf.user
         run: |
