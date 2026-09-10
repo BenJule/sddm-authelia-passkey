@@ -304,7 +304,7 @@ connection-status chip size to their own (short, fixed) text via
 `implicitWidth`, so longer translated strings simply grow the badge
 rather than clipping.
 
-## Accessibility 2.0 (v1.5.0)
+## Compatibility Theme Accessibility 2.0 (v1.5.0)
 
 Every custom element this project adds to the panel now carries
 explicit `Accessible` attached properties (`import QtQuick` already
@@ -329,6 +329,33 @@ This is reviewed against the Qt Quick `Accessible` API and Qt Quick
 Controls conventions, not verified against a running screen reader
 (AT-SPI/Orca) - see `docs/accessibility.md`'s "What has not been
 specifically verified" section.
+
+## Native Theme Accessibility Hardening (v1.12.0)
+
+The independent Native Theme applies accessibility at the presentation
+boundary only. Authentication authority remains entirely unchanged.
+
+The Smartphone panel's accessible role follows the v1.11 responsive
+layout: Dialog when the panel is modal, Pane when it is a sidebar.
+Account selection is represented as a List containing selectable
+ListItem objects. Connection status and critical flow states have
+explicit status/alert semantics, while the QR card has a textual
+description pointing at the device-code alternative.
+
+Decorative duplicate content such as account avatars and status-color
+dots is removed from the accessibility tree. Native Qt Quick controls
+retain their standard keyboard behaviour while password/session/layout
+controls gain explicit accessible names.
+
+Focus transitions are deterministic: initial login focus remains on the
+password field, manual-account mode moves focus to username entry, and
+opening Smartphone-Login moves focus into the panel. Returning from the
+panel restores the password path.
+
+No accessibility property is consulted by PAM, the broker,
+SmartphoneFlowController, approval-marker handling or `sddm.login()`.
+Accessibility therefore cannot create an alternative authentication
+success path.
 
 ## Error/Recovery UX (v1.6.0)
 

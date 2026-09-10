@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// SDDM Authelia Passkey Native v1.11.0
+// SDDM Authelia Passkey Native v1.12.0
 //
 // Original Qt6 SDDM theme implementation. Authentication remains the
 // responsibility of SDDM/PAM. The Smartphone flow communicates only with
@@ -165,6 +165,9 @@ Item {
         border.width: 1
         border.color: Qt.rgba(1, 1, 1, 0.14)
 
+        Accessible.role: Accessible.Pane
+        Accessible.name: qsTr("Anmeldung")
+
         enabled:
             !(
                 root.smartphonePanelOpen
@@ -241,10 +244,24 @@ Item {
                 echoMode: TextInput.Password
                 placeholderText: qsTr("Passwort")
                 enabled: userChooser.selectedUsername.length > 0
+
+                Accessible.name: qsTr("Passwort")
+                Accessible.description:
+                    userChooser.selectedDisplayName.length > 0
+                        ? qsTr("Passwort für %1").arg(
+                            userChooser.selectedDisplayName
+                        )
+                        : qsTr(
+                            "Passwort für das ausgewählte Benutzerkonto"
+                        )
+                Accessible.passwordEdit: true
+
                 onAccepted: root.attemptPasswordLogin()
             }
 
             QQC2.Label {
+                id: loginFailureLabel
+
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
@@ -252,12 +269,20 @@ Item {
                 text: qsTr("Anmeldung fehlgeschlagen.")
                 color: "#ff8585"
                 font.pixelSize: 12
+
+                Accessible.role: Accessible.AlertMessage
+                Accessible.name: text
             }
 
             QQC2.Button {
+                id: loginButton
+
                 Layout.fillWidth: true
                 text: qsTr("Anmelden")
                 enabled: userChooser.selectedUsername.length > 0
+
+                Accessible.defaultButton: true
+
                 onClicked: root.attemptPasswordLogin()
             }
 
@@ -277,6 +302,7 @@ Item {
                     color: "white"
                     opacity: 0.72
                     font.pixelSize: 11
+                    Accessible.ignored: true
                 }
 
                 QQC2.ComboBox {
@@ -284,6 +310,8 @@ Item {
 
                     Layout.fillWidth: true
                     model: sessionModel
+
+                    Accessible.name: qsTr("Sitzung")
                     textRole: "name"
                     currentIndex:
                         sessionModel.lastIndex >= 0
@@ -307,10 +335,15 @@ Item {
                     color: "white"
                     opacity: 0.72
                     font.pixelSize: 11
+                    Accessible.ignored: true
                 }
 
                 QQC2.ComboBox {
+                    id: keyboardCombo
+
                     Layout.fillWidth: true
+
+                    Accessible.name: qsTr("Tastaturlayout")
 
                     model:
                         typeof keyboard !== "undefined"
@@ -377,6 +410,7 @@ Item {
             || width < 520
 
         qrSide: responsiveMetrics.qrSide
+        modalLayout: responsiveMetrics.overlayLayout
 
         controller: smartphoneFlow
         open: root.smartphonePanelOpen

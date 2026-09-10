@@ -13,6 +13,9 @@ RowLayout {
 
     spacing: 12
 
+    Accessible.role: Accessible.ToolBar
+    Accessible.name: qsTr("Systemaktionen")
+
     QQC2.Button {
         text: qsTr("Ruhezustand")
         visible: typeof sddm !== "undefined" && sddm.canSuspend === true

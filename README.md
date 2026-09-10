@@ -7,7 +7,7 @@
 [![release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey?include_prereleases)](https://github.com/BenJule/sddm-authelia-passkey/releases)
 [![license](https://img.shields.io/github/license/BenJule/sddm-authelia-passkey)](LICENSE)
 
-**Status: v1.10.0, stable.** No known P0/P1 bugs within the documented
+**Status: stable.** No known P0/P1 bugs within the documented
 validated scope (see `docs/validated-environment.md`); `config.conf`,
 the admin CLI, and the shipped scripts' exit codes/status lines are
 covered by a stability commitment going forward (`docs/stability.md`).

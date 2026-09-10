@@ -6,6 +6,23 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Native Theme accessibility hardening with explicit semantic roles,
+  accessible names/descriptions, account-selection state, QR/device-code
+  alternatives and deterministic accessibility-contract tests.
+- Layout-aware Smartphone-Login semantics: Dialog in modal overlay mode
+  and Pane in non-modal sidebar mode.
+
+### Changed
+- Native keyboard-focus transitions are explicit for Smartphone-Login,
+  manual username entry and password fallback.
+- Decorative avatars/status dots are excluded from the accessibility tree
+  where adjacent text already conveys the same information.
+- Stable-status documentation no longer hard-codes the latest release
+  number in the README.
+
+## [1.11.0] - 2026-09-10
+
+### Added
 - Native Theme responsive UX with a geometry-derived sidebar/overlay
   breakpoint, compact short-screen spacing, adaptive QR sizing and
   deterministic coverage across 1024x600 through ultrawide 2560x1080.
@@ -15,8 +32,8 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 - Native Theme runtime CI explicitly installs `xauth` alongside Xvfb,
   removing reliance on an implicit/transitive test-runner dependency.
-- Documentation now reflects the v1.10.0 stable release, the internal
-  Debian 13 APT mirror, and Native Theme feature-parity status.
+- Documentation reflects the internal Debian 13 APT mirror and Native
+  Theme feature-parity status.
 
 ## [1.10.0]
 

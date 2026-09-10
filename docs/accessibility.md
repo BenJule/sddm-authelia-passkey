@@ -55,15 +55,40 @@ Framework-provided components this project reuses unmodified
 (Kirigami/Plasma buttons, labels) inherit whatever accessibility
 support those frameworks already provide.
 
-**What has not been specifically verified**: the properties above are
-structurally correct per the Qt Quick `Accessible` attached-property
-API and reviewed against Qt Quick Controls conventions, but have not
-been exercised with an actual screen reader (e.g. Orca via AT-SPI)
-against the patched theme running under SDDM - that would require
-interactive screen-reader tooling this project's CI/VM lab pipeline
-doesn't currently have. If you rely on a screen reader, please test in
-a lab/VM environment before relying on this for your only login path,
-and consider filing an issue with what you find.
+## Native Theme accessibility hardening (v1.12.0)
+
+The independent Qt6 Native Theme now carries the same accessibility
+principles explicitly instead of inheriting assumptions from the
+compatibility theme.
+
+Its custom Smartphone-Login panel reports `Accessible.Dialog` when it
+is a modal overlay and `Accessible.Pane` when it is the non-modal
+sidebar. The QR representation is exposed as a graphic with a textual
+description and the visible device code remains available as the
+non-camera alternative.
+
+Connection state, critical authentication state and remaining-flow
+time expose explicit accessible semantics. Account selection exposes
+List/ListItem roles and selected state. Decorative account avatars and
+status-color dots are ignored to avoid duplicate announcements.
+
+The Native Theme also makes the password, session and keyboard-layout
+controls explicitly named for assistive technology. Opening the
+Smartphone panel transfers keyboard focus into it; closing it or
+returning to password login restores focus to the password field.
+Manual account entry similarly moves focus to the username field.
+
+These properties are checked structurally in
+`tests/native/test_accessibility_contract.py`, exercised through Qt's
+QML test runner, and parsed by `qmllint`.
+
+**What has not been specifically verified**: neither the compatibility
+theme nor the Native Theme is claimed to have been exercised end to end
+with a real screen reader such as Orca via AT-SPI inside an actual SDDM
+login session. That requires interactive accessibility tooling outside
+the current CI pipeline. If you depend on a screen reader, perform a
+lab/VM test before making this your only login path and report any
+assistive-technology-specific issue you find.
 
 ## What else has not been specifically verified
 

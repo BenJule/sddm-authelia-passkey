@@ -6,8 +6,8 @@ The package ships two SDDM themes side by side:
 - the original Qt6 Native Theme at
   `/usr/share/sddm/themes/sddm-authelia-passkey-native`
 
-The Native Theme remains opt-in in v1.10.0. Package installation and upgrade
-do not select it automatically and do not restart SDDM.
+The Native Theme remains opt-in. Package installation and upgrade do
+not select it automatically and do not restart SDDM.
 
 ## v1.10.0 feature parity
 
@@ -53,6 +53,37 @@ The responsive contract is exercised at 1024x600, 1280x720,
 No broker, PAM, approval-marker or authentication decision changes are
 part of responsive UX.
 
+## v1.12 accessibility hardening
+
+v1.12 applies explicit accessibility semantics to the independent
+Native Theme instead of relying only on visual text or implicit widget
+behaviour.
+
+The Native Theme accessibility contract includes:
+
+- Dialog semantics for the modal Smartphone-Login layout and Pane
+  semantics for the non-modal sidebar layout
+- explicit names/descriptions for the Smartphone panel, QR code,
+  device code, connection status and countdown
+- an AlertMessage role for authentication states that require attention
+- List/ListItem semantics for account selection
+- selected-state exposure for the current account
+- explicit accessible names for password, session and keyboard-layout
+  controls
+- decorative avatars and status dots excluded from the accessibility
+  tree to avoid duplicate announcements
+- focus transfer into the Smartphone panel when it opens and back to
+  the password path when it closes
+
+The password login path remains available throughout.
+
+Structural semantics are covered by deterministic tests and qmllint.
+Actual AT-SPI/Orca interaction under a real SDDM login session remains
+a lab/manual verification item and is not claimed by CI.
+
+No broker, PAM, approval-marker or authentication decision changes are
+part of accessibility hardening.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
@@ -90,9 +121,11 @@ v1.10.0 established feature parity.
 v1.11 adds responsive Native Theme presentation while keeping the
 authentication model unchanged.
 
+v1.12 adds Native Theme accessibility hardening while keeping the
+authentication model unchanged.
+
 Later releases separately address:
 
-- v1.12 accessibility hardening
 - v1.13 native branding
 - later recovery, visual regression and cutover work
 
