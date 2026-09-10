@@ -81,6 +81,16 @@ stack. See `docs/installation.md`.
   Directory accounts (NSS)" section. This project never talks to
   LDAP/AD/SSSD directly and implements no directory-credential caching
   of its own.
+- Native FIDO2/U2F hardware security keys (YubiKey, Nitrokey, SoloKey,
+  etc.): optional, off by default, via the upstream `pam_u2f.so`
+  (`libpam-u2f`) - never reimplemented by this project - see
+  `docs/fido2.md`. Verified: PAM stacking arithmetic, idempotent enable/
+  disable round-trip, and the full existing smartphone/passkey
+  regression suite still passing with it present but unenrolled, all on
+  VM124. Not verified: an actual live authentication against physical
+  FIDO2 hardware - none was available in this environment; the
+  CTAP2/USB-HID protocol handling is `pam_u2f`/`libfido2`'s own,
+  separately-maintained implementation.
 
 ## Requirements
 

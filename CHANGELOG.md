@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0]
+
+### Added
+- Optional native FIDO2/U2F hardware security key support (YubiKey,
+  Nitrokey, SoloKey, etc.) via the upstream `pam_u2f.so` (package
+  `libpam-u2f`) - never reimplemented by this project. Wired in
+  additively ahead of the smartphone/passkey path using the same
+  dynamic `[success=N default=ignore]` skip-count computation used
+  throughout this project (`scripts/enable-fido2.sh`/
+  `scripts/disable-fido2.sh`). Per-user enrollment/revocation/listing
+  tooling around `pamu2fcfg`'s authfile
+  (`scripts/setup-fido2-credential.sh`,
+  `scripts/revoke-fido2-credential.sh`,
+  `scripts/list-fido2-credentials.sh`; shared logic in
+  `scripts/lib/fido2-authfile.sh`, unit-tested for cross-user isolation
+  and multi-credential support). Off by default, fully backward
+  compatible - see `docs/fido2.md`.
+
 ## [0.5.0]
 
 ### Added
