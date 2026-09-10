@@ -117,6 +117,35 @@ on-next-start behavior. `pixelFlow.open()` in the theme is itself
 idempotent - calling it while a flow is already in progress does not start
 a second one.
 
+## Identity Awareness (v1.1.0)
+
+`GET /identity?username=X` is a read-only, pre-flow lookup: the theme
+calls it as soon as a flow's `targetUsername` is captured (same moment
+`/start` is called), so the panel can show *whose* account a flow is
+(or would be) for without waiting on the device-authorization round
+trip. It runs through the exact same `authorizeAccount()` check
+`/start` uses - an unauthorized or unknown username gets the identical
+403 with no distinguishing reason, so this endpoint reveals nothing
+`/start` doesn't already. It never touches flow/session/rate-limit
+state.
+
+The response's `display_name` comes from a fresh NSS/local lookup's
+GECOS field (falling back to the plain username if empty) and
+`account_source` echoes the server's own `local`/`nss` policy setting -
+both already-trusted, server-side-resolved values. This is deliberately
+**not** where `resolvedUsername` (the OIDC-claim-derived identity
+`pollAndDecide` binds against for the actual login decision) comes from
+- an unauthenticated claim is never presented as a trustworthy "whose
+account is this" answer, only ever checked against the already-bound
+`targetUsername` after a real approval.
+
+The theme resolves an avatar for the identity header the same way: by
+matching `targetUsername` against SDDM's own `userModel` (the exact
+model backing the main account list), never a second/independent
+avatar source. An NSS-only account SDDM's own list doesn't enumerate
+simply gets no avatar match - the panel falls back to a generic
+identity icon rather than guessing.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits
