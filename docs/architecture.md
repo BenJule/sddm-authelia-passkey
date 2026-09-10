@@ -330,6 +330,44 @@ Controls conventions, not verified against a running screen reader
 (AT-SPI/Orca) - see `docs/accessibility.md`'s "What has not been
 specifically verified" section.
 
+## Error/Recovery UX (v1.6.0)
+
+Every place `Main.qml` sets `pixelFlow.state` to `"error"` or
+`"expired"` also sets `pixelFlow.errorKind` (a machine-readable cause,
+never shown directly - `statusText` stays the free-form sentence) and
+calls `armRetryCooldown(seconds)`, except the one case where no
+request was ever sent (`errorKind: "no_account"` - selecting an
+account first is the only thing that helps, so there's nothing to
+debounce):
+
+| `errorKind`        | Cause                                          | Cooldown |
+|---------------------|------------------------------------------------|----------|
+| `offline`            | `/start` unreachable (`xhr.status === 0`)      | 4s |
+| `rate_limited`        | broker's own local per-user start-limiter (429) | 10s |
+| `not_authorized`      | `/start` 403 - this account isn't eligible      | 3s |
+| `start_failed`         | any other non-200 from `/start`                | 4s |
+| `expired`               | RFC 8628 deadline / upstream give-up (collapsed, see "Flow outcome versus local failure lockout") | 2s |
+| `denied`                 | `access_denied` or an unrecognized broker error | 4s |
+| `handoff_failed`          | empty resolved username / invalid session index (should never happen) | 4s |
+
+The cooldown (`pixelFlow.retryAvailableAt`/`retryCooldownRemaining`,
+ticked by `pixelRetryCooldownTimer`) is a **UI courtesy debounce only**
+- it disables the retry/new-code button for a few seconds so a stray
+double-click or repeated mashing can't hammer the broker's `/start`
+endpoint, and shows a countdown in the button's own label. It never
+touches Authelia's real rate limiting (see "Upstream rate limiting"
+below) and is not itself a security control - a modified/replacement
+theme skipping it changes nothing about what the broker or Authelia
+actually enforce.
+
+`errorKind === "not_authorized"` additionally shows a small hint
+pointing at the always-available password field (see
+`docs/accessibility.md`'s "password path is always available"
+guarantee) - retrying doesn't change whether this account is eligible
+for Smartphone-Login, so the panel points at the path that's
+guaranteed to still work instead of just repeating the same failure
+sentence with nothing actionable.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits

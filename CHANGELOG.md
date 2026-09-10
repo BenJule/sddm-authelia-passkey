@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.0]
+
+### Added
+- Error/Recovery UX: the retry/new-code button now has a short
+  client-side cooldown (2-10s depending on cause) after a failure, so
+  a stray double-click or repeated mashing can't hammer the broker's
+  `/start` endpoint - purely a UI courtesy debounce, never touching
+  Authelia's own real rate limiting. The button's label shows the
+  countdown while it's disabled.
+- When a specific account isn't eligible for Smartphone-Login (403),
+  the panel now also points at the always-available password field
+  instead of just repeating a failure sentence retrying can't fix.
+- See `docs/architecture.md`'s new "Error/Recovery UX" section for the
+  full per-cause cooldown table.
+
 ## [1.5.0]
 
 ### Added

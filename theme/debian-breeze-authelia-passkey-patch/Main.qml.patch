@@ -105,7 +105,7 @@
                      }
                  ]
              }
-@@ -529,4 +590,1121 @@
+@@ -529,4 +590,1221 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -176,6 +176,36 @@
 +        // (see docs/architecture.md).
 +        property string connectionState: "ready"
 +
++        // v1.6.0 Error/Recovery UX: which specific error/expiry cause is
++        // currently showing, so the retry affordance can react to it
++        // (cooldown length, and whether to point at the always-available
++        // password field - see docs/accessibility.md's "password path is
++        // always available" guarantee). statusText stays the free-form
++        // user-facing sentence; this is the machine-readable counterpart,
++        // never itself shown directly.
++        property string errorKind: ""
++
++        // A short client-side cooldown before the retry/new-code button
++        // becomes clickable again, so a stray double-click (or someone
++        // mashing the button) can't hammer the broker's /start endpoint
++        // in a tight loop. Purely a UI courtesy debounce - never touches
++        // Authelia's own real rate limiting (see docs/architecture.md's
++        // "Upstream rate limiting" section) and is never itself a
++        // security control.
++        property real retryAvailableAt: 0
++        property int retryCooldownRemaining: 0
++
++        function armRetryCooldown(seconds) {
++            retryAvailableAt = Date.now() / 1000 + seconds
++            updateRetryCooldown()
++            pixelRetryCooldownTimer.start()
++        }
++        function updateRetryCooldown() {
++            var remaining = retryAvailableAt - Date.now() / 1000
++            retryCooldownRemaining = Math.max(0, Math.ceil(remaining))
++            if (retryCooldownRemaining <= 0) pixelRetryCooldownTimer.stop()
++        }
++
 +        // The local account SDDM itself currently has selected - the
 +        // avatar list's highlighted user, or whatever is typed into the
 +        // manual username field when that prompt is showing instead.
@@ -210,11 +240,15 @@
 +            }
 +            if (sddmSelectedUsername.length === 0) {
 +                state = "error"
++                errorKind = "no_account"
 +                statusText = i18nd("plasma-desktop-sddm-theme", "Bitte zuerst ein Konto auswählen oder eingeben.")
 +                pixelPanel.open = true
++                // No request was sent, so no cooldown needed - retrying
++                // does nothing until an account is actually selected.
 +                return
 +            }
 +            targetUsername = sddmSelectedUsername
++            errorKind = ""
 +            state = "starting"
 +            connectionState = "connecting"
 +            statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung wird vorbereitet…")
@@ -294,29 +328,48 @@
 +                    // all, e.g. the broker isn't running. Deliberately
 +                    // generic wording: never a hostname/port/errno.
 +                    pixelFlow.state = "error"
++                    pixelFlow.errorKind = "offline"
 +                    pixelFlow.connectionState = "offline"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldedienst nicht erreichbar.")
++                    // Retrying instantly is unlikely to find the broker
++                    // back up - a slightly longer cooldown than the other
++                    // cases avoids a burst of doomed requests.
++                    pixelFlow.armRetryCooldown(4)
 +                    return
 +                }
 +                if (xhr.status === 429) {
 +                    pixelFlow.state = "error"
++                    pixelFlow.errorKind = "rate_limited"
 +                    pixelFlow.connectionState = "rate_limited"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Zu viele Anmeldeversuche. Bitte kurz warten.")
++                    // Longer cooldown: this 429 is the broker's own local
++                    // per-user start-limiter reacting to repeated
++                    // attempts, so retrying immediately would only make
++                    // it worse.
++                    pixelFlow.armRetryCooldown(10)
 +                    return
 +                }
 +                if (xhr.status === 403) {
 +                    // We always send an explicit username now (captured
 +                    // from SDDM's own selection) - 403 means this specific
 +                    // account is not allowed, not "ambiguous, please ask".
++                    // Retrying won't change that, so the panel also points
++                    // at the password field - always available regardless
++                    // of this account's Smartphone-Login eligibility (see
++                    // docs/accessibility.md).
 +                    pixelFlow.state = "error"
++                    pixelFlow.errorKind = "not_authorized"
 +                    pixelFlow.connectionState = "error"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Smartphone-Login ist für dieses Konto nicht verfügbar.")
++                    pixelFlow.armRetryCooldown(3)
 +                    return
 +                }
 +                if (xhr.status !== 200) {
 +                    pixelFlow.state = "error"
++                    pixelFlow.errorKind = "start_failed"
 +                    pixelFlow.connectionState = "error"
 +                    pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung konnte nicht gestartet werden.")
++                    pixelFlow.armRetryCooldown(4)
 +                    return
 +                }
 +                pixelFlow.sessionId = JSON.parse(xhr.responseText).session_id
@@ -450,12 +503,19 @@
 +                        // The broker's own log keeps the precise reason
 +                        // for diagnosis; the greeter never needs to.
 +                        pixelFlow.state = "expired"
++                        pixelFlow.errorKind = "expired"
 +                        pixelFlow.connectionState = "ready"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "QR-Code abgelaufen.")
++                        // Short cooldown: this is an ordinary, expected
++                        // timeout, not a failure that repeated retries
++                        // could make worse - just anti-double-click.
++                        pixelFlow.armRetryCooldown(2)
 +                    } else {
 +                        pixelFlow.state = "error"
++                        pixelFlow.errorKind = "denied"
 +                        pixelFlow.connectionState = "error"
 +                        pixelFlow.statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                        pixelFlow.armRetryCooldown(4)
 +                    }
 +                    break
 +                }
@@ -481,7 +541,9 @@
 +            if (resolvedUsername.length === 0) {
 +                console.log("PHONE_FLOW: AUTH_HANDOFF_ERROR=EMPTY_USERNAME")
 +                state = "error"
++                errorKind = "handoff_failed"
 +                statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                armRetryCooldown(4)
 +                return
 +            }
 +
@@ -490,7 +552,9 @@
 +            if (idx < 0) {
 +                console.log("PHONE_FLOW: AUTH_HANDOFF_ERROR=INVALID_SESSION_INDEX")
 +                state = "error"
++                errorKind = "handoff_failed"
 +                statusText = i18nd("plasma-desktop-sddm-theme", "Anmeldung fehlgeschlagen.")
++                armRetryCooldown(4)
 +                return
 +            }
 +
@@ -549,6 +613,11 @@
 +    }
 +
 +    Timer { id: pixelPollTimer; interval: 2000; repeat: true; onTriggered: pixelFlow.poll() }
++    // v1.6.0 Error/Recovery UX: ticks the retry button's cooldown
++    // countdown. Only running while armRetryCooldown() has set a future
++    // retryAvailableAt - self-stops in updateRetryCooldown() once it
++    // reaches zero, never left running idle.
++    Timer { id: pixelRetryCooldownTimer; interval: 1000; repeat: true; onTriggered: pixelFlow.updateRetryCooldown() }
 +    // v1.2.0: purely local, purely cosmetic - never itself an authority
 +    // on expiry (see pixelFlow.updateCountdown's doc comment). Runs
 +    // whenever a deadline is known and the flow is still live, so it
@@ -1167,6 +1236,25 @@
 +                Accessible.name: text
 +            }
 +
++            // v1.6.0 Error/Recovery UX: this specific account not being
++            // eligible for Smartphone-Login is not something retrying
++            // fixes - point at the always-available password field
++            // instead (see docs/accessibility.md's "password path is
++            // always available" guarantee) rather than just repeating
++            // the same failure sentence with nothing actionable.
++            QQC2.Label {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing / 2
++                wrapMode: Text.WordWrap
++                horizontalAlignment: Text.AlignHCenter
++                visible: opacity > 0.01
++                opacity: (pixelFlow.state === "error" && pixelFlow.errorKind === "not_authorized") ? 0.85 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++                color: "white"
++                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
++                text: i18nd("plasma-desktop-sddm-theme", "Sie können sich weiterhin mit Ihrem Passwort anmelden.")
++            }
++
 +            Item { Layout.fillHeight: true }
 +
 +            QQC2.Label {
@@ -1183,16 +1271,28 @@
 +            }
 +
 +            QQC2.Button {
++                id: pixelRetryButton
 +                Layout.alignment: Qt.AlignHCenter
 +                visible: opacity > 0.01
 +                opacity: (pixelFlow.state === "error" || pixelFlow.state === "expired") ? 1 : 0
 +                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++                // v1.6.0 Error/Recovery UX: disabled for a short cooldown
++                // after each failure (armRetryCooldown) so a stray
++                // double-click or repeated mashing can't hammer the
++                // broker's /start endpoint - see pixelFlow's own doc
++                // comment. The countdown is appended to the same base
++                // label rather than replacing it, so the action stays
++                // recognizable while waiting.
++                enabled: pixelFlow.retryCooldownRemaining <= 0
++                readonly property string baseText: pixelFlow.state === "expired"
++                    ? i18nd("plasma-desktop-sddm-theme", "Neuen Code anfordern")
++                    : i18nd("plasma-desktop-sddm-theme", "Erneut versuchen")
 +                // Distinct copy for "your code timed out" vs. any other
 +                // failure - same action (pixelFlow.open() always starts a
 +                // clean new flow), clearer expectation for the user.
-+                text: pixelFlow.state === "expired"
-+                    ? i18nd("plasma-desktop-sddm-theme", "Neuen Code anfordern")
-+                    : i18nd("plasma-desktop-sddm-theme", "Erneut versuchen")
++                text: pixelFlow.retryCooldownRemaining > 0
++                    ? i18nd("plasma-desktop-sddm-theme", "%1 (%2s)", baseText, pixelFlow.retryCooldownRemaining)
++                    : baseText
 +                onClicked: pixelFlow.open()
 +            }
 +            QQC2.Button {

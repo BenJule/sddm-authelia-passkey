@@ -1,3 +1,12 @@
+sddm-authelia-passkey (1.6.0-1) unstable; urgency=medium
+
+  * Error/Recovery UX: add a short client-side cooldown on the panel's
+    retry/new-code button (never touches Authelia's real rate
+    limiting), and point at the always-available password field when
+    a specific account isn't eligible for Smartphone-Login.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 12:58:00 +0200
+
 sddm-authelia-passkey (1.5.0-1) unstable; urgency=medium
 
   * Accessibility 2.0: add explicit Accessible.role/name/description to
