@@ -713,3 +713,35 @@ from an OIDC claim.
 The installer preserves a safe existing root-owned regular
 `theme.conf.user` when rebuilding the additive theme, while refusing symlinks
 or non-root-owned override files.
+
+## Native Theme Feature Parity (v1.10.0)
+
+The Native Theme now implements the complete presentation-side Smartphone
+Login flow while preserving the existing authentication boundary.
+
+The QML controller talks only to the localhost broker. It captures an
+immutable canonical username and SDDM session index when a flow begins.
+Every asynchronous callback is bound to both a monotonically increasing
+client generation and the broker session ID. Late callbacks from cancelled,
+superseded or otherwise stale flows therefore cannot retarget a newer login.
+
+The broker's approved username must exactly match the captured target before
+the theme asks SDDM to invoke PAM. The QML response itself is not an
+authentication decision; PAM still has to validate and consume the protected
+single-use approval marker.
+
+Account switching cancels any active Smartphone flow. Closing or explicitly
+cancelling the panel uses the broker's `/cancel` endpoint. A late `/start`
+response from an already-invalidated client generation is immediately
+cancelled rather than adopted.
+
+The visible expiry countdown is derived from `expires_at` but remains
+presentation-only. It does not change authentication state or create extra
+broker polls.
+
+Connection state is separate from authentication-flow state. A temporary
+local-broker connectivity failure is shown as offline without being
+misclassified as an authentication denial. Provider polling throttling is
+shown neutrally as a temporary service wait.
+
+The password path remains independent and available throughout the design.

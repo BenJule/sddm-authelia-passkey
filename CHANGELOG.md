@@ -3,6 +3,26 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.10.0]
+
+### Added
+- Native Theme Feature Parity: switchable SDDM user list, manual username
+  entry, complete broker-backed Smartphone Login, QR and alternate device
+  code, trusted local/NSS identity presentation, countdown, connection
+  state, approval transition, cancellation, retry/recovery states and
+  password fallback.
+- Deterministic Native Theme QML state-machine and localhost broker-contract
+  tests, including stale-generation/session isolation, exact username
+  binding, start throttling, expiry, cancellation, offline behavior and
+  identity mismatch fail-closed handling.
+- Release-engineering validation for a real Debian 13 APT client so
+  repository signature failures are not hidden by successful HTTP fetches.
+
+### Security
+- Native QML communicates only with the localhost project broker.
+- PAM remains the authentication authority.
+- No changes to broker, PAM or KWallet authentication implementation.
+
 ## [1.9.0]
 
 ### Added
