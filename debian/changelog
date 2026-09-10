@@ -1,3 +1,18 @@
+sddm-authelia-passkey (1.0.0-1) unstable; urgency=medium
+
+  * First stable release. No known P0/P1 bugs within the documented
+    validated scope (docs/validated-environment.md).
+  * Add docs/stability.md (config.conf/admin-CLI/script stability
+    commitment) and docs/accessibility.md.
+  * LoadConfig now refuses an unrecognized config.conf key instead of
+    silently ignoring it.
+  * Update docs/threat-model.md, docs/security.md, docs/installation.md,
+    docs/troubleshooting.md, docs/supply-chain.md for everything added
+    since v0.5.0; correct a stale workflow-filename reference and an
+    understated SBOM-signing claim in docs/supply-chain.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 06:03:12 +0200
+
 sddm-authelia-passkey (0.9.0-1) unstable; urgency=medium
 
   * Add explicit config-migration test and a CI job that performs a real
