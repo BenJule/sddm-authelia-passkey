@@ -13,6 +13,11 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
 
     steps:
+      - name: Install Git for checkout and scope validation
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
