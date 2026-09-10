@@ -69,7 +69,10 @@ override_dh_installdocs:
 	dh_installdocs docs/*.md README.md
 
 override_dh_installsystemd:
-	dh_installsystemd --no-enable --no-start
+	# Do not start/enable services on a fresh install, but if an admin
+	# already has a project service running, an in-place package upgrade
+	# must not stop it and leave it inactive.
+	dh_installsystemd --no-enable --no-start --no-stop-on-upgrade
 
 override_dh_dwz:
 	# Go binaries carry compressed .debug_abbrev sections dwz cannot
