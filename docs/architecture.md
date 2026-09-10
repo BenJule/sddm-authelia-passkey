@@ -170,6 +170,71 @@ small PNG, and the extra error-correction budget trades a slightly
 denser code for materially better real-world scan success against a
 phone camera's glare/angle/partial obstruction.
 
+## Service/Connection UX (v1.3.0)
+
+`pixelFlow.connectionState` is deliberately a separate property from
+`pixelFlow.state` (flow *progress*: idle/starting/waiting/approved/...):
+it answers "is the broker/upstream actually reachable right now", with
+exactly six values - `ready`, `connecting`, `waiting`, `rate_limited`,
+`offline`, `error` - each with fixed, generic German wording (a status
+chip: colored dot + short label, never color alone) that never names a
+hostname, HTTP status code, or OIDC/LDAP term. Those details exist only
+in the broker's own log (`journalctl -u sddm-authelia-passkey-broker`,
+or `SECURITY:`-tagged lines specifically via the admin CLI's
+`audit-log`), never in the greeter.
+
+`offline` is the one genuinely new failure mode this introduces
+detection for: `xhr.status === 0` on either the initial `/start` POST
+or an in-flight `/status` poll means a real network-level failure (no
+HTTP response at all - e.g. the broker process isn't running), distinct
+from any 4xx/5xx the broker itself returned. A transient offline poll
+never tears the flow down by itself - `pixelPollTimer` just keeps
+retrying on its normal interval, and a later successful poll clears the
+indicator back to `waiting` automatically.
+
+### A single open QR code is one device flow, not repeated login attempts
+
+Authelia's own token-endpoint rate limiter (`internal/middlewares/rate_limiting.go`
+as of 4.39.23) periodically returns HTTP 429 to the broker's normal
+RFC 8628 polling - confirmed live against the project's real Authelia
+instance, with observed `Retry-After` delays ranging from under a
+minute up to roughly 55 minutes under this session's own repeated
+testing traffic. This is expected, ordinary behavior for **one** open
+device flow, not a consequence of a user attempting to log in multiple
+times - `checkAndReserve`'s local per-user start-limiter (a completely
+separate mechanism, gating `/start` itself) is the only thing that
+actually represents repeated login *attempts*.
+
+The broker's own classification of this was already correct before the
+UI wording fix below: `rateLimitDecision` (see its doc comment) honors
+`Retry-After`, backs off without busy-looping, and gives up cleanly if
+the required wait would exceed the flow's own remaining lifetime -
+`pollAndDecide` never counts a rate-limited, expired, or
+otherwise-ambiguous/infrastructure outcome as an authentication
+failure (`releaseNeutral` in every such case; only a genuine
+`access_denied` or username mismatch sets `releaseAuthFailure`). What
+was wrong was purely presentational: the QML theme labeled all of
+this "Zu viele Anmeldeversuche" ("too many login attempts"), which is
+backwards - it describes the *user's* behavior, not the *broker's*
+polling being throttled. Fixed by:
+
+- **Still pending, upstream momentarily throttling polls**
+  (`resp.rate_limited` while `resp.status === "pending"`): reworded to
+  "Der Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte
+  kurz warten." - never "Zu viele Anmeldeversuche".
+- **The flow can no longer succeed** - RFC 8628 `expired`, the
+  rate-limit-give-up case (`errorFlow(fs, "rate_limited")` when the
+  required wait exceeds the remaining flow lifetime), and
+  `temporarily_unavailable` (too many ambiguous/infrastructure errors
+  in a row) - all three now collapse to the exact same user-facing
+  treatment as plain expiry: `state = "expired"`, "QR-Code
+  abgelaufen." + the existing "Neuen Code anfordern" retry button. The
+  broker's log keeps the precise distinct reason for diagnosis; the
+  greeter doesn't need to distinguish them for the user, and showing
+  three different phrasings for what is, from the user's perspective,
+  the identical "this code doesn't work anymore, get a new one"
+  outcome would only add confusion.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits

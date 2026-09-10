@@ -3,6 +3,55 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0]
+
+### Added
+- Service/Connection UX: a compact status chip (colored dot + short,
+  generic German label - never color alone) for `pixelFlow.connectionState`,
+  a new property distinct from flow-progress `state` with exactly six
+  values: `ready`, `connecting`, `waiting`, `rate_limited`, `offline`,
+  `error`. Shown only when it's not the plain happy path, so it adds no
+  noise to normal use.
+- `offline` detection: `xhr.status === 0` on `/start` or `/status` (a
+  real network-level failure, e.g. the broker isn't running) is now
+  distinguished from any HTTP error response, with its own clear,
+  non-technical message. A transient offline poll never tears the flow
+  down - it clears back to `waiting` automatically once the broker
+  responds again.
+
+### Fixed
+- A normally-left-open QR code no longer risks being misreported as
+  "Zu viele Anmeldeversuche" (too many login attempts). That phrasing
+  is now reserved exclusively for the broker's own local per-user
+  start-limiter (`/start` returning 429 from repeated *start* clicks) -
+  every other upstream-throttle-related case was reworded:
+  - **Still pending, upstream momentarily throttling status polls**
+    (Authelia's own token-endpoint rate limiter, RFC 8628
+    `slow_down`/HTTP 429 - normal and expected for a single open device
+    flow, not a sign of repeated login attempts): now reads "Der
+    Anmeldedienst wartet derzeit mit weiteren Statusabfragen. Bitte
+    kurz warten."
+  - **Flow can no longer succeed** (RFC 8628 deadline passed, OR the
+    upstream throttle's own Retry-After would exceed the flow's
+    remaining lifetime, OR too many ambiguous/infrastructure errors in
+    a row): all three now collapse to the same "QR-Code abgelaufen." +
+    "Neuen Code anfordern" treatment already used for plain expiry -
+    the broker's log keeps the precise reason, the greeter doesn't need
+    it.
+- No broker-side behavior changed - `rateLimitDecision`,
+  `outcomeRateLimit`/`outcomeAmbiguous` classification, and
+  `releaseNeutral` for every one of these outcomes (never counted as
+  an auth failure) were already correct; this was a presentation-layer
+  fix only. Confirmed against real Authelia (4.39.23) token-endpoint
+  rate-limiter behavior observed live (delays up to ~55 minutes during
+  this session's own repeated testing) - read-only, no Authelia config
+  or restart involved.
+
+### Unchanged (explicitly preserved)
+- No technical backend/OIDC/LDAP detail is ever shown in the greeter -
+  all six connection states use fixed, generic wording; hostnames/HTTP
+  codes/OIDC terms stay in the broker's own log only.
+
 ## [1.2.0]
 
 ### Added

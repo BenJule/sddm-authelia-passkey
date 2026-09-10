@@ -160,3 +160,16 @@ independently of trusting that the tests above are correct:
       any client-supplied value - the QML theme never derives displayed
       identity from `resolvedUsername` (the post-approval OIDC-claim
       binding used only for the exact-match security check).
+- [ ] Upstream rate-limiting, RFC 8628 expiry, and ambiguous/infrastructure
+      polling errors never increment the local per-user failure-lockout
+      counter (`releaseNeutral` in every such `pollAndDecide` outcome -
+      verified: `TestPollAndDecide_RateLimitTerminalIsNeutral`,
+      `TestPollAndDecide_LongPendingFlow_NoRateLimit_NeverCountsAsFailure`,
+      `TestPollAndDecide_AmbiguousExhaustion_IsNeutral_NotFailure`) -
+      only a genuine `access_denied` or username mismatch does
+      (`releaseAuthFailure`). A single QR code left open normally is one
+      device flow, never treated as repeated login attempts.
+- [ ] Cancel and supersede both interrupt an in-progress rate-limit
+      backoff immediately, not after the backoff itself elapses
+      (verified: `TestPollAndDecide_CancelInterruptsLongBackoff`,
+      `TestSupersedePriorFlow_InterruptsLongBackoff`).
