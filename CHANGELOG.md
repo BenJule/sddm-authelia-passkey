@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.4.2]
 
 ### Changed
 - Theme: the smartphone/passkey sidebar now animates (slide-in/out, QR
