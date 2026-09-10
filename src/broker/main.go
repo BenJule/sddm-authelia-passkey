@@ -184,10 +184,19 @@ type flowState struct {
 	// misleading spinner for the flow's whole remaining lifetime.
 	RateLimited       bool `json:"rate_limited,omitempty"`
 	RetryAfterSeconds int  `json:"retry_after_seconds,omitempty"`
-	startedAt         time.Time
-	cancelled         bool
-	cancelCh          chan struct{}
-	cancelOnce        sync.Once
+	// ExpiresAt is the provider's own device-authorization deadline
+	// (RFC 8628 expires_in, added to the time the response was received),
+	// exposed as a Unix timestamp (seconds) so the theme can render a
+	// live countdown/progress ring locally instead of polling every
+	// second just to know how much time is left. This is purely a UX
+	// value - pollAndDecide's own deadline (computed independently in
+	// main.go, not read from this field) remains the sole authority for
+	// when a flow actually expires.
+	ExpiresAt  int64 `json:"expires_at,omitempty"`
+	startedAt  time.Time
+	cancelled  bool
+	cancelCh   chan struct{}
+	cancelOnce sync.Once
 }
 
 var (
@@ -486,6 +495,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	fs.UserCode = dev.UserCode
 	fs.VerificationURI = verURI
 	fs.QRPath = qrPath
+	fs.ExpiresAt = time.Now().Add(time.Duration(dev.ExpiresIn) * time.Second).Unix()
 	fs.mu.Unlock()
 
 	go pollAndDecide(sessionID, fs, dev, username, release)
@@ -577,12 +587,23 @@ func randomHex(n int) string {
 	return hex.EncodeToString(b)
 }
 
+// qrPixelSize is rendered well above the panel's ~220-260px display size
+// (see pixelQrCard in the theme) so the QML Image (smooth: false, exact
+// pixel scan lines) always downscales rather than upscales - upscaling a
+// small PNG is what produces a visibly blurry/blocky code, not anything
+// QML-side. qrcode.High (25% error-correction budget) trades a slightly
+// denser code for real-world scan resilience against a phone camera's
+// glare/angle/partial-obstruction - Medium's 15% is the more common
+// default but has noticeably worse success rates at typical greeter
+// scanning distance/lighting in practice.
+const qrPixelSize = 512
+
 func writeQR(content, path string) error {
-	q, err := qrcode.New(content, qrcode.Medium)
+	q, err := qrcode.New(content, qrcode.High)
 	if err != nil {
 		return err
 	}
-	png, err := q.PNG(0) // 0 = library default size
+	png, err := q.PNG(qrPixelSize)
 	if err != nil {
 		return err
 	}
