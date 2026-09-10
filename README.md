@@ -140,6 +140,10 @@ what has actually been exercised end-to-end vs. merely expected to work,
 see `docs/validated-environment.md`. For SBOM/dependency/provenance
 status, see `docs/supply-chain.md`.
 
+## Upgrading
+
+See `docs/upgrade.md`.
+
 ## Rollback
 
 See `docs/rollback.md`.

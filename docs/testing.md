@@ -1,5 +1,18 @@
 # Testing
 
+## Running everything at once
+
+```
+sudo tests/run-all.sh <local-test-user-1> <local-test-user-2>
+```
+
+Runs the full corpus below (unit + every root-requiring integration
+test) in one pass with a single GREEN/RED summary - intended for a
+disposable lab VM, never production. This is *not* a distro/DM/DE
+matrix (see `docs/validated-environment.md` for the honest scope of
+what's actually been exercised); it's a convenience wrapper so nothing
+in the list below gets forgotten before a release.
+
 ## Unit tests (no root, no network, run in CI)
 
 ```

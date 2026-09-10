@@ -1,3 +1,15 @@
+sddm-authelia-passkey (0.9.0-1) unstable; urgency=medium
+
+  * Add explicit config-migration test and a CI job that performs a real
+    in-place upgrade from the previously-published release against a
+    pre-v0.5.0-shaped config.conf, verifying PAM/config are untouched.
+  * Add docs/upgrade.md and tests/run-all.sh (single entry point for the
+    full test corpus).
+  * Correct a stale claim in docs/validated-environment.md about
+    multi-user configurations never being exercised.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 05:23:54 +0200
+
 sddm-authelia-passkey (0.8.0-1) unstable; urgency=medium
 
   * Add scripts/disable-pam.sh (symmetric counterpart to enable-pam.sh)
