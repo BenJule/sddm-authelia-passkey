@@ -28,6 +28,12 @@ jobs:
       - name: PAM backup regression
         run: bash tests/integration/pam-backup-test.sh
 
+      - name: FIDO2 authfile regression
+        run: bash tests/integration/fido2-authfile-test.sh
+
+      - name: FIDO2 PAM stacking structure regression
+        run: bash tests/integration/fido2-pam-integration-test.sh
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 

@@ -1,3 +1,11 @@
+sddm-authelia-passkey (0.6.0-1) unstable; urgency=medium
+
+  * Add optional native FIDO2/U2F hardware security key support via the
+    upstream pam_u2f.so (libpam-u2f), wired in additively ahead of the
+    smartphone/passkey path. Off by default. See docs/fido2.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 03:15:00 +0200
+
 sddm-authelia-passkey (0.5.0-1) unstable; urgency=medium
 
   * Broker: account_source=nss authorizes any NSS-resolvable account
