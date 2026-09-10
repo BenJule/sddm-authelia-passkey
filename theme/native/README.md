@@ -2,7 +2,8 @@
 
 Original, from-scratch Qt6 SDDM theme for this project.
 
-Status in v1.10.0: functional feature parity, still opt-in.
+Status targeted for v1.11.0: functional feature parity plus
+responsive presentation, still opt-in.
 
 The native theme is installed alongside the existing compatibility theme
 and is never selected automatically.
@@ -41,5 +42,6 @@ does not authenticate a user. The SDDM login is only attempted after the
 broker reports an approval for the exact account bound to the current flow,
 and PAM still has to consume the corresponding protected approval marker.
 
-The Native Theme remains opt-in in v1.10.0. Responsive UX refinement,
-accessibility hardening and native branding remain separate roadmap releases.
+The Native Theme remains opt-in. v1.11 adds responsive presentation
+without changing authentication semantics. Accessibility hardening and
+native branding remain separate roadmap releases.

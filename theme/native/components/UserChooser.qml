@@ -8,6 +8,7 @@ Item {
 
     property var userModelSource
     property int initialIndex: 0
+    property bool compactMode: false
 
     property int selectedIndex: -1
     property string selectedUsername: ""
@@ -133,8 +134,11 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight:
                 Math.min(
-                    132,
-                    Math.max(44, contentHeight)
+                    root.compactMode ? 96 : 132,
+                    Math.max(
+                        root.compactMode ? 40 : 44,
+                        contentHeight
+                    )
                 )
 
             model: root.userModelSource
@@ -158,7 +162,7 @@ Item {
                     model.icon || ""
 
                 width: ListView.view.width
-                height: 44
+                height: root.compactMode ? 40 : 44
 
                 highlighted:
                     !root.manualMode
@@ -175,8 +179,10 @@ Item {
                     spacing: 10
 
                     UserAvatar {
-                        Layout.preferredWidth: 32
-                        Layout.preferredHeight: 32
+                        Layout.preferredWidth:
+                            root.compactMode ? 28 : 32
+                        Layout.preferredHeight:
+                            root.compactMode ? 28 : 32
                         iconSource: userDelegate.accountIcon
                         label:
                             userDelegate.accountRealName.length > 0
