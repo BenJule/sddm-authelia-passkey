@@ -146,6 +146,30 @@ avatar source. An NSS-only account SDDM's own list doesn't enumerate
 simply gets no avatar match - the panel falls back to a generic
 identity icon rather than guessing.
 
+## Smart QR UX (v1.2.0)
+
+`flowState.ExpiresAt` (exposed as `expires_at` in `/status`) is the
+provider's own RFC 8628 `expires_in` deadline, captured once at
+`/start` time - a pure UX value the theme uses to render a live local
+countdown and progress bar, recomputed client-side every second rather
+than polling the broker just to animate one. It is never itself an
+expiry *authority*: `pollAndDecide`'s own independently-computed
+deadline (see "Upstream rate limiting" below) remains the only thing
+that actually transitions a flow to `expired` - the two happen to track
+the same underlying `expires_in` value, but the client-side countdown
+reaching zero triggers nothing by itself, it just stops looking
+accurate for the second or two until the next real `/status` poll
+catches up.
+
+QR codes are rendered at a fixed `qrPixelSize` (512px) with
+`qrcode.High` error correction (25% redundancy budget) rather than the
+library's small default size and `Medium` (15%) correction - a
+higher-resolution source lets the QML `Image` (already `smooth: false`)
+downscale to the panel's ~220-260px display size instead of upscaling a
+small PNG, and the extra error-correction budget trades a slightly
+denser code for materially better real-world scan success against a
+phone camera's glare/angle/partial obstruction.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits

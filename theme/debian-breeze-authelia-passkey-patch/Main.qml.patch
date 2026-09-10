@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,783 @@
+@@ -529,4 +561,890 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -101,6 +101,27 @@
 +        property string identityDisplayName: ""
 +        property string identitySource: ""
 +        property string identityIconSource: ""
++
++        // v1.2.0 Smart QR UX: expiresAt is the broker's own device-flow
++        // deadline (Unix seconds, from /status's expires_at - see
++        // flowState.ExpiresAt in src/broker/main.go), purely a display
++        // value. remainingSeconds/remainingFraction are recomputed
++        // locally every second by pixelCountdownTimer below rather than
++        // re-polling the broker just to animate a countdown - the
++        // broker's own poll()-driven state machine (still on its normal
++        // 2s interval) remains the ONLY authority for an actual
++        // "expired" transition; this countdown reaching zero is not
++        // itself a state change; the server-detected 405/"expired"
++        // status a couple seconds later performs that.
++        property real expiresAt: 0
++        property int remainingSeconds: 0
++        property real remainingFraction: 1.0
++        // Captured once per flow (when expiresAt first becomes known) so
++        // remainingFraction has a stable denominator - expiresAt itself
++        // never changes mid-flow, but computing the fraction against a
++        // fixed "started with N seconds" value is clearer than
++        // re-deriving a shrinking total every tick.
++        property real totalSecondsForFlow: 0
 +
 +        // The local account SDDM itself currently has selected - the
 +        // avatar list's highlighted user, or whatever is typed into the
@@ -151,9 +172,26 @@
 +            identityDisplayName = ""
 +            identitySource = ""
 +            identityIconSource = ""
++            expiresAt = 0
++            totalSecondsForFlow = 0
++            remainingSeconds = 0
++            remainingFraction = 1.0
 +            pixelPanel.open = true
 +            requestStart(targetUsername)
 +            fetchIdentity(targetUsername)
++        }
++
++        // v1.2.0: recomputed every second by pixelCountdownTimer while
++        // waiting, and once immediately when expiresAt first becomes
++        // known (poll() above) so the countdown doesn't visibly start at
++        // a stale 0:00 for up to a second.
++        function updateCountdown() {
++            if (expiresAt === 0) return
++            var remaining = expiresAt - (Date.now() / 1000)
++            remainingSeconds = Math.max(0, Math.ceil(remaining))
++            remainingFraction = totalSecondsForFlow > 0
++                ? Math.max(0, Math.min(1, remaining / totalSecondsForFlow))
++                : 0
 +        }
 +
 +        // v1.1.0: read-only, pre-flow identity lookup - see
@@ -263,6 +301,14 @@
 +                if (resp.qr_path) pixelFlow.qrPath = resp.qr_path
 +                if (resp.verification_uri_complete) pixelFlow.verificationUri = resp.verification_uri_complete
 +                if (resp.user_code) pixelFlow.userCode = resp.user_code
++                if (resp.expires_at && pixelFlow.expiresAt === 0) {
++                    // Only captured once per flow (first time it becomes
++                    // known) - see totalSecondsForFlow's own doc comment.
++                    pixelFlow.expiresAt = resp.expires_at
++                    var nowSecs = Date.now() / 1000
++                    pixelFlow.totalSecondsForFlow = Math.max(1, resp.expires_at - nowSecs)
++                    pixelFlow.updateCountdown()
++                }
 +
 +                switch (resp.status) {
 +                case "pending":
@@ -369,6 +415,10 @@
 +            identityDisplayName = ""
 +            identitySource = ""
 +            identityIconSource = ""
++            expiresAt = 0
++            totalSecondsForFlow = 0
++            remainingSeconds = 0
++            remainingFraction = 1.0
 +            state = "idle"
 +            pixelPanel.open = false
 +        }
@@ -390,6 +440,18 @@
 +    }
 +
 +    Timer { id: pixelPollTimer; interval: 2000; repeat: true; onTriggered: pixelFlow.poll() }
++    // v1.2.0: purely local, purely cosmetic - never itself an authority
++    // on expiry (see pixelFlow.updateCountdown's doc comment). Runs
++    // whenever a deadline is known and the flow is still live, so it
++    // naturally stops once state leaves "waiting" (approved/expired/
++    // error/idle) without needing an explicit guard here.
++    Timer {
++        id: pixelCountdownTimer
++        interval: 1000
++        repeat: true
++        running: pixelFlow.state === "waiting" && pixelFlow.expiresAt > 0
++        onTriggered: pixelFlow.updateCountdown()
++    }
 +    Timer {
 +        id: pixelApprovedTimer
 +        interval: 700
@@ -650,6 +712,51 @@
 +                    }
 +                    Behavior on scale {
 +                        NumberAnimation { duration: Kirigami.Units.shortDuration; easing.type: Easing.OutBack }
++                    }
++                }
++            }
++
++            // v1.2.0 Smart QR UX: visible remaining time, shared between
++            // the QR and alternate-code views (a top-level sibling of
++            // both, not nested inside the QR card) - a slim progress bar
++            // plus an MM:SS countdown, purely derived from
++            // pixelFlow.remainingFraction/remainingSeconds (see
++            // pixelCountdownTimer). Never itself a state authority - see
++            // updateCountdown()'s doc comment.
++            ColumnLayout {
++                Layout.fillWidth: true
++                Layout.topMargin: Kirigami.Units.smallSpacing
++                spacing: Kirigami.Units.smallSpacing / 2
++                visible: opacity > 0.01
++                opacity: pixelFlow.state === "waiting" ? 1 : 0
++                Behavior on opacity { NumberAnimation { duration: Kirigami.Units.longDuration } }
++
++                Rectangle {
++                    Layout.fillWidth: true
++                    Layout.preferredHeight: 4
++                    radius: height / 2
++                    color: Qt.rgba(1, 1, 1, 0.2)
++
++                    Rectangle {
++                        height: parent.height
++                        radius: parent.radius
++                        color: pixelFlow.remainingFraction < 0.15
++                            ? Kirigami.Theme.negativeTextColor
++                            : Kirigami.Theme.highlightColor
++                        width: parent.width * pixelFlow.remainingFraction
++                        Behavior on width { NumberAnimation { duration: 400; easing.type: Easing.Linear } }
++                        Behavior on color { ColorAnimation { duration: Kirigami.Units.longDuration } }
++                    }
++                }
++                QQC2.Label {
++                    Layout.alignment: Qt.AlignHCenter
++                    color: "white"
++                    opacity: 0.75
++                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
++                    text: {
++                        var m = Math.floor(pixelFlow.remainingSeconds / 60)
++                        var s = pixelFlow.remainingSeconds % 60
++                        return i18nd("plasma-desktop-sddm-theme", "Läuft ab in %1:%2", m, (s < 10 ? "0" : "") + s)
 +                    }
 +                }
 +            }
