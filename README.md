@@ -91,6 +91,14 @@ stack. See `docs/installation.md`.
   FIDO2 hardware - none was available in this environment; the
   CTAP2/USB-HID protocol handling is `pam_u2f`/`libfido2`'s own,
   separately-maintained implementation.
+- Provider abstraction: `provider_kind=oidc` (default remains
+  `authelia`, unchanged) supports any standards-compliant OIDC Device
+  Authorization Grant provider - Keycloak, Authentik, generic OIDC - via
+  discovery-based capability detection, with no provider-specific logic
+  in the QML theme. See `docs/architecture.md`'s "Provider abstraction"
+  section. Verified against a mock server shaped like Keycloak's real
+  endpoint layout; not verified against a real, live Keycloak or
+  Authentik deployment.
 
 ## Requirements
 

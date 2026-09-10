@@ -433,7 +433,7 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 	lastSessionForUser[username] = sessionID
 	flowsMu.Unlock()
 
-	dev, err := deviceAuthorize()
+	dev, err := providerDeviceAuthorize()
 	if err != nil {
 		fs.mu.Lock()
 		fs.Status, fs.Error = "error", "device authorization request failed"
@@ -652,7 +652,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			return
 		}
 
-		tok, status, outcome, retryAfter, err := pollToken(dev.DeviceCode)
+		tok, status, outcome, retryAfter, err := providerPollToken(dev.DeviceCode)
 		if err != nil {
 			log.Printf("session %s: token poll error: %v", sessionID, err)
 			consecutiveAmbiguous++
@@ -726,7 +726,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 			}
 
 		case outcomeOK:
-			gotUser, err := verifyUserinfo(tok)
+			gotUser, err := providerVerifyIdentity(tok)
 			if err != nil {
 				errorFlow(fs, "userinfo verification failed")
 				log.Printf("session %s: userinfo error: %v", sessionID, err)

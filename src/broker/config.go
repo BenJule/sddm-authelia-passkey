@@ -20,6 +20,26 @@ type Config struct {
 	OIDCScopes              string
 	DevInsecureHTTP         bool
 
+	// ProviderKind selects the OIDC Device Authorization Grant provider:
+	//   "authelia" (default, and the implicit value for any config
+	//     written before this key existed) - exactly the v0.1-v0.6
+	//     behavior, hardcoded Authelia endpoint paths and identity claim.
+	//   "oidc" - a generic standards-based provider (Keycloak, Authentik,
+	//     or any other OIDC Provider that publishes a discovery document
+	//     advertising device_authorization_endpoint), using
+	//     OIDCDiscoveryURL/OIDCIdentityClaim below.
+	ProviderKind string
+	// OIDCDiscoveryURL: the provider's OIDC discovery document (its
+	// .well-known/openid-configuration URL). Required when
+	// ProviderKind is "oidc". Never consulted for "authelia".
+	OIDCDiscoveryURL string
+	// OIDCIdentityClaim: which userinfo claim carries the local
+	// username to bind to (see the identity-binding model in
+	// docs/architecture.md) - defaults to the standard OIDC
+	// "preferred_username" claim when unset. Never consulted for
+	// "authelia" (which always uses its own "authelia.pam.username").
+	OIDCIdentityClaim string
+
 	AllowedUsers map[string]bool
 
 	// AccountSource selects how a requested username is authorized:
@@ -150,6 +170,15 @@ func LoadConfig(path string) (Config, error) {
 	if v, ok := raw["oidc_scopes"]; ok {
 		cfg.OIDCScopes = v
 	}
+	if v, ok := raw["provider_kind"]; ok {
+		cfg.ProviderKind = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := raw["oidc_discovery_url"]; ok {
+		cfg.OIDCDiscoveryURL = v
+	}
+	if v, ok := raw["oidc_identity_claim"]; ok {
+		cfg.OIDCIdentityClaim = v
+	}
 	if v, ok := raw["allowed_users"]; ok {
 		cfg.AllowedUsers = map[string]bool{}
 		for _, u := range strings.Split(v, ",") {
@@ -220,15 +249,31 @@ func LoadConfig(path string) (Config, error) {
 // A validation failure must never be silently ignored - refuse to start
 // rather than run with an insecure or ambiguous configuration.
 func (c Config) Validate() error {
-	if c.AutheliaBaseURL == "" {
-		return fmt.Errorf("authelia_base_url is required")
+	if !isKnownProviderKind(c.ProviderKind) {
+		return fmt.Errorf("provider_kind must be %q or %q, got %q", "authelia", "oidc", c.ProviderKind)
 	}
-	u, err := url.Parse(c.AutheliaBaseURL)
-	if err != nil {
-		return fmt.Errorf("authelia_base_url: %w", err)
-	}
-	if u.Scheme != "https" && !c.DevInsecureHTTP {
-		return fmt.Errorf("authelia_base_url must be https:// (set authelia_dev_insecure_http=true only for local development)")
+	if c.ProviderKind == "oidc" {
+		if c.OIDCDiscoveryURL == "" {
+			return fmt.Errorf("oidc_discovery_url is required when provider_kind=oidc")
+		}
+		du, err := url.Parse(c.OIDCDiscoveryURL)
+		if err != nil {
+			return fmt.Errorf("oidc_discovery_url: %w", err)
+		}
+		if du.Scheme != "https" && !c.DevInsecureHTTP {
+			return fmt.Errorf("oidc_discovery_url must be https:// (set authelia_dev_insecure_http=true only for local development)")
+		}
+	} else {
+		if c.AutheliaBaseURL == "" {
+			return fmt.Errorf("authelia_base_url is required")
+		}
+		u, err := url.Parse(c.AutheliaBaseURL)
+		if err != nil {
+			return fmt.Errorf("authelia_base_url: %w", err)
+		}
+		if u.Scheme != "https" && !c.DevInsecureHTTP {
+			return fmt.Errorf("authelia_base_url must be https:// (set authelia_dev_insecure_http=true only for local development)")
+		}
 	}
 	if c.AllowedVerificationHost == "" {
 		return fmt.Errorf("allowed_verification_host is required")
