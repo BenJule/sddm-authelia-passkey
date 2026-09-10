@@ -282,6 +282,7 @@ func main() {
 	mux.HandleFunc("/start", handleStart)
 	mux.HandleFunc("/status", handleStatus)
 	mux.HandleFunc("/cancel", handleCancel)
+	mux.HandleFunc("/identity", handleIdentity)
 	if cfg.AccountSource == "nss" {
 		log.Printf("sddm-authelia-passkey broker listening on %s (account_source=nss, minimum_uid=%d, allowed_groups=%v, extra allowed_users=%v)",
 			listenAddr, cfg.MinimumUID, allowedGroupsList(), allowedUsersList())
@@ -527,6 +528,40 @@ func handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	markPendingFlowCancelled(fs)
 	w.WriteHeader(http.StatusOK)
+}
+
+// handleIdentity is a read-only, pre-flow lookup (v1.1.0 "Identity
+// Awareness") so the greeter can show who a device flow *would* be for
+// before actually starting one - no session/marker/rate-limit state is
+// touched. Uses the exact same authorizeAccount() check as /start, so it
+// never reveals anything about an account that /start wouldn't already
+// (same 403-without-a-reason behavior, avoiding both username
+// enumeration and policy-rule leakage).
+//
+// Deliberately local/NSS-only: display_name comes from a fresh NSS
+// lookup's GECOS field (the same *user.User the security-relevant
+// authorization check already trusts), never from an OIDC/Authelia
+// claim - an unauthenticated claim is not a trustworthy source for
+// "whose account is this" and must never be presented as if it were.
+func handleIdentity(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	localUser, err := authorizeAccount(username)
+	if err != nil {
+		http.Error(w, "not permitted", http.StatusForbidden)
+		return
+	}
+	// os/user.User.Name is the GECOS "full name" field on Unix - empty
+	// for many minimal accounts, in which case the greeter falls back to
+	// the plain username itself rather than showing nothing.
+	displayName := localUser.Name
+	if displayName == "" {
+		displayName = username
+	}
+	writeJSON(w, map[string]string{
+		"username":       username,
+		"display_name":   displayName,
+		"account_source": cfg.AccountSource,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
