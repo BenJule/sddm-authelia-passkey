@@ -30,6 +30,11 @@ kept as a fallback.
   wallet password is never stored in plaintext.
 - Rate limiting, single-use/short-TTL approval markers, and a
   server-side allowlist independent of any group membership.
+- Optional native FIDO2/U2F hardware security keys (`docs/fido2.md`),
+  optionally restricted to a group.
+- A read-only admin CLI (`sddm-authelia-passkey-admin`) and an
+  emergency `break-glass.sh` recovery path independent of any backup
+  lookup - see `docs/rollback.md`.
 
 ## Architecture
 

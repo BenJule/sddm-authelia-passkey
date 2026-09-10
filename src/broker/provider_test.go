@@ -63,6 +63,31 @@ func TestOIDCDiscover_MissingDeviceAuthorizationEndpointRefused(t *testing.T) {
 	}
 }
 
+// TestProviderDispatch_UnreachableProviderNeverApproves is the explicit
+// "failover never silently grants access" proof for the OIDC provider
+// path: a provider that is completely unreachable (not merely
+// misconfigured) must produce a hard error at every one of the three
+// dispatch points, never a fabricated success value - the same
+// invariant the existing marker-absence PAM tests
+// (tests/integration/pam-flow-test.sh's "no marker" case) already prove
+// for the Authelia path.
+func TestProviderDispatch_UnreachableProviderNeverApproves(t *testing.T) {
+	resetLimiterState(t)
+	resetOIDCDiscoveryCache(t)
+	cfg.ProviderKind = "oidc"
+	cfg.OIDCDiscoveryURL = "http://127.0.0.1:1/.well-known/openid-configuration"
+
+	if dev, err := providerDeviceAuthorize(); err == nil {
+		t.Fatalf("got dev=%+v err=nil, want an error - an unreachable provider must never yield a usable device-authorization response", dev)
+	}
+	if tok, _, outcome, _, err := providerPollToken("irrelevant"); err == nil || tok != "" {
+		t.Fatalf("got tok=%q outcome=%v err=%v, want tok=\"\" and a non-nil error - an unreachable provider must never yield a usable access token", tok, outcome, err)
+	}
+	if user, err := providerVerifyIdentity("irrelevant"); err == nil || user != "" {
+		t.Fatalf("got user=%q err=%v, want user=\"\" and a non-nil error - an unreachable provider must never yield a verified identity", user, err)
+	}
+}
+
 func TestOIDCDiscover_MissingDiscoveryURLRefused(t *testing.T) {
 	resetOIDCDiscoveryCache(t)
 	cfg.ProviderKind = "oidc"

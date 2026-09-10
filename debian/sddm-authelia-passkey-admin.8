@@ -1,0 +1,49 @@
+.TH SDDM-AUTHELIA-PASSKEY-ADMIN 8 "2026-09-10" "sddm-authelia-passkey" "System Administration"
+.SH NAME
+sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
+.SH SYNOPSIS
+.B sddm-authelia-passkey-admin
+.RI { status | health | test-config | list-users | audit-log }
+.SH DESCRIPTION
+A fixed-dispatch, read-only helper for the handful of questions an admin
+asks day to day about the sddm-authelia-passkey stack. Every subcommand
+delegates to an existing, already-tested script or broker mechanism
+rather than reimplementing any logic itself.
+.SH SUBCOMMANDS
+.TP
+.B status\fR, \fBhealth
+Report whether the broker, sddm, and (if enabled) kwallet-secretd are
+currently up. Delegates to
+.IR /usr/share/sddm-authelia-passkey/postflight.sh .
+Requires root.
+.TP
+.B test-config
+Validate
+.I /etc/sddm-authelia-passkey/config.conf
+and exit, without starting the broker or touching PAM/systemd.
+Delegates to the broker binary's own
+.B \-\-check\-config
+flag. Does not require root.
+.TP
+.B list-users
+Show which accounts are currently eligible for the passwordless path
+(per
+.IR account_source ,
+.IR allowed_users ,
+.IR minimum_uid ,
+.I deny_users
+and
+.IR allowed_groups ),
+and which accounts have a FIDO2 credential enrolled. Requires root.
+.TP
+.B audit-log
+Show
+.B SECURITY:\-tagged
+broker log lines (authorization denials, identity mismatches,
+successful approvals) via
+.BR journalctl (1).
+Requires root.
+.SH FILES
+.I /etc/sddm-authelia-passkey/config.conf
+.SH SEE ALSO
+.IR /usr/share/doc/sddm-authelia-passkey/rollback.md

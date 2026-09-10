@@ -34,6 +34,23 @@ jobs:
       - name: FIDO2 PAM stacking structure regression
         run: bash tests/integration/fido2-pam-integration-test.sh
 
+      - name: PAM disable structure regression
+        run: bash tests/integration/pam-disable-structure-test.sh
+
+      - name: Break-glass transform regression
+        run: bash tests/integration/break-glass-test.sh
+
+      - name: Shellcheck all shipped scripts
+        run: |
+          apt-get install -y --no-install-recommends shellcheck
+          shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh tests/integration/*.sh
+
+      - name: bash -n syntax check all shipped scripts
+        run: |
+          for f in scripts/*.sh scripts/lib/*.sh tests/integration/*.sh; do
+            bash -n "$f"
+          done
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 
@@ -51,6 +68,9 @@ jobs:
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/install-theme.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/disable-pam.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/break-glass.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/sbin/sddm-authelia-passkey-admin'
 
       - name: lintian
         run: lintian --fail-on error,warning out/sddm-authelia-passkey_*.deb
@@ -89,12 +109,28 @@ jobs:
           test -f /usr/lib/sddm-authelia-passkey/kwallet-secretd
           test -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
           test -x /usr/share/sddm-authelia-passkey/install-theme.sh
+          test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
+          test -x /usr/share/sddm-authelia-passkey/break-glass.sh
+          test -x /usr/sbin/sddm-authelia-passkey-admin
           test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           grep -q targetUsername /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           grep -q sddmSelectedUsername /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           dpkg -V sddm-authelia-passkey
           sha256sum -c /tmp/breeze-before.sha256
           dpkg -V sddm-theme-debian-breeze
+
+      - name: admin CLI test-config - fails closed with no config present yet
+        run: |
+          if /usr/sbin/sddm-authelia-passkey-admin test-config; then
+            echo "FAIL: test-config succeeded with no /etc/sddm-authelia-passkey/config.conf present"
+            exit 1
+          fi
+
+      - name: admin CLI test-config - succeeds once a valid config is in place
+        run: |
+          cp /etc/sddm-authelia-passkey/config.conf.example /etc/sddm-authelia-passkey/config.conf
+          /usr/sbin/sddm-authelia-passkey-admin test-config | grep -q CONFIG_VALID
+          rm -f /etc/sddm-authelia-passkey/config.conf
 
       - name: Theme installer idempotency
         run: |
@@ -122,6 +158,9 @@ jobs:
           test ! -f /usr/lib/sddm-authelia-passkey/broker
           test ! -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
           test ! -e /usr/share/sddm/themes/debian-breeze-authelia-passkey
+          test ! -e /usr/sbin/sddm-authelia-passkey-admin
+          test ! -e /usr/share/sddm-authelia-passkey/disable-pam.sh
+          test ! -e /usr/share/sddm-authelia-passkey/break-glass.sh
           sha256sum -c /tmp/breeze-before.sha256
           dpkg -V sddm-theme-debian-breeze
 
