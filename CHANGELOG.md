@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.0]
+
+### Added
+- Broker: `provider_kind=oidc` supports any standards-compliant OIDC
+  Device Authorization Grant provider (Keycloak, Authentik, or any other
+  generic OIDC Provider publishing a discovery document) via
+  `oidc_discovery_url`/`oidc_identity_claim`, alongside the unchanged
+  default `provider_kind=authelia`. Capability detection refuses a
+  provider that doesn't advertise `device_authorization_endpoint`
+  instead of guessing. No provider-specific logic exists in the QML
+  theme (unaffected by construction - it only ever talks to this
+  broker's own local API). See `docs/architecture.md`'s "Provider
+  abstraction" section. Validated against a mock server shaped like
+  Keycloak's real endpoint layout; a real live Keycloak/Authentik
+  instance was not stood up in this environment.
+
 ## [0.6.0]
 
 ### Added

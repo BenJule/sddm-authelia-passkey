@@ -88,3 +88,18 @@ independently of trusting that the tests above are correct:
       authentication grant (verified: the full existing
       `tests/integration/pam-flow-test.sh` suite still passes unchanged
       with the FIDO2 line present but no credential enrolled, on VM124).
+- [ ] `provider_kind=oidc` refuses to start/operate against a discovery
+      document missing `device_authorization_endpoint`/`token_endpoint`/
+      `userinfo_endpoint` rather than guessing a conventional path
+      (verified: `TestOIDCDiscover_MissingDeviceAuthorizationEndpointRefused`).
+- [ ] `provider_kind=authelia` (the default) dispatches to the exact
+      same, completely unmodified `deviceAuthorize`/`pollToken`/
+      `verifyUserinfo` functions as every prior release - the generic
+      OIDC path is additive, never a modification of the existing
+      Authelia call path (verified:
+      `TestProviderDispatch_DefaultIsAuthelia`, and all pre-existing
+      Authelia-path tests continuing to pass unchanged).
+- [ ] The QML theme contains no provider-specific logic - it only ever
+      talks to the broker's own `127.0.0.1:7899` API, unaware of
+      `provider_kind` by construction (no QML change was made or needed
+      for this feature).

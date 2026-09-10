@@ -301,6 +301,57 @@ that here would only add a second, likely-inconsistent source of truth.
 A host without SSSD configured (or with `account_source=local`, the
 default) is entirely unaffected - this is opt-in, not a new requirement.
 
+## Provider abstraction
+
+`provider_kind` (default `authelia`, unchanged from v0.1-v0.6) selects
+which OIDC Device Authorization Grant (RFC 8628) provider the broker
+talks to. `provider_kind=oidc` supports any standards-compliant provider
+that publishes an OIDC discovery document advertising
+`device_authorization_endpoint` - Keycloak, Authentik, or any other
+generic OIDC Provider - via `oidc_discovery_url`/`oidc_identity_claim`
+(`src/broker/provider.go`).
+
+**No provider-specific logic ever exists in the QML theme** - it only
+ever talks to this broker's own `127.0.0.1:7899` API exactly as before,
+completely unaware of which provider (or even whether Authelia or a
+generic OIDC provider) is configured. This is unaffected by
+`provider_kind` by construction, not by convention.
+
+**Capability detection** is the discovery document itself: if it doesn't
+advertise `device_authorization_endpoint`, `token_endpoint`, and
+`userinfo_endpoint`, the broker refuses to start rather than guess at a
+conventional path - the same fail-closed philosophy as everywhere else
+in this project.
+
+**Identity mapping** stays exactly the model described above
+(`REQUESTED_LOCAL_USER`/`AUTHENTICATED_..._USER`/`BOUND_LOCAL_USER`,
+exact string match, no fuzzy mapping) - only which userinfo claim
+supplies `AUTHENTICATED_..._USER` changes: Authelia's own
+`authelia.pam.username`, or `oidc_identity_claim` (default
+`preferred_username`) for a generic OIDC provider.
+
+**Deliberately not a Go `interface` threaded through every call site.**
+The existing `deviceAuthorize`/`pollToken`/`verifyUserinfo` functions -
+and every test exercising them directly - are completely unmodified;
+`providerDeviceAuthorize`/`providerPollToken`/`providerVerifyIdentity`
+are the only new call sites (used by `handleStart`/`pollAndDecide`
+instead of calling the Authelia-specific functions directly), and they
+simply dispatch to those unchanged functions unless `provider_kind=oidc`
+is explicitly configured. This keeps the already-proven Authelia code
+path's risk at zero.
+
+**Validated**: the generic OIDC path end-to-end (device-authorization,
+token polling including rate-limit passthrough, and identity extraction
+with both the default and a custom claim name) against a mock server
+shaped like Keycloak's real endpoint layout
+(`/protocol/openid-connect/{auth/device,token,userinfo}`), and discovery
+capability detection refusing a provider that doesn't advertise
+`device_authorization_endpoint`. **Not validated**: a real, live
+Keycloak or Authentik instance - none was stood up in this environment;
+the implementation follows the OIDC/RFC 8628 standards both providers
+document, but was not independently re-verified against their actual
+deployments.
+
 ## Native FIDO2/U2F hardware security keys
 
 Optional, opt-in, off by default - see `docs/fido2.md` for the full

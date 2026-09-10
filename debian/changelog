@@ -1,3 +1,13 @@
+sddm-authelia-passkey (0.7.0-1) unstable; urgency=medium
+
+  * Broker: add provider_kind=oidc supporting any standards-compliant
+    OIDC Device Authorization Grant provider (Keycloak, Authentik,
+    generic OIDC) via discovery-based capability detection, alongside
+    the unchanged default provider_kind=authelia. See
+    docs/architecture.md.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 03:35:00 +0200
+
 sddm-authelia-passkey (0.6.0-1) unstable; urgency=medium
 
   * Add optional native FIDO2/U2F hardware security key support via the
