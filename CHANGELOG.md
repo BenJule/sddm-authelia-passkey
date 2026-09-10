@@ -24,6 +24,10 @@ follows [Keep a Changelog](https://keepachangelog.com/).
   `src/broker`/`src/pam`/`src/kwallet-secretd` are unchanged versus the
   PR base.
 
+### Fixed
+- Preserve already-running project systemd services across package upgrades.
+  Fresh installs still do not enable or start the services automatically.
+
 ## [1.8.0]
 
 ### Added

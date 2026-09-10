@@ -51,6 +51,12 @@ jobs:
             bash -n "$f"
           done
 
+      - name: Systemd upgrade lifecycle policy regression
+        run: |
+          grep -Fq 'dh_installsystemd --no-enable --no-start --no-stop-on-upgrade' debian/rules
+          COUNT="$(grep -Fc 'dh_installsystemd ' debian/rules)"
+          test "$COUNT" -eq 1
+
       - name: Build package
         run: dpkg-buildpackage -us -uc -b
 

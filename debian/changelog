@@ -7,6 +7,8 @@ sddm-authelia-passkey (1.9.0-1) unstable; urgency=medium
     selection, user display, power actions, keyboard-layout
     affordance, and a clearly-labelled Smartphone-Login preview
     (full flow parity deferred to v1.10.0). See docs/native-theme.md.
+  * Preserve already-running project systemd services during package upgrades;
+    fresh installs remain non-starting and non-enabling.
 
  -- Benjamin Lütker <benjamin.luetker@gmail.com>  Thu, 10 Sep 2026 15:20:00 +0200
 
