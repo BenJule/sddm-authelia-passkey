@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0]
+
+### Added
+- Accessibility 2.0: the custom Smartphone-Login panel elements now set
+  explicit `Accessible.role`/`Accessible.name`/`Accessible.description`
+  (the panel itself as a Dialog/Pane depending on layout, the icon-only
+  back button, the QR card - explicitly pointing screen reader users at
+  the "Alternativ Code eingeben" button as the accessible equivalent -
+  the countdown progress bar, the connection-status chip, and the
+  status-text label flagged as an alert for error/expired/approved
+  states). Purely decorative elements that duplicate adjacent visible
+  text (the identity avatar image, the status-chip's color dot) are
+  marked `Accessible.ignored` instead of double-announced. See
+  `docs/accessibility.md`.
+- CI now checks the theme patch actually contains a minimum number of
+  `Accessible.role`/`Accessible.name` occurrences, so a future edit
+  can't silently regress this.
+
 ## [1.4.0]
 
 ### Added

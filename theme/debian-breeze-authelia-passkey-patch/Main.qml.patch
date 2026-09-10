@@ -105,7 +105,7 @@
                      }
                  ]
              }
-@@ -529,4 +590,1063 @@
+@@ -529,4 +590,1121 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -641,6 +641,16 @@
 +        // wrapper below, which is the primary mechanism.
 +        clip: true
 +
++        // v1.5.0 Accessibility 2.0: this panel had no explicit
++        // Accessible.role/name at all (docs/accessibility.md's
++        // documented screen-reader gap) - an AT user tabbing into it
++        // previously got an unlabeled generic container. Dialog in
++        // overlay layout (it's modal - see pixelOverlayScrim/
++        // loginScreenRoot.enabled), Pane in sidebar layout (the rest of
++        // the greeter stays reachable, so it isn't modal there).
++        Accessible.role: root.pixelOverlayLayout ? Accessible.Dialog : Accessible.Pane
++        Accessible.name: i18nd("plasma-desktop-sddm-theme", "Smartphone-Login")
++
 +        Behavior on x {
 +            NumberAnimation { duration: Kirigami.Units.longDuration; easing.type: Easing.OutCubic }
 +        }
@@ -685,6 +695,11 @@
 +                implicitHeight: Kirigami.Units.gridUnit * 2.2
 +                display: QQC2.AbstractButton.IconOnly
 +                onClicked: pixelFlow.cancel()
++                // v1.5.0 Accessibility 2.0: icon-only, so without this a
++                // screen reader announces nothing usable for it - unlike
++                // the other buttons here, which already get their
++                // Accessible.name for free from their visible `text`.
++                Accessible.name: i18nd("plasma-desktop-sddm-theme", "Zurück zur Anmeldung")
 +            }
 +
 +            Item { Layout.preferredHeight: Kirigami.Units.gridUnit }
@@ -714,11 +729,21 @@
 +                     pixelFlow.connectionState === "rate_limited" ||
 +                     pixelFlow.connectionState === "offline" ||
 +                     pixelFlow.connectionState === "error")
++                // v1.5.0 Accessibility 2.0: this is exactly the "what's
++                // going on" signal called out in the comment above -
++                // AlertMessage rather than plain text so AT users get it
++                // flagged as a status change, not just more body text.
++                Accessible.role: Accessible.AlertMessage
++                Accessible.name: pixelStatusChipLabel.text
 +
 +                Rectangle {
 +                    Layout.preferredWidth: 8
 +                    Layout.preferredHeight: 8
 +                    radius: 4
++                    // Redundant with pixelStatusChipLabel's text (and
++                    // never color-only per docs/architecture.md) - a
++                    // screen reader should skip the dot itself.
++                    Accessible.ignored: true
 +                    color: {
 +                        switch (pixelFlow.connectionState) {
 +                        case "connecting": return Kirigami.Theme.neutralTextColor
@@ -730,6 +755,7 @@
 +                    }
 +                }
 +                QQC2.Label {
++                    id: pixelStatusChipLabel
 +                    color: "white"
 +                    opacity: 0.8
 +                    font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
@@ -759,6 +785,11 @@
 +                Item {
 +                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
 +                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3
++                    // v1.5.0 Accessibility 2.0: purely decorative - the
++                    // display name/username right next to it already say
++                    // the same thing as text, so a screen reader should
++                    // skip this rather than announce a redundant image.
++                    Accessible.ignored: true
 +
 +                    Rectangle {
 +                        anchors.fill: parent
@@ -877,6 +908,16 @@
 +                }
 +                radius: Kirigami.Units.gridUnit * 0.6
 +                color: "white"
++                // v1.5.0 Accessibility 2.0: closes docs/accessibility.md's
++                // previously-documented gap - the QR image itself is not
++                // meaningfully announceable by a screen reader, so name +
++                // describe the card as a whole and explicitly point at
++                // the "Alternativ Code eingeben" button as the actual
++                // accessible equivalent, rather than leaving an AT user
++                // to guess one exists.
++                Accessible.role: Accessible.Graphic
++                Accessible.name: i18nd("plasma-desktop-sddm-theme", "QR-Code für die Smartphone-Anmeldung")
++                Accessible.description: i18nd("plasma-desktop-sddm-theme", "Enthält denselben Code wie die Schaltfläche „Alternativ Code eingeben“.")
 +                // Subtle pulse while genuinely waiting on the phone - a
 +                // separate overlay (Rectangle.border has no "opacity" of
 +                // its own to animate directly) with just a border, never
@@ -951,6 +992,13 @@
 +                    Layout.preferredHeight: 4
 +                    radius: height / 2
 +                    color: Qt.rgba(1, 1, 1, 0.2)
++                    // v1.5.0 Accessibility 2.0: the MM:SS label right
++                    // below already carries the same information as
++                    // text, so this only needs a role for AT users that
++                    // specifically query progress indicators - not a
++                    // second, redundant announcement of the same text.
++                    Accessible.role: Accessible.ProgressBar
++                    Accessible.name: i18nd("plasma-desktop-sddm-theme", "Verbleibende Zeit für den QR-Code")
 +
 +                    Rectangle {
 +                        height: parent.height
@@ -1107,6 +1155,16 @@
 +                color: (pixelFlow.state === "error" || pixelFlow.state === "expired")
 +                       ? Kirigami.Theme.negativeTextColor
 +                       : (pixelFlow.state === "approved" ? Kirigami.Theme.positiveTextColor : "white")
++                // v1.5.0 Accessibility 2.0: this is where every state
++                // transition's user-facing explanation lands (approved/
++                // error/expired/rate-limited wording etc., see
++                // pollAndDecide's outcome handling in main.go) - flagged
++                // as an alert rather than plain body text for states
++                // that specifically need a user reaction.
++                Accessible.role: (pixelFlow.state === "error" || pixelFlow.state === "expired" || pixelFlow.state === "approved")
++                    ? Accessible.AlertMessage
++                    : Accessible.StaticText
++                Accessible.name: text
 +            }
 +
 +            Item { Layout.fillHeight: true }

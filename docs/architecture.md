@@ -304,6 +304,32 @@ connection-status chip size to their own (short, fixed) text via
 `implicitWidth`, so longer translated strings simply grow the badge
 rather than clipping.
 
+## Accessibility 2.0 (v1.5.0)
+
+Every custom element this project adds to the panel now carries
+explicit `Accessible` attached properties (`import QtQuick` already
+provides these, no extra import needed) - see `docs/accessibility.md`
+for the full list and rationale. Two deliberate patterns worth calling
+out:
+
+- **Role follows layout, not a fixed value**: `pixelPanel`'s
+  `Accessible.role` is `Accessible.Dialog` in overlay layout (modal -
+  the rest of the greeter is dimmed and disabled behind it, see
+  "Responsive Greeter" above) and `Accessible.Pane` in sidebar layout
+  (not modal - the rest of the greeter stays reachable). A screen
+  reader should describe the actual interaction model, not a value
+  that's only correct in one of the two layouts.
+- **Decorative duplicates are ignored, not named**: the identity
+  avatar image and the connection-status chip's color dot each sit
+  right next to a text label saying the same thing. Giving them their
+  own `Accessible.name` would double-announce the same information;
+  `Accessible.ignored: true` is the correct fix, not a redundant name.
+
+This is reviewed against the Qt Quick `Accessible` API and Qt Quick
+Controls conventions, not verified against a running screen reader
+(AT-SPI/Orca) - see `docs/accessibility.md`'s "What has not been
+specifically verified" section.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits

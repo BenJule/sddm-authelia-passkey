@@ -40,3 +40,8 @@ jobs:
       - name: No Google/Pixel-specific branding in patch
         run: |
           ! grep -qiE 'google ?pixel|pixel ?phone' theme/debian-breeze-authelia-passkey-patch/Main.qml.patch
+
+      - name: Custom panel elements expose Accessible.role/name (v1.5.0)
+        run: |
+          test "$(grep -c 'Accessible\.role' theme/debian-breeze-authelia-passkey-patch/Main.qml.patch)" -ge 5
+          test "$(grep -c 'Accessible\.name' theme/debian-breeze-authelia-passkey-patch/Main.qml.patch)" -ge 5
