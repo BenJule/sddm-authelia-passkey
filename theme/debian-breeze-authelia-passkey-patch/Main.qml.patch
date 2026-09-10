@@ -62,7 +62,7 @@
                      }
                  ]
              }
-@@ -529,4 +561,646 @@
+@@ -529,4 +561,783 @@
          interval: 3000
          onTriggered: notificationMessage = ""
      }
@@ -89,6 +89,18 @@
 +        // client-side). Cleared on every new attempt so a stale value from
 +        // a prior flow can never be reused by mistake.
 +        property string resolvedUsername: ""
++
++        // v1.1.0 Identity Awareness: populated ONLY from the broker's
++        // /identity lookup (a fresh local/NSS GECOS resolution, exactly
++        // the same authorization check /start uses) - never from
++        // resolvedUsername/Authelia claims above, which are not a
++        // trustworthy source for "whose account is this" confirmation
++        // shown before/during a flow. identitySource is "local"/"nss"
++        // (server policy, not a secret) so the panel can show a small
++        // "Verzeichniskonto" badge for NSS-resolved accounts.
++        property string identityDisplayName: ""
++        property string identitySource: ""
++        property string identityIconSource: ""
 +
 +        // The local account SDDM itself currently has selected - the
 +        // avatar list's highlighted user, or whatever is typed into the
@@ -136,8 +148,31 @@
 +            userCode = ""
 +            showAltCode = false
 +            resolvedUsername = ""
++            identityDisplayName = ""
++            identitySource = ""
++            identityIconSource = ""
 +            pixelPanel.open = true
 +            requestStart(targetUsername)
++            fetchIdentity(targetUsername)
++        }
++
++        // v1.1.0: read-only, pre-flow identity lookup - see
++        // handleIdentity() in src/broker/main.go. Never affects
++        // state/rate-limiting/markers, purely display.
++        function fetchIdentity(withUsername) {
++            var xhr = new XMLHttpRequest()
++            xhr.open("GET", "http://127.0.0.1:7899/identity?username=" + encodeURIComponent(withUsername))
++            xhr.onreadystatechange = function() {
++                if (xhr.readyState !== XMLHttpRequest.DONE) return
++                // Stale-response guard: if the user cancelled or switched
++                // accounts before this returned, never apply it.
++                if (withUsername !== pixelFlow.targetUsername) return
++                if (xhr.status !== 200) return
++                var resp = JSON.parse(xhr.responseText)
++                pixelFlow.identityDisplayName = resp.display_name || ""
++                pixelFlow.identitySource = resp.account_source || ""
++            }
++            xhr.send()
 +        }
 +
 +        onSddmSelectedUsernameChanged: {
@@ -331,8 +366,26 @@
 +            sessionId = ""
 +            resolvedUsername = ""
 +            targetUsername = ""
++            identityDisplayName = ""
++            identitySource = ""
++            identityIconSource = ""
 +            state = "idle"
 +            pixelPanel.open = false
++        }
++    }
++
++    // v1.1.0: reactively resolves an avatar for pixelFlow.targetUsername
++    // from SDDM's own userModel (the same model backing the main login
++    // list) when a matching local entry exists - never a second/separate
++    // avatar source. No match (e.g. an NSS-only account SDDM's own list
++    // doesn't enumerate) simply leaves identityIconSource empty, and the
++    // panel falls back to a generic identity icon.
++    Repeater {
++        model: userModel
++        delegate: Item {
++            readonly property bool isTarget: model.name === pixelFlow.targetUsername
++            onIsTargetChanged: if (isTarget) pixelFlow.identityIconSource = model.icon
++            Component.onCompleted: if (isTarget) pixelFlow.identityIconSource = model.icon
 +        }
 +    }
 +
@@ -414,20 +467,104 @@
 +                color: "white"
 +                text: i18nd("plasma-desktop-sddm-theme", "Mit Smartphone anmelden")
 +            }
-+            QQC2.Label {
++            // v1.1.0 Identity Awareness: avatar + display name + username
++            // (+ a "directory account" badge for account_source=nss), so
++            // it's unambiguous which local/NSS identity a flow is (or
++            // would be) bound to. All values here come from the broker's
++            // /identity lookup or SDDM's own userModel - never from
++            // resolvedUsername/OIDC claims (see pixelFlow's doc comment).
++            RowLayout {
 +                Layout.fillWidth: true
 +                Layout.topMargin: Kirigami.Units.smallSpacing
-+                wrapMode: Text.WordWrap
-+                color: "white"
-+                opacity: 0.9
-+                font.bold: true
-+                visible: text.length > 0
-+                // Whichever account this flow is (or would be) for - the
-+                // immutable target once a flow is active, otherwise
-+                // whatever SDDM currently has selected.
-+                text: {
-+                    var u = pixelFlow.targetUsername || pixelFlow.sddmSelectedUsername
-+                    return u.length > 0 ? i18nd("plasma-desktop-sddm-theme", "Konto: %1", u) : ""
++                visible: (pixelFlow.targetUsername || pixelFlow.sddmSelectedUsername).length > 0
++                spacing: Kirigami.Units.smallSpacing
++
++                Item {
++                    Layout.preferredWidth: Kirigami.Units.gridUnit * 3
++                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3
++
++                    Rectangle {
++                        anchors.fill: parent
++                        radius: width / 2
++                        color: Qt.rgba(1, 1, 1, 0.12)
++                        border.color: "white"
++                        border.width: 1
++                    }
++                    Image {
++                        id: pixelIdentityAvatarImage
++                        anchors.fill: parent
++                        anchors.margins: 2
++                        visible: false
++                        source: pixelFlow.identityIconSource
++                        fillMode: Image.PreserveAspectCrop
++                        smooth: true
++                        asynchronous: true
++                    }
++                    OpacityMask {
++                        anchors.fill: pixelIdentityAvatarImage
++                        source: pixelIdentityAvatarImage
++                        visible: pixelFlow.identityIconSource !== "" && pixelIdentityAvatarImage.status === Image.Ready
++                        maskSource: Rectangle {
++                            width: pixelIdentityAvatarImage.width
++                            height: pixelIdentityAvatarImage.height
++                            radius: width / 2
++                        }
++                    }
++                    Kirigami.Icon {
++                        anchors.centerIn: parent
++                        width: parent.width * 0.6
++                        height: width
++                        visible: !(pixelFlow.identityIconSource !== "" && pixelIdentityAvatarImage.status === Image.Ready)
++                        source: "user-identity"
++                        color: "white"
++                    }
++                }
++
++                ColumnLayout {
++                    Layout.fillWidth: true
++                    spacing: 0
++
++                    QQC2.Label {
++                        Layout.fillWidth: true
++                        elide: Text.ElideRight
++                        maximumLineCount: 1
++                        color: "white"
++                        font.bold: true
++                        font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.15
++                        text: pixelFlow.identityDisplayName || pixelFlow.targetUsername || pixelFlow.sddmSelectedUsername
++                    }
++                    RowLayout {
++                        spacing: Kirigami.Units.smallSpacing
++                        QQC2.Label {
++                            color: "white"
++                            opacity: 0.75
++                            elide: Text.ElideRight
++                            Layout.maximumWidth: pixelPanel.width * 0.4
++                            text: pixelFlow.targetUsername || pixelFlow.sddmSelectedUsername
++                        }
++                        Rectangle {
++                            visible: pixelFlow.identitySource === "nss"
++                            radius: height / 2
++                            color: Qt.rgba(1, 1, 1, 0.15)
++                            Layout.preferredHeight: pixelNssBadgeLabel.implicitHeight + Kirigami.Units.smallSpacing
++                            Layout.preferredWidth: pixelNssBadgeLabel.implicitWidth + Kirigami.Units.smallSpacing * 2
++                            QQC2.Label {
++                                id: pixelNssBadgeLabel
++                                anchors.centerIn: parent
++                                color: "white"
++                                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.85
++                                // "Directory account" - deliberately not a
++                                // specific domain/realm name: neither NSS
++                                // nor this broker reliably exposes one
++                                // (os/user.User has no domain field), and
++                                // guessing/fabricating one would violate
++                                // this project's "never show unverified
++                                // identity data" rule just as much as an
++                                // unchecked OIDC claim would.
++                                text: i18nd("plasma-desktop-sddm-theme", "Verzeichniskonto")
++                            }
++                        }
++                    }
 +                }
 +            }
 +            QQC2.Label {
