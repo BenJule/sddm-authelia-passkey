@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0]
+
+### Added
+- Login Transition: the rest of the greeter now dims and stops
+  accepting input during the brief window between a confirmed
+  smartphone approval and the actual session hand-off (previously
+  this only happened while the narrow-display overlay card was open).
+  The QR panel's busy indicator now also spins through this window
+  instead of only while starting a flow, so there's continuous
+  progress feedback right up to the switch.
+
 ## [1.6.0]
 
 ### Added
