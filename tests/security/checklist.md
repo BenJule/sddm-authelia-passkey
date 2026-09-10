@@ -149,3 +149,14 @@ independently of trusting that the tests above are correct:
       loads and validates cleanly (verified:
       `TestLoadConfig_ShippedExampleFileLoadsAndValidates`) - it cannot
       silently drift out of sync with what the broker actually accepts.
+- [ ] `GET /identity` uses the exact same `authorizeAccount()` check as
+      `/start` and returns an identical, reason-free 403 for both an
+      unknown username and a known-but-not-allowlisted one (verified:
+      `TestHandleIdentity_UnauthorizedUser_Rejected`,
+      `TestHandleIdentity_UnknownUser_RejectedWithoutEnumeration`) -
+      no new enumeration surface.
+- [ ] `display_name`/`account_source` in the `/identity` response come
+      only from a fresh NSS/local lookup, never from an OIDC claim or
+      any client-supplied value - the QML theme never derives displayed
+      identity from `resolvedUsername` (the post-approval OIDC-claim
+      binding used only for the exact-match security check).

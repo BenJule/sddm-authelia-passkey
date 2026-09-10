@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0]
+
+### Added
+- Identity Awareness in the Smartphone-Login panel: avatar, display name
+  (from a fresh NSS/local GECOS lookup), username, and a "Verzeichniskonto"
+  (directory account) badge for `account_source=nss` accounts. All shown
+  values come from the broker's new `/identity` endpoint (same
+  authorization check as `/start`, no rate limit/marker/session side
+  effects) or from SDDM's own `userModel` (avatar) - never from
+  `resolvedUsername`/Authelia OIDC claims, which stay strictly a
+  post-approval identity-binding check, not a display source.
+- New broker endpoint `GET /identity?username=X`: read-only, pre-flow
+  lookup so the panel can show identity before a device flow starts.
+  403 without a reason on any unauthorized/unknown username, identical
+  to `/start`'s behavior (no enumeration, no policy-rule leakage).
+
+### Unchanged (explicitly preserved)
+- The flow-binding model: a device flow is still bound to
+  `targetUsername`, captured once at `open()` and immutable for the
+  flow's lifetime; switching SDDM's own account selection while a flow
+  is active still cancels it (`onSddmSelectedUsernameChanged`).
+- No login-method selector was added - password and Smartphone-Login
+  remain the only two visible entry points. FIDO2 and the OIDC
+  provider choice remain PAM/config-only, invisible to QML.
+
 ## [1.0.0]
 
 First stable release. No known P0/P1 bugs within the documented
