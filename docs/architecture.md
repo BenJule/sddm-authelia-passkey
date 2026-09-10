@@ -368,6 +368,37 @@ for Smartphone-Login, so the panel points at the path that's
 guaranteed to still work instead of just repeating the same failure
 sentence with nothing actionable.
 
+## Login Transition (v1.7.0)
+
+`root.pixelLoginTransitioning` (`pixelFlow.state === "approved" ||
+"logging_in"`) covers the brief window between a confirmed smartphone
+approval and `sddm.login()` actually being called - the "Bestätigt"
+checkmark beat (`pixelApprovedTimer`, 700ms), then "Anmeldung
+läuft…" up to the real session hand-off. Previously the rest of the
+greeter only dimmed/stopped accepting input while the overlay card was
+open (narrow displays only) - now it does so during this window too,
+in **both** layouts:
+
+- `loginScreenRoot.enabled` (password field, user list, action row)
+  also goes `false` during this window, on top of its existing overlay
+  condition - the same mechanism as the overlay's input-blocking (see
+  "Responsive Greeter" above), just gated on a different condition.
+- `pixelOverlayScrim` also dims during this window in sidebar layout
+  too (more lightly - 0.35 vs. the overlay's 0.55 - since the sidebar
+  panel itself stays fully legible either way; this is a purely visual
+  echo of the functional block above, not a second mechanism).
+- The QR panel's `QQC2.BusyIndicator` (previously only visible while
+  `state === "starting"`) now also spins through `"logging_in"`, so
+  there's continuous progress feedback right up to the actual switch -
+  the QR card (including its "approved" checkmark) is already hidden
+  by then, so nothing else fills that gap.
+
+Deliberately unchanged: the password login path itself. Making the
+same visual treatment apply there would mean modifying stock
+SDDM/Breeze password-handling code rather than this project's own
+additive elements, which is a materially different risk profile from
+everything else in this patch - out of scope here.
+
 ## Upstream rate limiting
 
 Authelia's own token-endpoint abuse limiter (`server.endpoints.rate_limits
