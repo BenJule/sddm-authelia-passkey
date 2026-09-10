@@ -106,3 +106,14 @@ kwallet_auto_unlock=false
 # systemd-creds encrypted credential named "<prefix>.<username>" (e.g.
 # kwallet.secret.alice) - never one credential shared across users.
 kwallet_credential_name=kwallet.secret
+
+# Optional: native FIDO2/U2F hardware security key (YubiKey, Nitrokey,
+# SoloKey, etc.) as a fast local login path, tried before the smartphone/
+# passkey flow and the password fallback. Off by default - requires
+# `apt install libpam-u2f` and running
+# /usr/share/sddm-authelia-passkey/enable-fido2.sh once (after
+# enable-pam.sh). See docs/fido2.md. These four values only take effect
+# once enable-fido2.sh has actually wired pam_u2f.so into the PAM stack.
+fido2_authfile=/etc/sddm-authelia-passkey/fido2_mappings
+fido2_require_user_verification=true
+fido2_require_pin_verification=false

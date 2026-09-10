@@ -10,6 +10,7 @@ Rules-Requires-Root: no
 Package: sddm-authelia-passkey
 Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, sddm, libpam-modules, systemd, sddm-theme-debian-breeze, patch
+Recommends: libpam-u2f
 Description: Passwordless SDDM login via Authelia OIDC Device Authorization + Passkey
  Lets a configured local user log into SDDM/Plasma by approving a
  device-authorization request on their phone (WebAuthn/Passkey user
