@@ -79,7 +79,6 @@ jobs:
             qt6-declarative-dev-tools \
             qml6-module-qtquick \
             qml6-module-qtquick-controls \
-            qml6-module-qtquick-controls-basic \
             qml6-module-qtquick-layouts \
             qml6-module-qtquick-window
 
@@ -110,7 +109,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             sddm qml6-module-qtquick qml6-module-qtquick-controls \
-            qml6-module-qtquick-controls-basic qml6-module-qtquick-layouts \
+            qml6-module-qtquick-layouts \
             qml6-module-qtquick-window xvfb ca-certificates
 
       - name: 9/10. sddm-greeter-qt6 test-mode runtime check, no fatal QML errors
