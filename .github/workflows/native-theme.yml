@@ -1,0 +1,247 @@
+name: native-theme
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  source-and-provenance:
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+      - name: Install git before checkout
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Trust the checkout dir
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: 1. Mandatory native source files exist
+        run: |
+          test -f theme/native/Main.qml
+          test -f theme/native/metadata.desktop
+          test -f theme/native/theme.conf
+          test -d theme/native/components
+          test -f theme/native/components/UserAvatar.qml
+          test -f theme/native/components/PowerActionsRow.qml
+          test -f theme/native/components/SmartphoneLoginPreview.qml
+          test -f theme/native/README.md
+          test -f theme/native/PROVENANCE.md
+
+      - name: 2. metadata.desktop declares QtVersion=6
+        run: grep -qx 'QtVersion=6' theme/native/metadata.desktop
+
+      - name: 3. MainScript points to Main.qml
+        run: grep -qx 'MainScript=Main.qml' theme/native/metadata.desktop
+
+      - name: 4. No reference to the installed Debian Breeze theme
+        run: |
+          ! grep -rn 'debian-breeze\|/usr/share/sddm/themes/debian' \
+            theme/native/Main.qml theme/native/components/*.qml
+
+      - name: 5. No patch application required for the native theme
+        run: |
+          test "$(find theme/native -name '*.patch' | wc -l)" -eq 0
+          # The native theme's own debian/rules install lines must use
+          # plain install(1), never patch(1) - unlike the compatibility
+          # theme immediately above them in the same file.
+          ! awk '/theme\/native\//{print}' debian/rules | grep -q '^\s*patch '
+
+      - name: 6. No remote http:// or https:// resources in native QML
+        run: |
+          ! grep -n 'http://\|https://' \
+            theme/native/Main.qml theme/native/components/*.qml
+
+      - name: 7. No Debian/KDE/provider artwork or copied assets
+        run: |
+          # No vendored image/font assets at all in this foundation release.
+          test "$(find theme/native -type f \( -iname '*.png' -o -iname '*.svg' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.gif' -o -iname '*.ico' -o -iname '*.ttf' -o -iname '*.otf' \) | wc -l)" -eq 0
+          # "Debian"/"Breeze"/"KDE" may only appear in comment lines
+          # (explaining what was deliberately NOT used - see
+          # PROVENANCE.md), never as live/displayed branding content.
+          ! grep -vE '^\s*//' theme/native/Main.qml theme/native/components/*.qml theme/native/theme.conf | \
+            grep -inE 'debian|breeze|\bkde\b'
+          ! grep -inE 'debian|breeze|\bkde\b' theme/native/metadata.desktop
+
+      - name: Install qmllint and Qt6 QML modules
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            qt6-declarative-dev-tools \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window
+
+      - name: 8. qmllint on all native QML
+        run: |
+          /usr/lib/qt6/bin/qmllint theme/native/Main.qml
+          /usr/lib/qt6/bin/qmllint theme/native/components/UserAvatar.qml
+          /usr/lib/qt6/bin/qmllint theme/native/components/PowerActionsRow.qml
+          /usr/lib/qt6/bin/qmllint theme/native/components/SmartphoneLoginPreview.qml
+
+      - name: 16. Auth implementation code unchanged versus PR base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          test -n "$BASE_SHA"
+          git cat-file -e "${BASE_SHA}^{commit}"
+          git diff --exit-code "$BASE_SHA"...HEAD -- src/broker src/pam src/kwallet-secretd
+
+  runtime:
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SDDM Qt6 greeter + Xvfb + Qt6 QML modules
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            sddm qml6-module-qtquick qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window xvfb ca-certificates
+
+      - name: 9/10. sddm-greeter-qt6 test-mode runtime check, no fatal QML errors
+        run: |
+          for GEOMETRY in 1280x720x24 1920x1080x24; do
+            echo "=== testing at $GEOMETRY ==="
+            LOG="/tmp/greeter-$GEOMETRY.log"
+            # This step runs under "sh -e": timeout(1)'s expected 124
+            # exit (greeter still running at the deadline, which is
+            # fine - it's meant to stay open) must never reach errexit
+            # as a bare non-zero status, or the whole step aborts right
+            # here before the tolerant check below ever runs. The
+            # if/then/else form consumes the exit status safely under
+            # any POSIX shell.
+            if xvfb-run -a --server-args="-screen 0 $GEOMETRY" \
+                timeout 10 sddm-greeter-qt6 --test-mode \
+                  --theme theme/native > "$LOG" 2>&1; then
+              RC=0
+            else
+              RC=$?
+            fi
+            cat "$LOG"
+            if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then
+              echo "sddm-greeter-qt6 exited with unexpected status $RC" >&2
+              exit 1
+            fi
+            if grep -qiE \
+              'QQmlApplicationEngine failed|failed to load component|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError' \
+              "$LOG"; then
+              echo "fatal QML diagnostic found in $LOG" >&2
+              exit 1
+            fi
+          done
+
+  package-integration:
+    runs-on: ubuntu-latest
+    container: debian:13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential debhelper devscripts golang-go gcc libpam0g-dev \
+            sddm-theme-debian-breeze patch curl ca-certificates
+
+      - name: Build package
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect build output
+        run: |
+          mkdir -p out
+          mv ../sddm-authelia-passkey_*.deb out/
+          # Resolve the exact filename once into $GITHUB_ENV rather than
+          # re-globbing "out/sddm-authelia-passkey_*.deb" in every later
+          # step - avoids any ambiguity/quoting issue across steps.
+          # Must be an ABSOLUTE path: apt-get install's local-.deb-file
+          # detection does not reliably recognize a bare relative path
+          # without a "./" prefix and instead misparses it as an
+          # attempted package name ("E: Unable to locate package out")
+          # - package.yml's own working install step has always used an
+          # absolute /tmp/pkg/... path for exactly this reason.
+          echo "DEB=$(readlink -f out/sddm-authelia-passkey_*.deb)" >> "$GITHUB_ENV"
+
+      - name: 11. Package contains both the compatibility and native theme
+        run: |
+          # dpkg-deb -c piped straight into "grep -q" lets grep exit as
+          # soon as it finds a match, SIGPIPEing dpkg-deb's internal tar
+          # subprocess ("tar subprocess was killed by signal (Broken
+          # pipe)") - harmless for the grep itself, but avoided here by
+          # writing the full listing out first instead.
+          dpkg-deb -c "$DEB" > /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml' /tmp/deb-contents.txt
+
+      - name: Install package
+        run: apt-get install -y --no-install-recommends "$DEB"
+
+      - name: 12. Package install does not select the native theme
+        run: |
+          if [ -f /etc/sddm.conf.d/10-theme.conf ]; then
+            ! grep -qi 'sddm-authelia-passkey-native' /etc/sddm.conf.d/10-theme.conf
+          fi
+          for f in /etc/sddm.conf /etc/sddm.conf.d/*.conf; do
+            [ -e "$f" ] || continue
+            ! grep -qi 'Current=sddm-authelia-passkey-native' "$f"
+          done
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml
+
+      - name: 13. Package install does not modify PAM
+        run: |
+          if [ -f /etc/pam.d/sddm ] && grep -q pam_authelia_passkey /etc/pam.d/sddm; then
+            echo "FAIL: package install modified /etc/pam.d/sddm" >&2
+            exit 1
+          fi
+
+      - name: Verify native theme content and ownership
+        run: |
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPreview.qml
+          # Debian Breeze compatibility theme is untouched by native theme install.
+          test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          dpkg -V sddm-authelia-passkey
+
+      - name: Remove package and verify native theme is fully cleaned up
+        run: |
+          apt-get remove -y sddm-authelia-passkey
+          test ! -e /usr/share/sddm/themes/sddm-authelia-passkey-native
+          test -f /usr/share/sddm/themes/debian-breeze/Main.qml
+
+      - name: Reinstall for the upgrade check below
+        run: apt-get install -y --no-install-recommends "$DEB"
+
+      - name: 14. Upgrade path remains GREEN with the native theme present
+        run: |
+          sha256sum /etc/pam.d/sddm > /tmp/pam-before.sha256 2>/dev/null || echo "no-pam-yet" > /tmp/pam-before.sha256
+          # Re-installing the same just-built package simulates an
+          # in-place upgrade at the packaging-mechanics level (the
+          # dedicated package.yml workflow already proves the real
+          # cross-version upgrade path for everything except the new
+          # native theme files added in this release).
+          apt-get install -y --reinstall --no-install-recommends "$DEB"
+          if [ -f /etc/pam.d/sddm ]; then
+            sha256sum /etc/pam.d/sddm > /tmp/pam-after.sha256
+          else
+            echo "no-pam-yet" > /tmp/pam-after.sha256
+          fi
+          diff /tmp/pam-before.sha256 /tmp/pam-after.sha256
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml
+          test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
+          dpkg -V sddm-authelia-passkey
