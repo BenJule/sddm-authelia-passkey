@@ -33,6 +33,26 @@ It includes:
 - retry/recovery states
 - password fallback
 
+## v1.11 responsive UX
+
+v1.11 keeps the same Native Theme authentication and Smartphone-flow
+state machine while adapting only presentation geometry.
+
+On sufficiently wide displays the Smartphone-Login panel becomes a
+right-side panel and leaves a usable login area beside it. When the
+sidebar plus the minimum login width no longer fit, the same panel
+becomes a centred modal overlay with a dimming/input-blocking scrim.
+
+The breakpoint is derived from available logical-pixel space rather
+than a hard-coded display resolution. Short displays additionally use
+reduced margins, a shorter user list and a smaller QR presentation.
+
+The responsive contract is exercised at 1024x600, 1280x720,
+1366x768, 1920x1080 and 2560x1080.
+
+No broker, PAM, approval-marker or authentication decision changes are
+part of responsive UX.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
@@ -65,11 +85,13 @@ No compatibility-theme QML is copied into the Native Theme.
 
 ## Current roadmap position
 
-v1.10.0 is feature parity.
+v1.10.0 established feature parity.
+
+v1.11 adds responsive Native Theme presentation while keeping the
+authentication model unchanged.
 
 Later releases separately address:
 
-- v1.11 responsive UX
 - v1.12 accessibility hardening
 - v1.13 native branding
 - later recovery, visual regression and cutover work

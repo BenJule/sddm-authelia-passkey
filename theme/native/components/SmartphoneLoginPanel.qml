@@ -8,6 +8,8 @@ Rectangle {
 
     property var controller
     property bool open: false
+    property bool compactLayout: false
+    property real qrSide: 210
 
     signal closeRequested()
     signal cancelRequested()
@@ -32,8 +34,8 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 22
-        spacing: 11
+        anchors.margins: root.compactLayout ? 14 : 22
+        spacing: root.compactLayout ? 8 : 11
 
         RowLayout {
             Layout.fillWidth: true
@@ -42,7 +44,7 @@ Rectangle {
                 Layout.fillWidth: true
                 text: qsTr("Smartphone-Login")
                 color: "white"
-                font.pixelSize: 18
+                font.pixelSize: root.compactLayout ? 16 : 18
                 font.bold: true
             }
 
@@ -63,8 +65,10 @@ Rectangle {
             spacing: 10
 
             UserAvatar {
-                Layout.preferredWidth: 48
-                Layout.preferredHeight: 48
+                Layout.preferredWidth:
+                    root.compactLayout ? 40 : 48
+                Layout.preferredHeight:
+                    root.compactLayout ? 40 : 48
                 iconSource:
                     root.controller
                         ? root.controller.identityIconSource
@@ -166,12 +170,12 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 220
-            spacing: 18
+            Layout.preferredHeight: root.qrSide + 10
+            spacing: root.compactLayout ? 12 : 18
 
             Rectangle {
-                Layout.preferredWidth: 210
-                Layout.preferredHeight: 210
+                Layout.preferredWidth: root.qrSide
+                Layout.preferredHeight: root.qrSide
                 radius: 10
                 color: "white"
 
@@ -179,7 +183,8 @@ Rectangle {
                     id: qrImage
 
                     anchors.fill: parent
-                    anchors.margins: 8
+                    anchors.margins:
+                        root.compactLayout ? 6 : 8
 
                     source:
                         root.controller
@@ -241,7 +246,8 @@ Rectangle {
                             : qsTr("Wird geladen…")
                     color: "white"
                     font.bold: true
-                    font.pixelSize: 18
+                    font.pixelSize:
+                        root.compactLayout ? 16 : 18
                     wrapMode: Text.WrapAnywhere
                 }
 
