@@ -745,3 +745,29 @@ misclassified as an authentication denial. Provider polling throttling is
 shown neutrally as a temporary service wait.
 
 The password path remains independent and available throughout the design.
+
+## Native Theme Responsive UX (v1.11.0)
+
+The Native Theme keeps responsive geometry separate from authentication
+state through `ResponsiveMetrics.qml`.
+
+The Smartphone panel has exactly one presentation mode at a time:
+
+- a right-side panel when the panel plus a minimum 560-logical-pixel
+  login area fit beside each other;
+- a centred modal overlay when they do not.
+
+The sidebar width is itself bounded between 480 and 560 logical pixels.
+The breakpoint is therefore derived from current available space rather
+than from a named monitor resolution.
+
+Short viewports below 700 logical pixels reduce card margins, user-list
+height and QR size. Qt Quick logical coordinates remain the source of
+truth, so no project-specific DPI or scaling detector is introduced.
+
+Both presentation modes use the same `SmartphoneFlowController`.
+Switching layout cannot approve, deny, retry, cancel or otherwise mutate
+authentication state. On overlay layouts the existing scrim disables
+interaction with the login card; on sidebar layouts the login card may
+remain usable and its existing account-change/password actions continue
+to cancel or retarget the active flow safely.

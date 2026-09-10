@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// SDDM Authelia Passkey Native v1.10.0
+// SDDM Authelia Passkey Native v1.11.0
 //
 // Original Qt6 SDDM theme implementation. Authentication remains the
 // responsibility of SDDM/PAM. The Smartphone flow communicates only with
@@ -20,6 +20,13 @@ Item {
     property var now: new Date()
     property bool loginFailedVisible: false
     property bool smartphonePanelOpen: false
+
+    ResponsiveMetrics {
+        id: responsiveMetrics
+
+        viewportWidth: root.width
+        viewportHeight: root.height
+    }
 
     readonly property bool loginTransitioning:
         smartphoneFlow.state === "approved"
@@ -128,12 +135,29 @@ Item {
     Rectangle {
         id: card
 
-        anchors.centerIn: parent
+        x: {
+            if (root.smartphonePanelOpen
+                    && !responsiveMetrics.overlayLayout) {
+                var available =
+                    smartphonePanel.x - responsiveMetrics.safeMargin
 
-        width: Math.min(560, root.width - 48)
+                return Math.max(
+                    responsiveMetrics.safeMargin,
+                    (available - width) / 2
+                )
+            }
+
+            return (root.width - width) / 2
+        }
+
+        y: (root.height - height) / 2
+
+        width: responsiveMetrics.loginCardWidth
+
         height: Math.min(
-            cardColumn.implicitHeight + 48,
-            root.height - 40
+            cardColumn.implicitHeight
+                + 2 * responsiveMetrics.cardContentMargin,
+            responsiveMetrics.loginCardMaxHeight
         )
 
         radius: 18
@@ -142,7 +166,10 @@ Item {
         border.color: Qt.rgba(1, 1, 1, 0.14)
 
         enabled:
-            !root.smartphonePanelOpen
+            !(
+                root.smartphonePanelOpen
+                && responsiveMetrics.overlayLayout
+            )
             && !root.loginTransitioning
 
         opacity: enabled ? 1 : 0.48
@@ -157,15 +184,16 @@ Item {
             id: cardColumn
 
             anchors.fill: parent
-            anchors.margins: 24
-            spacing: 10
+            anchors.margins: responsiveMetrics.cardContentMargin
+            spacing: responsiveMetrics.compactHeight ? 7 : 10
 
             QQC2.Label {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 text: Qt.formatTime(root.now, "hh:mm:ss")
                 color: "white"
-                font.pixelSize: 32
+                font.pixelSize:
+                    responsiveMetrics.compactHeight ? 28 : 32
                 font.weight: Font.Light
             }
 
@@ -187,6 +215,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: implicitHeight
 
+                compactMode: responsiveMetrics.compactHeight
                 userModelSource: userModel
                 initialIndex:
                     userModel.lastIndex >= 0
@@ -311,7 +340,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         z: 50
-        visible: root.smartphonePanelOpen
+        visible:
+            root.smartphonePanelOpen
+            && responsiveMetrics.overlayLayout
         color: Qt.rgba(0, 0, 0, 0.48)
 
         MouseArea {
@@ -325,10 +356,27 @@ Item {
         id: smartphonePanel
 
         z: 60
-        anchors.centerIn: parent
 
-        width: Math.min(620, root.width - 48)
-        height: Math.min(620, root.height - 48)
+        x:
+            responsiveMetrics.overlayLayout
+                ? (root.width - width) / 2
+                : root.width
+                    - responsiveMetrics.safeMargin
+                    - width
+
+        y:
+            responsiveMetrics.overlayLayout
+                ? (root.height - height) / 2
+                : responsiveMetrics.safeMargin
+
+        width: responsiveMetrics.smartphoneCardWidth
+        height: responsiveMetrics.smartphoneCardHeight
+
+        compactLayout:
+            responsiveMetrics.compactHeight
+            || width < 520
+
+        qrSide: responsiveMetrics.qrSide
 
         controller: smartphoneFlow
         open: root.smartphonePanelOpen

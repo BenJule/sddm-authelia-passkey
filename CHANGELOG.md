@@ -5,6 +5,13 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Native Theme responsive UX with a geometry-derived sidebar/overlay
+  breakpoint, compact short-screen spacing, adaptive QR sizing and
+  deterministic coverage across 1024x600 through ultrawide 2560x1080.
+- Dedicated `ResponsiveMetrics.qml` keeps presentation geometry
+  independent of Smartphone authentication state.
+
 ### Changed
 - Native Theme runtime CI explicitly installs `xauth` alongside Xvfb,
   removing reliance on an implicit/transitive test-runner dependency.
