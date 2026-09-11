@@ -202,17 +202,24 @@ jobs:
           rm -rf /tmp/native-branded
           cp -a theme/native /tmp/native-branded
 
-          cat > /tmp/native-brand.svg <<'SVG'
-          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
-            <rect width="96" height="96" rx="20" fill="#8b5cf6"/>
-            <circle cx="48" cy="48" r="24" fill="#ffffff"/>
-          </svg>
-          SVG
+          printf '%s' \
+            'iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAA/klEQVR42u3csQ0DMQwEwSvUHX2/TuUWPjBAUhwB28BNZr+U5/M9qitGAABAAAAIAAABACAAAAQAgAAAEAAAAgBAAAAIAAAtB3h7ABSMPhUjN44+CSNbxu+KkC3Dd4XIxvE7IWTr+F0Qsnn8DgjZPn41QoxfixDj1yIA2AQw5VwJMO0AAADgGoCpBwAAAOMBph8AAAAAAAAAAAAAAAAAAADATxEAAADwh4w/ZAAAAOCzFB9mDR4fwEYAH+f6PL3N+C5oFI/vitJZfkXJJT3XVAG4qO2pAgAe6/BcDQAPNgkAAAEAIAAABACAAAAQAAACAEAAAAgAAAEAIAAA9Ld+vTbj8/d8RMgAAAAASUVORK5CYII=' | \
+            base64 -d \
+            > /tmp/native-brand.png
+
+          test -s /tmp/native-brand.png
+
+          PNG_MAGIC="$(
+            od -An -tx1 -N8 /tmp/native-brand.png |
+            tr -d ' \n'
+          )"
+
+          test "$PNG_MAGIC" = "89504e470d0a1a0a"
 
           cat > /tmp/native-branded/theme.conf.user <<'CONF'
           [General]
           ui_brand_name=CI Native Branding
-          ui_brand_logo=/tmp/native-brand.svg
+          ui_brand_logo=/tmp/native-brand.png
           ui_show_hostname=true
           ui_show_domain=true
           ui_brand_domain=CI.EXAMPLE
@@ -234,7 +241,7 @@ jobs:
 
           test "$RC" -eq 0 -o "$RC" -eq 124
 
-          ! grep -qiE             'QQmlApplicationEngine failed|failed to load component|Type .* unavailable|Cannot override FINAL property|Fallback to embedded theme|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError|Unable to assign'             "$LOG"
+          ! grep -qiE             'QQmlApplicationEngine failed|failed to load component|Type .* unavailable|Cannot override FINAL property|Fallback to embedded theme|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError|Unable to assign|Error decoding|Unsupported image format'             "$LOG"
 
   package-integration:
     runs-on: ubuntu-latest
