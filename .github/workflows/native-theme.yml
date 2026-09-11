@@ -51,6 +51,8 @@ jobs:
           test -f tests/native/tst_VisualComponents.qml
           test -f tests/native/tst_AccessibilitySemantics.qml
           test -f tests/native/tst_BrandingConfig.qml
+          test -f tests/native/tst_FailureRecoveryPresentation.qml
+          test -f tests/native/test_failure_recovery_contract.py
           test -f tests/native/test_visual_quality.py
           test -f tests/native/test_accessibility_contract.py
           test -f tests/native/test_branding_contract.py
@@ -124,12 +126,14 @@ jobs:
           python3 tests/native/test_visual_quality.py
           python3 tests/native/test_accessibility_contract.py
           python3 tests/native/test_branding_contract.py
+          python3 tests/native/test_failure_recovery_contract.py
           PYTHONPYCACHEPREFIX=/tmp/native-pycache \
             python3 -m py_compile \
               tests/native/test_feature_parity.py \
               tests/native/test_visual_quality.py \
               tests/native/test_accessibility_contract.py \
               tests/native/test_branding_contract.py \
+              tests/native/test_failure_recovery_contract.py \
               tests/native/mock_broker.py
 
           python3 tests/native/mock_broker.py >/tmp/native-mock.log 2>&1 &

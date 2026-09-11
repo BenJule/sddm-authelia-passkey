@@ -55,11 +55,11 @@ metadata = (
 
 
 checks = {
-    "v1.13 main marker":
-        "Native v1.13.0" in main,
+    "v1.14 main marker":
+        "Native v1.14.0" in main,
 
-    "v1.13 metadata":
-        "Version=1.13.0" in metadata,
+    "v1.14 metadata":
+        "Version=1.14.0" in metadata,
 
     "typed brand name":
         '"ui_brand_name"' in branding,
@@ -199,7 +199,7 @@ for text, label in (
 
 
 print("NATIVE_BRANDING_STATIC=GREEN")
-print("METADATA_VERSION=1.13.0")
+print("METADATA_VERSION=1.14.0")
 print("REMOTE_BRAND_LOGOS=REJECTED")
 print("DEFAULT_V112_APPEARANCE=PRESERVED")
 print("AUTH_CONFIGURATION_SEPARATION=GREEN")

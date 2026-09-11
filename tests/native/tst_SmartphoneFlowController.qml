@@ -146,14 +146,100 @@ TestCase {
         flow.applyStatus(
             {
                 status: "error",
-                error: "temporarily_unavailable"
+                error: "expired"
             },
             10,
             "session-a"
         )
 
         compare(flow.state, "expired")
+        compare(flow.errorKind, "expired")
         verify(flow.retryCooldownRemaining >= 0)
+    }
+
+    function test_provider_unavailable_is_not_expiry() {
+        prepareWaiting("alice", "session-a", 10)
+
+        flow.applyStatus(
+            {
+                status: "error",
+                error: "temporarily_unavailable"
+            },
+            10,
+            "session-a"
+        )
+
+        compare(flow.state, "error")
+        compare(flow.errorKind, "provider_unavailable")
+        compare(flow.connectionState, "error")
+        compare(
+            flow.statusText.indexOf("temporarily_unavailable"),
+            -1
+        )
+    }
+
+    function test_terminal_provider_rate_limit_is_not_expiry() {
+        prepareWaiting("alice", "session-a", 10)
+
+        flow.applyStatus(
+            {
+                status: "error",
+                error: "rate_limited",
+                retry_after_seconds: 23
+            },
+            10,
+            "session-a"
+        )
+
+        compare(flow.state, "error")
+        compare(flow.errorKind, "provider_rate_limited")
+        compare(flow.connectionState, "rate_limited")
+    }
+
+    function test_missing_status_is_malformed_terminal_state() {
+        prepareWaiting("alice", "", 10)
+
+        flow.applyStatus(
+            {
+                username: "alice"
+            },
+            10,
+            ""
+        )
+
+        compare(flow.state, "error")
+        compare(flow.errorKind, "malformed_status")
+        compare(flow.connectionState, "error")
+        compare(loginSpy.count, 0)
+    }
+
+    function test_login_failure_invalidates_approved_flow() {
+        prepareWaiting("alice", "session-a", 10)
+
+        flow.applyStatus(
+            {
+                status: "approved",
+                username: "alice"
+            },
+            10,
+            "session-a"
+        )
+
+        tryCompare(flow, "state", "logging_in", 1000)
+        compare(loginSpy.count, 1)
+
+        var generation = flow.flowGeneration
+
+        flow.loginFailed()
+
+        compare(flow.flowGeneration, generation + 1)
+        compare(flow.state, "error")
+        compare(flow.errorKind, "login_failed")
+        compare(flow.connectionState, "ready")
+        compare(flow.sessionId, "")
+        compare(flow.resolvedUsername, "")
+        compare(flow.loginEmitted, false)
+        compare(flow.targetUsername, "alice")
     }
 
     function test_cancel_invalidates_generation() {

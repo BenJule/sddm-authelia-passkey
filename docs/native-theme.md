@@ -119,6 +119,41 @@ With no override, the v1.12 presentation remains the default.
 No broker, PAM, KWallet, approval-marker, provider or authentication
 decision changes are part of Native Branding.
 
+## v1.14 failure and recovery UX
+
+v1.14 makes failure states explicit without moving authentication authority
+into QML.
+
+The Native Theme distinguishes:
+
+- broker offline from an authentication denial
+- temporary provider/service unavailability from real flow expiry
+- provider throttling from denial
+- account ineligibility from infrastructure failure
+- malformed status data from a valid authentication result
+- QR rendering failure from loss of the device-code fallback
+- SDDM/PAM login failure after approval from a reusable approval
+
+The password path remains visible in every recoverable state.
+
+A missing or failed QR image does not terminate an otherwise usable device
+flow when the device code and verification address are available. The panel
+switches to explicit alternate-path wording.
+
+The broker remains responsible for upstream polling cadence and
+`Retry-After`. The Native Theme only displays the broker's state. Its short
+retry delay after a local `/start` 429 is a client-side anti-double-click
+guard and is not described as server-side security or as the provider's
+actual Retry-After value.
+
+If SDDM reports `loginFailed` after Smartphone approval, the Native Theme
+invalidates the old presentation generation and removes the old QR/session
+presentation before offering password login or an explicit new flow. It
+never replays the previous approval automatically.
+
+No broker, PAM, approval-marker, KWallet, FIDO2 or authentication-decision
+change is part of v1.14.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
@@ -161,13 +196,17 @@ v1.11.1 added visual-quality polish while preserving that model.
 v1.12 added Native Theme accessibility hardening while keeping the
 authentication model unchanged.
 
-v1.13 adds optional vendor-neutral Native Theme branding while preserving
+v1.13 added optional vendor-neutral Native Theme branding while preserving
 the v1.12 default appearance and authentication model.
+
+v1.14 hardens Native Theme failure and recovery UX while preserving the
+same authentication authority and security boundaries.
 
 Later releases separately address:
 
-- recovery and rollback hardening
-- visual-regression automation
-- Native Theme cutover work
+- deterministic visual-regression automation
+- explicit installation modes
+- migration and rollback
+- Native Theme hardening and release-candidate work
 
 The compatibility theme remains supported throughout.
