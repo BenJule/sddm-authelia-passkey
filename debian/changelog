@@ -1,3 +1,12 @@
+sddm-authelia-passkey (1.11.1-1) unstable; urgency=medium
+
+  * Polish the Native Theme visual presentation.
+  * Replace raw Qt Basic widget surfaces with project-owned controls.
+  * Improve account, Smartphone Login, session and power presentation.
+  * Preserve responsive and authentication behaviour unchanged.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Fri, 11 Sep 2026 02:21:51 +0200
+
 sddm-authelia-passkey (1.11.0-1) unstable; urgency=medium
 
   * Add responsive Native Theme presentation with a derived
