@@ -1,0 +1,28 @@
+[General]
+
+# Optional vendor-neutral Native Theme branding.
+# Copy this file to:
+# /usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf.user
+#
+# Keep the installed override a regular root:root file with mode 0644.
+
+ui_brand_name=
+ui_brand_logo=
+
+# SDDM's own local hostname.
+ui_show_hostname=false
+
+# Domain/realm is deliberately administrator supplied.
+# It is never inferred from OIDC, NSS or broker identity data.
+ui_show_domain=false
+ui_brand_domain=
+
+# Existing v1.12 behaviour remains enabled by default.
+ui_show_avatar=true
+
+# system or custom
+ui_accent=system
+
+# Used only with ui_accent=custom.
+# Exactly #RRGGBB, for example #8b5cf6.
+ui_accent_color=
