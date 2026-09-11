@@ -80,7 +80,13 @@ checks = {
         "sddm.login(" in main
         and "passwordField.text" in main,
     "smartphone PAM handoff":
-        'sddm.login(username, "", sessionIndex)' in main,
+        re.search(
+            r'sddm\.login\s*\(\s*'
+            r'username\s*,\s*'
+            r'""\s*,\s*'
+            r'sessionIndex\s*\)',
+            main,
+        ) is not None,
     "immutable target username":
         "targetUsername" in controller,
     "immutable session index":
@@ -109,7 +115,10 @@ checks = {
     "device code":
         "userCode" in panel,
     "identity":
-        "identityDisplayName" in panel,
+        "identityDisplayName" in controller
+        and "identitySource" in controller
+        and "/identity?username=" in controller
+        and "accountKindLabel" in panel,
     "directory indication":
         "Verzeichniskonto" in panel,
     "password fallback":

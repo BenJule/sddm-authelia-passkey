@@ -58,6 +58,7 @@ require(
     "Accessible.role: Accessible.Pane",
     "Accessible.role: Accessible.List",
     "Accessible.role: Accessible.ListItem",
+    "Accessible.name: accountName",
     "Accessible.selected: highlighted",
     "Accessible.focusable: true",
     "Accessible.onPressAction:",

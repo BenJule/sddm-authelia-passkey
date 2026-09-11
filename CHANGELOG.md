@@ -15,10 +15,20 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 - Native keyboard-focus transitions are explicit for Smartphone-Login,
   manual username entry and password fallback.
-- Decorative avatars/status dots are excluded from the accessibility tree
-  where adjacent text already conveys the same information.
-- Stable-status documentation no longer hard-codes the latest release
-  number in the README.
+- Decorative avatars and status indicators are excluded from the
+  accessibility tree where adjacent semantic text already conveys the
+  same information.
+- Stable-status documentation no longer hard-codes the latest release.
+
+## [1.11.1] - 2026-09-11
+
+### Changed
+- Reworked the Native Theme visual presentation with project-owned dark
+  translucent controls instead of raw Qt Basic widget surfaces.
+- Improved login-card hierarchy, username-first account presentation,
+  session controls, power actions and Smartphone-Login presentation.
+- Added explicit German date formatting.
+- Preserved v1.11 responsive geometry and authentication semantics.
 
 ## [1.11.0] - 2026-09-10
 
@@ -32,8 +42,8 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ### Changed
 - Native Theme runtime CI explicitly installs `xauth` alongside Xvfb,
   removing reliance on an implicit/transitive test-runner dependency.
-- Documentation reflects the internal Debian 13 APT mirror and Native
-  Theme feature-parity status.
+- Documentation now reflects the v1.10.0 stable release, the internal
+  Debian 13 APT mirror, and Native Theme feature-parity status.
 
 ## [1.10.0]
 

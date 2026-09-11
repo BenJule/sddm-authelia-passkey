@@ -53,33 +53,44 @@ The responsive contract is exercised at 1024x600, 1280x720,
 No broker, PAM, approval-marker or authentication decision changes are
 part of responsive UX.
 
+## v1.11.1 visual-quality hotfix
+
+v1.11.1 keeps the v1.11 authentication and responsive behaviour while
+replacing visibly raw Qt Basic control surfaces with project-owned visual
+components.
+
+The patch improves login-card hierarchy, username-first account
+presentation, password/session controls, power actions, German date
+formatting and the Smartphone-Login panel.
+
+No PAM, broker, approval-marker, OIDC/provider, KWallet authentication or
+username/session-binding behaviour changes are part of this patch.
+
 ## v1.12 accessibility hardening
 
 v1.12 applies explicit accessibility semantics to the independent
-Native Theme instead of relying only on visual text or implicit widget
-behaviour.
+Native Theme while preserving the v1.11.1 presentation and
+authentication model.
 
 The Native Theme accessibility contract includes:
 
 - Dialog semantics for the modal Smartphone-Login layout and Pane
   semantics for the non-modal sidebar layout
-- explicit names/descriptions for the Smartphone panel, QR code,
+- explicit names and descriptions for Smartphone Login, QR code,
   device code, connection status and countdown
-- an AlertMessage role for authentication states that require attention
-- List/ListItem semantics for account selection
-- selected-state exposure for the current account
-- explicit accessible names for password, session and keyboard-layout
-  controls
-- decorative avatars and status dots excluded from the accessibility
-  tree to avoid duplicate announcements
-- focus transfer into the Smartphone panel when it opens and back to
-  the password path when it closes
+- alert semantics for authentication states requiring attention
+- List/ListItem semantics and selected-state exposure for account choice
+- explicit accessible names for password, session and keyboard layout
+- decorative avatars and status indicators excluded from the
+  accessibility tree when semantic text already conveys the information
+- deterministic focus transfer into Smartphone Login, back to the
+  password path and into manual username entry
 
-The password login path remains available throughout.
+The password path remains available throughout.
 
 Structural semantics are covered by deterministic tests and qmllint.
-Actual AT-SPI/Orca interaction under a real SDDM login session remains
-a lab/manual verification item and is not claimed by CI.
+Actual AT-SPI/Orca interaction in a real SDDM session remains a manual
+lab verification item and is not claimed by CI.
 
 No broker, PAM, approval-marker or authentication decision changes are
 part of accessibility hardening.
@@ -118,8 +129,10 @@ No compatibility-theme QML is copied into the Native Theme.
 
 v1.10.0 established feature parity.
 
-v1.11 adds responsive Native Theme presentation while keeping the
+v1.11 added responsive Native Theme presentation while keeping the
 authentication model unchanged.
+
+v1.11.1 added visual-quality polish while preserving that model.
 
 v1.12 adds Native Theme accessibility hardening while keeping the
 authentication model unchanged.

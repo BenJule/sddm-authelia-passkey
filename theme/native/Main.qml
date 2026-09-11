@@ -2,9 +2,8 @@
 //
 // SDDM Authelia Passkey Native v1.12.0
 //
-// Original Qt6 SDDM theme implementation. Authentication remains the
-// responsibility of SDDM/PAM. The Smartphone flow communicates only with
-// the local project broker through SmartphoneFlowController.
+// Presentation is original project work.
+// Authentication remains exclusively with SDDM/PAM.
 import QtQuick
 import QtQuick.Controls.Basic as QQC2
 import QtQuick.Layouts
@@ -15,9 +14,11 @@ Item {
 
     width: 1920
     height: 1080
+
     focus: true
 
     property var now: new Date()
+
     property bool loginFailedVisible: false
     property bool smartphonePanelOpen: false
 
@@ -34,44 +35,64 @@ Item {
 
     Timer {
         interval: 1000
+
         running: true
         repeat: true
         triggeredOnStart: true
-        onTriggered: root.now = new Date()
+
+        onTriggered:
+            root.now = new Date()
     }
 
     SmartphoneFlowController {
         id: smartphoneFlow
 
-        onLoginApproved: function(username, sessionIndex) {
-            sddm.login(username, "", sessionIndex)
-        }
+        onLoginApproved:
+            function(
+                username,
+                sessionIndex
+            ) {
+                sddm.login(
+                    username,
+                    "",
+                    sessionIndex
+                )
+            }
     }
 
     Connections {
         target: sddm
 
         function onLoginFailed() {
-            if (smartphoneFlow.state === "logging_in"
-                    || smartphoneFlow.state === "approved") {
+            if (
+                smartphoneFlow.state === "logging_in"
+                || smartphoneFlow.state === "approved"
+            ) {
                 smartphoneFlow.loginFailed()
+
                 root.smartphonePanelOpen = true
+
                 return
             }
 
             root.loginFailedVisible = true
+
             passwordField.text = ""
+
             passwordField.forceActiveFocus()
         }
 
         function onLoginSucceeded() {
             root.loginFailedVisible = false
+
             smartphoneFlow.loginSucceeded()
         }
     }
 
     function attemptPasswordLogin() {
-        if (userChooser.selectedUsername.length === 0)
+        if (
+            userChooser.selectedUsername.length === 0
+        )
             return
 
         if (smartphoneFlow.live)
@@ -87,7 +108,9 @@ Item {
     }
 
     function openSmartphoneLogin() {
-        if (userChooser.selectedUsername.length === 0) {
+        if (
+            userChooser.selectedUsername.length === 0
+        ) {
             userChooser.beginManualEntry()
             return
         }
@@ -106,12 +129,15 @@ Item {
     }
 
     Keys.onEscapePressed: {
-        if (root.smartphonePanelOpen
-                && !root.loginTransitioning) {
+        if (
+            root.smartphonePanelOpen
+            && !root.loginTransitioning
+        ) {
             if (smartphoneFlow.live)
                 smartphoneFlow.cancelCurrent(false)
 
             root.smartphonePanelOpen = false
+
             passwordField.forceActiveFocus()
         }
     }
@@ -122,48 +148,159 @@ Item {
         gradient: Gradient {
             GradientStop {
                 position: 0
-                color: "#182632"
+                color: "#142634"
+            }
+
+            GradientStop {
+                position: 0.48
+                color: "#0c1822"
             }
 
             GradientStop {
                 position: 1
-                color: "#0b121a"
+                color: "#071018"
             }
         }
+    }
+
+    Rectangle {
+        width:
+            Math.max(
+                540,
+                root.width * 0.44
+            )
+
+        height: width
+
+        radius: width / 2
+
+        x:
+            root.width
+            - width * 0.61
+
+        y:
+            -height * 0.57
+
+        color:
+            Qt.rgba(
+                0.13,
+                0.38,
+                0.72,
+                0.070
+            )
+    }
+
+    Rectangle {
+        width:
+            Math.max(
+                430,
+                root.width * 0.34
+            )
+
+        height: width
+
+        radius: width / 2
+
+        x:
+            -width * 0.58
+
+        y:
+            root.height
+            - height * 0.40
+
+        color:
+            Qt.rgba(
+                0.10,
+                0.48,
+                0.54,
+                0.045
+            )
+    }
+
+    QQC2.Label {
+        anchors.left: parent.left
+        anchors.top: parent.top
+
+        anchors.leftMargin:
+            responsiveMetrics.safeMargin
+
+        anchors.topMargin:
+            responsiveMetrics.safeMargin
+
+        text:
+            qsTr(
+                "SDDM · Authelia Passkey"
+            )
+
+        color: "#617589"
+
+        font.pixelSize: 9
+        font.weight: Font.Medium
     }
 
     Rectangle {
         id: card
 
         x: {
-            if (root.smartphonePanelOpen
-                    && !responsiveMetrics.overlayLayout) {
+            if (
+                root.smartphonePanelOpen
+                && !responsiveMetrics.overlayLayout
+            ) {
                 var available =
-                    smartphonePanel.x - responsiveMetrics.safeMargin
+                    smartphonePanel.x
+                    - responsiveMetrics.safeMargin
 
                 return Math.max(
                     responsiveMetrics.safeMargin,
-                    (available - width) / 2
+                    (
+                        available
+                        - width
+                    ) / 2
                 )
             }
 
-            return (root.width - width) / 2
+            return (
+                root.width
+                - width
+            ) / 2
         }
 
-        y: (root.height - height) / 2
+        y:
+            (
+                root.height
+                - height
+            ) / 2
 
-        width: responsiveMetrics.loginCardWidth
+        width:
+            responsiveMetrics.loginCardWidth
 
-        height: Math.min(
-            cardColumn.implicitHeight
-                + 2 * responsiveMetrics.cardContentMargin,
-            responsiveMetrics.loginCardMaxHeight
-        )
+        height:
+            Math.min(
+                cardColumn.implicitHeight
+                    + 2
+                        * responsiveMetrics.cardContentMargin,
+                responsiveMetrics.loginCardMaxHeight
+            )
 
-        radius: 18
-        color: Qt.rgba(1, 1, 1, 0.06)
+        radius: 22
+
+        color:
+            Qt.rgba(
+                0.035,
+                0.058,
+                0.082,
+                0.945
+            )
+
         border.width: 1
-        border.color: Qt.rgba(1, 1, 1, 0.14)
+
+        border.color:
+            Qt.rgba(
+                1,
+                1,
+                1,
+                0.095
+            )
 
         Accessible.role: Accessible.Pane
         Accessible.name: qsTr("Anmeldung")
@@ -175,7 +312,10 @@ Item {
             )
             && !root.loginTransitioning
 
-        opacity: enabled ? 1 : 0.48
+        opacity:
+            enabled
+                ? 1
+                : 0.45
 
         Behavior on opacity {
             NumberAnimation {
@@ -187,201 +327,361 @@ Item {
             id: cardColumn
 
             anchors.fill: parent
-            anchors.margins: responsiveMetrics.cardContentMargin
-            spacing: responsiveMetrics.compactHeight ? 7 : 10
 
-            QQC2.Label {
+            anchors.margins:
+                responsiveMetrics.cardContentMargin
+
+            spacing:
+                responsiveMetrics.compactHeight
+                    ? 7
+                    : 10
+
+            RowLayout {
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: Qt.formatTime(root.now, "hh:mm:ss")
-                color: "white"
-                font.pixelSize:
-                    responsiveMetrics.compactHeight ? 28 : 32
-                font.weight: Font.Light
+
+                spacing: 14
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+
+                    spacing: 1
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+
+                        text: qsTr("Willkommen")
+
+                        color: "#f4f8fc"
+
+                        font.pixelSize:
+                            responsiveMetrics.compactHeight
+                                ? 21
+                                : 26
+
+                        font.bold: true
+                    }
+
+                    QQC2.Label {
+                        Layout.fillWidth: true
+
+                        text:
+                            qsTr(
+                                "Sicher anmelden"
+                            )
+
+                        color: "#718499"
+
+                        font.pixelSize: 10
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: 0
+
+                    QQC2.Label {
+                        Layout.alignment: Qt.AlignRight
+
+                        text:
+                            Qt.formatTime(
+                                root.now,
+                                "hh:mm"
+                            )
+
+                        color: "#eef4fa"
+
+                        font.pixelSize:
+                            responsiveMetrics.compactHeight
+                                ? 20
+                                : 24
+
+                        font.weight: Font.Light
+                    }
+
+                    QQC2.Label {
+                        Layout.alignment: Qt.AlignRight
+
+                        text:
+                            root.now.toLocaleDateString(
+                                Qt.locale("de_DE"),
+                                "dddd, d. MMMM yyyy"
+                            )
+
+                        color: "#667b90"
+
+                        font.pixelSize: 8
+                    }
+                }
             }
 
-            QQC2.Label {
+            Rectangle {
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: Qt.formatDate(
-                    root.now,
-                    "dddd, d MMMM yyyy"
-                )
-                color: "white"
-                opacity: 0.70
-                font.pixelSize: 13
+                Layout.preferredHeight: 1
+
+                color: Qt.rgba(1, 1, 1, 0.065)
             }
 
             UserChooser {
                 id: userChooser
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: implicitHeight
 
-                compactMode: responsiveMetrics.compactHeight
-                userModelSource: userModel
+                Layout.preferredHeight:
+                    implicitHeight
+
+                compactMode:
+                    responsiveMetrics.compactHeight
+
+                userModelSource:
+                    userModel
+
                 initialIndex:
                     userModel.lastIndex >= 0
                         ? userModel.lastIndex
                         : 0
 
                 onAccountChanged: {
-                    if (smartphoneFlow.retarget(selectedUsername))
-                        root.smartphonePanelOpen = false
+                    if (
+                        smartphoneFlow.retarget(
+                            selectedUsername
+                        )
+                    ) {
+                        root.smartphonePanelOpen =
+                            false
+                    }
 
                     passwordField.text = ""
-                    root.loginFailedVisible = false
+
+                    root.loginFailedVisible =
+                        false
 
                     if (!manualMode)
                         passwordField.forceActiveFocus()
                 }
             }
 
-            QQC2.TextField {
+            QQC2.Label {
+                Layout.fillWidth: true
+
+                text: qsTr("Passwort")
+
+                color: "#7d8fa2"
+
+                font.pixelSize: 10
+                font.weight: Font.Medium
+            }
+
+            PolishedTextField {
                 id: passwordField
 
                 Layout.fillWidth: true
+
                 echoMode: TextInput.Password
-                placeholderText: qsTr("Passwort")
-                enabled: userChooser.selectedUsername.length > 0
+
+                placeholderText:
+                    qsTr(
+                        "Passwort eingeben"
+                    )
 
                 Accessible.name: qsTr("Passwort")
+
                 Accessible.description:
-                    userChooser.selectedDisplayName.length > 0
-                        ? qsTr("Passwort für %1").arg(
-                            userChooser.selectedDisplayName
+                    userChooser.selectedUsername.length > 0
+                        ? qsTr(
+                            "Passwort für %1"
+                        ).arg(
+                            userChooser.selectedUsername
                         )
                         : qsTr(
                             "Passwort für das ausgewählte Benutzerkonto"
                         )
+
                 Accessible.passwordEdit: true
 
-                onAccepted: root.attemptPasswordLogin()
+                enabled:
+                    userChooser.selectedUsername.length > 0
+
+                onAccepted:
+                    root.attemptPasswordLogin()
             }
 
             QQC2.Label {
                 id: loginFailureLabel
 
                 Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
+
+                visible:
+                    root.loginFailedVisible
+
+                horizontalAlignment:
+                    Text.AlignHCenter
+
                 wrapMode: Text.WordWrap
-                visible: root.loginFailedVisible
-                text: qsTr("Anmeldung fehlgeschlagen.")
+
+                text:
+                    qsTr(
+                        "Anmeldung fehlgeschlagen. Bitte Eingabe prüfen."
+                    )
+
                 color: "#ff8585"
-                font.pixelSize: 12
+
+                font.pixelSize: 10
 
                 Accessible.role: Accessible.AlertMessage
                 Accessible.name: text
             }
 
-            QQC2.Button {
+            PolishedButton {
                 id: loginButton
 
                 Layout.fillWidth: true
-                text: qsTr("Anmelden")
-                enabled: userChooser.selectedUsername.length > 0
+
+                text:
+                    qsTr(
+                        "Mit Passwort anmelden"
+                    )
 
                 Accessible.defaultButton: true
 
-                onClicked: root.attemptPasswordLogin()
+                enabled:
+                    userChooser.selectedUsername.length > 0
+
+                onClicked:
+                    root.attemptPasswordLogin()
             }
 
-            QQC2.Button {
+            PolishedButton {
                 Layout.fillWidth: true
-                text: qsTr("Smartphone-Login")
-                enabled: userChooser.selectedUsername.length > 0
-                onClicked: root.openSmartphoneLogin()
-            }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+                primary: true
 
-                QQC2.Label {
-                    text: qsTr("Sitzung:")
-                    color: "white"
-                    opacity: 0.72
-                    font.pixelSize: 11
-                    Accessible.ignored: true
-                }
+                text:
+                    qsTr(
+                        "Mit Smartphone anmelden"
+                    )
 
-                QQC2.ComboBox {
-                    id: sessionCombo
+                enabled:
+                    userChooser.selectedUsername.length > 0
 
-                    Layout.fillWidth: true
-                    model: sessionModel
-
-                    Accessible.name: qsTr("Sitzung")
-                    textRole: "name"
-                    currentIndex:
-                        sessionModel.lastIndex >= 0
-                            ? sessionModel.lastIndex
-                            : 0
-                }
+                onClicked:
+                    root.openSmartphoneLogin()
             }
 
             RowLayout {
                 Layout.fillWidth: true
 
-                visible:
-                    typeof keyboard !== "undefined"
-                    && keyboard.layouts !== undefined
-                    && keyboard.layouts.count > 1
-
                 spacing: 8
 
-                QQC2.Label {
-                    text: qsTr("Tastatur:")
-                    color: "white"
-                    opacity: 0.72
-                    font.pixelSize: 11
-                    Accessible.ignored: true
-                }
-
-                QQC2.ComboBox {
-                    id: keyboardCombo
-
+                ColumnLayout {
                     Layout.fillWidth: true
 
-                    Accessible.name: qsTr("Tastaturlayout")
+                    spacing: 3
 
-                    model:
+                    QQC2.Label {
+                        text: qsTr("Sitzung")
+
+                        color: "#687c91"
+
+                        font.pixelSize: 8
+
+                        Accessible.ignored: true
+                    }
+
+                    PolishedComboBox {
+                        id: sessionCombo
+
+                        Layout.fillWidth: true
+
+                        Accessible.name: qsTr("Sitzung")
+
+                        model: sessionModel
+                        textRole: "name"
+
+                        currentIndex:
+                            sessionModel.lastIndex >= 0
+                                ? sessionModel.lastIndex
+                                : 0
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+
+                    visible:
                         typeof keyboard !== "undefined"
-                            ? keyboard.layouts
-                            : null
+                        && keyboard.layouts !== undefined
+                        && keyboard.layouts.count > 1
 
-                    textRole: "longName"
+                    spacing: 3
 
-                    currentIndex:
-                        typeof keyboard !== "undefined"
-                            ? keyboard.currentLayout
-                            : 0
+                    QQC2.Label {
+                        text: qsTr("Tastatur")
 
-                    onActivated: function(index) {
-                        if (typeof keyboard !== "undefined")
-                            keyboard.currentLayout = index
+                        color: "#687c91"
+
+                        font.pixelSize: 8
+
+                        Accessible.ignored: true
+                    }
+
+                    PolishedComboBox {
+                        id: keyboardCombo
+
+                        Layout.fillWidth: true
+
+                        Accessible.name: qsTr("Tastaturlayout")
+
+                        model:
+                            typeof keyboard !== "undefined"
+                                ? keyboard.layouts
+                                : null
+
+                        textRole: "longName"
+
+                        currentIndex:
+                            typeof keyboard !== "undefined"
+                                ? keyboard.currentLayout
+                                : 0
+
+                        onActivated:
+                            function(index) {
+                                if (
+                                    typeof keyboard !== "undefined"
+                                ) {
+                                    keyboard.currentLayout =
+                                        index
+                                }
+                            }
                     }
                 }
             }
 
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+
+                color: Qt.rgba(1, 1, 1, 0.05)
+            }
+
             PowerActionsRow {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment:
+                    Qt.AlignHCenter
             }
         }
     }
 
     Rectangle {
         anchors.fill: parent
+
         z: 50
+
         visible:
             root.smartphonePanelOpen
             && responsiveMetrics.overlayLayout
-        color: Qt.rgba(0, 0, 0, 0.48)
+
+        color: Qt.rgba(0, 0, 0, 0.58)
 
         MouseArea {
             anchors.fill: parent
-            // Deliberately consume background interaction without closing an
-            // in-progress authentication flow accidentally.
         }
     }
 
@@ -392,53 +692,68 @@ Item {
 
         x:
             responsiveMetrics.overlayLayout
-                ? (root.width - width) / 2
+                ? (
+                    root.width
+                    - width
+                ) / 2
                 : root.width
                     - responsiveMetrics.safeMargin
                     - width
 
         y:
             responsiveMetrics.overlayLayout
-                ? (root.height - height) / 2
+                ? (
+                    root.height
+                    - height
+                ) / 2
                 : responsiveMetrics.safeMargin
 
-        width: responsiveMetrics.smartphoneCardWidth
-        height: responsiveMetrics.smartphoneCardHeight
+        width:
+            responsiveMetrics.smartphoneCardWidth
+
+        height:
+            responsiveMetrics.smartphoneCardHeight
 
         compactLayout:
             responsiveMetrics.compactHeight
             || width < 520
 
-        qrSide: responsiveMetrics.qrSide
+        qrSide:
+            responsiveMetrics.qrSide
+
         modalLayout: responsiveMetrics.overlayLayout
 
-        controller: smartphoneFlow
-        open: root.smartphonePanelOpen
+        controller:
+            smartphoneFlow
+
+        open:
+            root.smartphonePanelOpen
 
         onCloseRequested: {
             if (smartphoneFlow.live)
                 smartphoneFlow.cancelCurrent(false)
 
             root.smartphonePanelOpen = false
+
             passwordField.forceActiveFocus()
         }
 
-        onCancelRequested: {
+        onCancelRequested:
             smartphoneFlow.cancelCurrent(true)
-        }
 
-        onRetryRequested: {
+        onRetryRequested:
             smartphoneFlow.retryFlow()
-        }
 
         onPasswordRequested: {
             if (smartphoneFlow.live)
                 smartphoneFlow.cancelCurrent(false)
 
             root.smartphonePanelOpen = false
+
             passwordField.forceActiveFocus()
         }
     }
 
-    Component.onCompleted: passwordField.forceActiveFocus()
+    Component.onCompleted:
+        passwordField.forceActiveFocus()
 }

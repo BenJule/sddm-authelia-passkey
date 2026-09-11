@@ -64,6 +64,9 @@ override_dh_auto_install:
 	install -D -m 0644 theme/native/components/UserAvatar.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml
 	install -D -m 0644 theme/native/components/PowerActionsRow.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
 	install -D -m 0644 theme/native/components/ResponsiveMetrics.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml
+	install -D -m 0644 theme/native/components/PolishedButton.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedButton.qml
+	install -D -m 0644 theme/native/components/PolishedTextField.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedTextField.qml
+	install -D -m 0644 theme/native/components/PolishedComboBox.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedComboBox.qml
 	install -D -m 0644 theme/native/components/UserChooser.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml
 	install -D -m 0644 theme/native/components/SmartphoneFlowController.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml
 	install -D -m 0644 theme/native/components/ConnectionStatus.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ConnectionStatus.qml
