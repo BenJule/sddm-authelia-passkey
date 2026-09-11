@@ -5,6 +5,17 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-09-11
+
+### Changed
+- Reworked the Native Theme visual presentation with project-owned dark
+  translucent controls instead of raw Qt Basic widget surfaces.
+- Improved login-card hierarchy, username-first account presentation,
+  session controls, power actions and Smartphone-Login presentation.
+- Added explicit German date formatting.
+- Preserved v1.11 responsive geometry and authentication semantics.
+
+
 ### Added
 - Native Theme responsive UX with a geometry-derived sidebar/overlay
   breakpoint, compact short-screen spacing, adaptive QR sizing and

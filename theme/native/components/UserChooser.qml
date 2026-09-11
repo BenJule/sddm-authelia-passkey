@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic as QQC2
@@ -24,39 +25,84 @@ Item {
 
     signal accountChanged()
 
+    readonly property int accountCount:
+        userModelSource
+        && userModelSource.count !== undefined
+            ? userModelSource.count
+            : 0
+
+    readonly property int rowHeight:
+        compactMode ? 44 : 48
+
+    readonly property int rowSpacing: 3
+    readonly property int listPadding: 4
+
+    readonly property int visibleRowCount:
+        Math.max(
+            1,
+            Math.min(
+                compactMode ? 2 : 3,
+                accountCount > 0
+                    ? accountCount
+                    : 1
+            )
+        )
+
+    readonly property real listViewportHeight:
+        2 * listPadding
+        + visibleRowCount * rowHeight
+        + Math.max(
+            0,
+            visibleRowCount - 1
+        ) * rowSpacing
+
     implicitHeight:
         manualMode
             ? manualColumn.implicitHeight
             : listColumn.implicitHeight
 
-    function chooseAccount(index, username, realName, iconSource) {
+    function chooseAccount(
+        index,
+        username,
+        realName,
+        iconSource
+    ) {
         var display =
-            realName && realName.length > 0
+            realName
+            && realName.length > 0
                 ? realName
                 : username
 
         root.manualMode = false
+
         root.selectedIndex = index
         root.selectedUsername = username || ""
         root.selectedDisplayName = display || ""
         root.selectedIcon = iconSource || ""
 
         root.lastListIndex = index
-        root.lastListUsername = root.selectedUsername
-        root.lastListDisplayName = root.selectedDisplayName
-        root.lastListIcon = root.selectedIcon
+        root.lastListUsername =
+            root.selectedUsername
+        root.lastListDisplayName =
+            root.selectedDisplayName
+        root.lastListIcon =
+            root.selectedIcon
 
         root.accountChanged()
     }
 
     function beginManualEntry() {
         root.manualMode = true
+
         root.selectedIndex = -1
         root.selectedUsername = ""
         root.selectedDisplayName = ""
         root.selectedIcon = ""
+
         manualField.text = ""
+
         root.accountChanged()
+
         Qt.callLater(function() {
             manualField.forceActiveFocus()
         })
@@ -66,7 +112,10 @@ Item {
         if (!root.manualMode)
             return
 
-        var clean = value ? value.trim() : ""
+        var clean =
+            value
+                ? value.trim()
+                : ""
 
         if (root.selectedUsername === clean)
             return
@@ -74,22 +123,28 @@ Item {
         root.selectedUsername = clean
         root.selectedDisplayName = clean
         root.selectedIcon = ""
+
         root.accountChanged()
     }
 
     function showUserList() {
         root.manualMode = false
 
-        root.selectedIndex = root.lastListIndex
-        root.selectedUsername = root.lastListUsername
-        root.selectedDisplayName = root.lastListDisplayName
-        root.selectedIcon = root.lastListIcon
+        root.selectedIndex =
+            root.lastListIndex
+
+        root.selectedUsername =
+            root.lastListUsername
+
+        root.selectedDisplayName =
+            root.lastListDisplayName
+
+        root.selectedIcon =
+            root.lastListIcon
 
         root.accountChanged()
     }
 
-    // Materialize the model once to resolve the initial role values without
-    // inventing a second account database.
     Repeater {
         model: root.userModelSource
 
@@ -100,8 +155,10 @@ Item {
             visible: false
 
             Component.onCompleted: {
-                if (root.selectedUsername.length === 0
-                        && index === root.initialIndex) {
+                if (
+                    root.selectedUsername.length === 0
+                    && index === root.initialIndex
+                ) {
                     root.chooseAccount(
                         index,
                         model.name || "",
@@ -117,112 +174,187 @@ Item {
         id: listColumn
 
         width: root.width
+
         visible: !root.manualMode
+
         spacing: 6
 
         QQC2.Label {
             Layout.fillWidth: true
-            text: qsTr("Benutzerkonto")
-            color: "white"
-            opacity: 0.76
-            font.pixelSize: 12
+
+            text: qsTr("Konto")
+
+            color: "#7e90a3"
+
+            font.pixelSize: 10
+            font.weight: Font.Medium
         }
 
-        ListView {
-            id: userList
-
+        Rectangle {
             Layout.fillWidth: true
+
             Layout.preferredHeight:
-                Math.min(
-                    root.compactMode ? 96 : 132,
-                    Math.max(
-                        root.compactMode ? 40 : 44,
-                        contentHeight
-                    )
-                )
+                root.listViewportHeight
 
-            model: root.userModelSource
-            clip: true
-            spacing: 2
-            currentIndex: root.selectedIndex
+            radius: 12
 
-            delegate: QQC2.ItemDelegate {
-                id: userDelegate
+            color: Qt.rgba(0.035, 0.055, 0.078, 0.86)
 
-                required property int index
-                required property var model
+            border.width: 1
+            border.color: Qt.rgba(1, 1, 1, 0.075)
 
-                readonly property string accountName:
-                    model.name || ""
+            ListView {
+                id: userList
 
-                readonly property string accountRealName:
-                    model.realName || ""
+                anchors.fill: parent
+                anchors.margins:
+                    root.listPadding
 
-                readonly property string accountIcon:
-                    model.icon || ""
+                model: root.userModelSource
 
-                width: ListView.view.width
-                height: root.compactMode ? 40 : 44
+                clip: true
+                spacing:
+                    root.rowSpacing
 
-                highlighted:
-                    !root.manualMode
-                    && index === root.selectedIndex
+                currentIndex:
+                    root.selectedIndex
 
-                onClicked: root.chooseAccount(
-                    index,
-                    accountName,
-                    accountRealName,
-                    accountIcon
-                )
+                delegate: QQC2.ItemDelegate {
+                    id: accountDelegate
 
-                contentItem: RowLayout {
-                    spacing: 10
+                    required property int index
+                    required property var model
 
-                    UserAvatar {
-                        Layout.preferredWidth:
-                            root.compactMode ? 28 : 32
-                        Layout.preferredHeight:
-                            root.compactMode ? 28 : 32
-                        iconSource: userDelegate.accountIcon
-                        label:
-                            userDelegate.accountRealName.length > 0
-                                ? userDelegate.accountRealName
-                                : userDelegate.accountName
+                    readonly property string accountName:
+                        model.name || ""
+
+                    readonly property string accountRealName:
+                        model.realName || ""
+
+                    readonly property string accountIcon:
+                        model.icon || ""
+
+                    width: ListView.view.width
+
+                    height:
+                        root.rowHeight
+
+                    highlighted:
+                        !root.manualMode
+                        && index
+                            === root.selectedIndex
+
+                    onClicked:
+                        root.chooseAccount(
+                            index,
+                            accountName,
+                            accountRealName,
+                            accountIcon
+                        )
+
+                    background: Rectangle {
+                        radius: 9
+
+                        color:
+                            accountDelegate.highlighted
+                                ? Qt.rgba(
+                                    0.20,
+                                    0.46,
+                                    0.88,
+                                    0.26
+                                )
+                                : accountDelegate.hovered
+                                    ? Qt.rgba(
+                                        1,
+                                        1,
+                                        1,
+                                        0.05
+                                    )
+                                    : "transparent"
+
+                        border.width:
+                            accountDelegate.highlighted
+                                ? 1
+                                : 0
+
+                        border.color:
+                            Qt.rgba(
+                                0.35,
+                                0.62,
+                                1,
+                                0.42
+                            )
                     }
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
+                    contentItem: RowLayout {
+                        spacing: 9
 
-                        QQC2.Label {
-                            Layout.fillWidth: true
-                            text:
-                                userDelegate.accountRealName.length > 0
-                                    ? userDelegate.accountRealName
-                                    : userDelegate.accountName
-                            color: "white"
-                            elide: Text.ElideRight
-                            font.pixelSize: 13
-                            font.bold: true
+                        UserAvatar {
+                            Layout.preferredWidth:
+                                root.compactMode
+                                    ? 30
+                                    : 34
+
+                            Layout.preferredHeight:
+                                root.compactMode
+                                    ? 30
+                                    : 34
+
+                            iconSource:
+                                accountDelegate.accountIcon
+
+                            label:
+                                accountDelegate.accountName
                         }
 
-                        QQC2.Label {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            text: userDelegate.accountName
-                            color: "white"
-                            opacity: 0.58
-                            elide: Text.ElideRight
-                            font.pixelSize: 10
+
+                            spacing: 0
+
+                            QQC2.Label {
+                                Layout.fillWidth: true
+
+                                text:
+                                    accountDelegate.accountName
+
+                                color: "#f2f6fa"
+
+                                elide: Text.ElideRight
+
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 7
+                            Layout.preferredHeight: 7
+
+                            visible:
+                                accountDelegate.highlighted
+
+                            radius: 4
+                            color: "#64a3ff"
                         }
                     }
                 }
             }
         }
 
-        QQC2.Button {
+        PolishedButton {
+            compact: true
+
             Layout.alignment: Qt.AlignLeft
-            text: qsTr("Anderes Konto eingeben")
-            onClicked: root.beginManualEntry()
+
+            text:
+                qsTr(
+                    "Anderes Konto"
+                )
+
+            onClicked:
+                root.beginManualEntry()
         }
     }
 
@@ -230,28 +362,46 @@ Item {
         id: manualColumn
 
         width: root.width
+
         visible: root.manualMode
+
         spacing: 7
 
         QQC2.Label {
             Layout.fillWidth: true
+
             text: qsTr("Benutzername")
-            color: "white"
-            opacity: 0.76
-            font.pixelSize: 12
+
+            color: "#7e90a3"
+
+            font.pixelSize: 10
+            font.weight: Font.Medium
         }
 
-        QQC2.TextField {
+        PolishedTextField {
             id: manualField
 
             Layout.fillWidth: true
-            placeholderText: qsTr("Benutzername eingeben")
-            onTextChanged: root.setManualUsername(text)
+
+            placeholderText:
+                qsTr(
+                    "Benutzername eingeben"
+                )
+
+            onTextChanged:
+                root.setManualUsername(text)
         }
 
-        QQC2.Button {
-            text: qsTr("Zur Benutzerliste")
-            onClicked: root.showUserList()
+        PolishedButton {
+            compact: true
+
+            text:
+                qsTr(
+                    "Zur Kontoauswahl"
+                )
+
+            onClicked:
+                root.showUserList()
         }
     }
 }
