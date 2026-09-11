@@ -45,3 +45,10 @@ and PAM still has to consume the corresponding protected approval marker.
 The Native Theme remains opt-in. v1.11 adds responsive presentation
 without changing authentication semantics. Accessibility hardening and
 native branding remain separate roadmap releases.
+
+
+## v1.11.1 visual-quality hotfix
+
+v1.11.1 retains v1.11 responsive and authentication behaviour while
+replacing raw Qt Basic presentation with project-owned styled controls and
+a visually integrated Smartphone Login panel.

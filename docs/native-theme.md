@@ -53,6 +53,19 @@ The responsive contract is exercised at 1024x600, 1280x720,
 No broker, PAM, approval-marker or authentication decision changes are
 part of responsive UX.
 
+## v1.11.1 visual-quality hotfix
+
+v1.11.1 keeps the v1.11 authentication and responsive behaviour while
+replacing visibly raw Qt Basic control surfaces with project-owned visual
+components.
+
+The patch improves login-card hierarchy, username-first account
+presentation, password/session controls, power actions, German date
+formatting and the Smartphone-Login panel.
+
+No PAM, broker, approval-marker, OIDC/provider, KWallet authentication or
+username/session-binding behaviour changes are part of this patch.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
