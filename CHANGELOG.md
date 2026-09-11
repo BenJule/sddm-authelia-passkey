@@ -5,6 +5,8 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-09-11
+
 ### Added
 - Native Theme Failure & Recovery UX coverage for broker-offline,
   provider-unavailable, rate-limited, expired, denied, account-ineligible,
