@@ -294,7 +294,7 @@ Item {
             if (xhr.status === 403) {
                 root.setStartError(
                     "not_authorized",
-                    "error",
+                    "ready",
                     qsTr(
                         "Dieses Konto ist für Smartphone-Login "
                         + "nicht verfügbar. Bitte Passwort verwenden."
@@ -309,8 +309,9 @@ Item {
                     "start_rate_limited",
                     "rate_limited",
                     qsTr(
-                        "Der Anmeldedienst benötigt eine kurze Pause. "
-                        + "Bitte warten."
+                        "Smartphone-Anmeldung kann gerade nicht neu "
+                        + "gestartet werden. Bitte kurz warten oder "
+                        + "Passwort verwenden."
                     ),
                     10
                 )
@@ -402,10 +403,11 @@ Item {
             }
 
             if (xhr.status < 200 || xhr.status >= 300) {
+                root.errorKind = "status_unavailable"
                 root.connectionState = "error"
                 root.statusText = qsTr(
-                    "Der Status ist vorübergehend nicht verfügbar. "
-                    + "Der Anmeldevorgang wird weiter geprüft."
+                    "Der Anmeldestatus ist vorübergehend nicht "
+                    + "verfügbar. Der aktuelle Code bleibt bestehen."
                 )
                 return
             }
@@ -413,9 +415,12 @@ Item {
             var response = root.safeParse(xhr.responseText)
 
             if (!response) {
+                root.errorKind = "malformed_status"
                 root.connectionState = "error"
                 root.statusText = qsTr(
-                    "Der Status ist vorübergehend nicht verfügbar."
+                    "Der Anmeldestatus konnte vorübergehend nicht "
+                    + "verarbeitet werden. Der aktuelle Code bleibt "
+                    + "bestehen."
                 )
                 return
             }
@@ -474,12 +479,29 @@ Item {
 
         root.updateFlowPresentation(response)
 
-        var responseStatus = response.status || ""
+        if (typeof response.status !== "string"
+                || response.status.length === 0) {
+            pollTimer.stop()
+            root.cancelSession(pollingSession)
+            root.state = "error"
+            root.errorKind = "malformed_status"
+            root.connectionState = "error"
+            root.statusText = qsTr(
+                "Der Anmeldestatus konnte nicht verarbeitet werden. "
+                + "Bitte einen neuen Code anfordern oder Passwort "
+                + "verwenden."
+            )
+            root.armRetryCooldown(4)
+            return
+        }
+
+        var responseStatus = response.status
 
         if (responseStatus === "pending") {
             root.state = "waiting"
 
             if (response.rate_limited === true) {
+                root.errorKind = "provider_rate_limited"
                 root.connectionState = "rate_limited"
                 root.retryAfterSeconds =
                     Math.max(0, Number(response.retry_after_seconds || 0))
@@ -489,6 +511,7 @@ Item {
                     + "Statusabfragen. Bitte kurz warten."
                 )
             } else {
+                root.errorKind = ""
                 root.connectionState = "waiting"
                 root.retryAfterSeconds = 0
                 root.statusText = qsTr(
@@ -507,7 +530,7 @@ Item {
                     || response.username !== root.targetUsername) {
                 root.state = "error"
                 root.errorKind = "identity_mismatch"
-                root.connectionState = "error"
+                root.connectionState = "ready"
                 root.statusText = qsTr(
                     "Die bestätigte Identität passt nicht zum "
                     + "ausgewählten Konto."
@@ -517,6 +540,7 @@ Item {
 
             root.resolvedUsername = response.username
             root.state = "approved"
+            root.errorKind = ""
             root.connectionState = "ready"
             root.statusText = qsTr(
                 "Bestätigt. Anmeldung wird gestartet…"
@@ -545,10 +569,36 @@ Item {
         if (responseStatus === "error") {
             var reason = response.error || ""
 
-            if (reason === "expired"
-                    || reason === "rate_limited"
-                    || reason === "temporarily_unavailable") {
-                root.setExpired(reason)
+            if (reason === "expired") {
+                root.setExpired("expired")
+                return
+            }
+
+            if (reason === "rate_limited") {
+                root.state = "error"
+                root.errorKind = "provider_rate_limited"
+                root.connectionState = "rate_limited"
+                root.statusText = qsTr(
+                    "Der Anmeldedienst ist derzeit ausgelastet. "
+                    + "Bitte einen neuen Code anfordern oder Passwort "
+                    + "verwenden."
+                )
+                root.armRetryCooldown(4)
+                return
+            }
+
+            if (reason === "temporarily_unavailable"
+                    || reason === "device authorization request failed"
+                    || reason === "userinfo verification failed") {
+                root.state = "error"
+                root.errorKind = "provider_unavailable"
+                root.connectionState = "error"
+                root.statusText = qsTr(
+                    "Der Anmeldedienst ist vorübergehend nicht "
+                    + "verfügbar. Bitte Passwort verwenden oder später "
+                    + "einen neuen Code anfordern."
+                )
+                root.armRetryCooldown(4)
                 return
             }
 
@@ -556,17 +606,21 @@ Item {
             root.errorKind = "broker_error"
             root.connectionState = "error"
             root.statusText = qsTr(
-                "Der Anmeldevorgang konnte nicht abgeschlossen werden."
+                "Die Smartphone-Anmeldung konnte nicht abgeschlossen "
+                + "werden. Bitte Passwort verwenden oder einen neuen "
+                + "Code anfordern."
             )
             root.armRetryCooldown(4)
             return
         }
 
+        root.cancelSession(pollingSession)
         root.state = "error"
         root.errorKind = "unknown_status"
         root.connectionState = "error"
         root.statusText = qsTr(
-            "Der Anmeldevorgang lieferte einen unbekannten Status."
+            "Der Anmeldestatus konnte nicht verarbeitet werden. "
+            + "Bitte einen neuen Code anfordern oder Passwort verwenden."
         )
         root.armRetryCooldown(4)
     }
@@ -676,16 +730,23 @@ Item {
                 && root.state !== "approved")
             return
 
+        // The SDDM/PAM attempt has already consumed or rejected the
+        // one-shot approval path. Invalidate every presentation-side
+        // callback from that flow before offering recovery.
+        root.flowGeneration += 1
         root.stopFlowTimers()
-        root.loginEmitted = false
-        root.resolvedUsername = ""
+        retryTimer.stop()
+
+        root.requestInFlight = false
+        root.clearDisplayData()
 
         root.state = "error"
         root.errorKind = "login_failed"
         root.connectionState = "ready"
         root.statusText = qsTr(
             "Die Anmeldung konnte nicht abgeschlossen werden. "
-            + "Bitte Passwort verwenden oder einen neuen Code anfordern."
+            + "Bitte Passwort verwenden oder bewusst einen neuen Code "
+            + "anfordern."
         )
 
         root.armRetryCooldown(2)

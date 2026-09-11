@@ -1,3 +1,15 @@
+sddm-authelia-passkey (1.14.0-1) unstable; urgency=medium
+
+  * Harden Native Theme failure and recovery presentation.
+  * Distinguish provider unavailability, throttling and expiry without
+    exposing technical provider details in the greeter.
+  * Add deterministic malformed-response, QR fallback, denial and
+    post-approval login-failure recovery tests.
+  * Preserve PAM, broker, KWallet, approval-marker, FIDO2 and
+    username/session-binding authentication semantics.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Fri, 11 Sep 2026 20:00:08 +0200
+
 sddm-authelia-passkey (1.13.0-1) unstable; urgency=medium
 
   * Add optional vendor-neutral branding to the independent Native Theme.

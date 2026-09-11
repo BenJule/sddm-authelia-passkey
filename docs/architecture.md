@@ -798,3 +798,38 @@ authentication state. On overlay layouts the existing scrim disables
 interaction with the login card; on sidebar layouts the login card may
 remain usable and its existing account-change/password actions continue
 to cancel or retarget the active flow safely.
+
+## Native Failure & Recovery UX (v1.14.0)
+
+The Native Theme keeps flow progress and infrastructure presentation
+separate.
+
+`state` describes the presentation-side device-flow lifecycle.
+`connectionState` describes whether the local broker/upstream path currently
+appears ready, waiting, throttled, offline or in error. Authentication
+decisions such as `denied` and `not_authorized` are not reclassified as
+network failures.
+
+`temporarily_unavailable` is an infrastructure/provider condition and is not
+presented as expiry. `rate_limited` is likewise distinct from both expiry and
+denial.
+
+The broker remains authoritative for OAuth device-flow lifetime and upstream
+poll timing. Its token polling already parses and respects bounded
+`Retry-After` values. QML does not reproduce that algorithm. A Native Theme
+retry countdown after a local `/start` 429 is only a short client-side retry
+guard and must not be interpreted as the upstream Retry-After value.
+
+Malformed HTTP/JSON status polling is treated as infrastructure uncertainty,
+not authentication denial. A transient malformed poll may recover on a later
+valid status. A structurally valid broker response with no usable `status`
+terminates the presentation flow safely, cancels the still-pending broker
+session and requires an explicit restart.
+
+After `approved -> logging_in`, an SDDM `loginFailed` invalidates the QML
+flow generation and clears old session/QR presentation state. The prior
+approval is never replayed automatically.
+
+QR image failure is presentation-only when the broker still supplied a
+device code and verification address. The explicit alternate path remains
+available, as does password login.
