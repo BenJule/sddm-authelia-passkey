@@ -55,6 +55,19 @@ checks = {
 
     "responsive sidebar":
         "responsiveMetrics.overlayLayout" in main,
+
+    "whole account rows":
+        "listViewportHeight" in chooser
+        and "visibleRowCount" in chooser,
+
+    "neutral smartphone account metadata":
+        "accountKindLabel" in panel,
+
+    "unauthorized account is not retryable":
+        'controller.errorKind !== "not_authorized"' in panel,
+
+    "QR section hides in terminal errors":
+        "showQrArea" in panel,
 }
 
 failed = [
