@@ -34,6 +34,13 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def send_raw(self, status, body):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
@@ -94,6 +101,31 @@ class Handler(BaseHTTPRequestHandler):
                 "qr_path": "/tmp/native-test-qr.png",
                 "expires_at": int(time.time()) + 120,
             }
+
+            if username == "qrless":
+                base.pop("qr_path", None)
+                self.send_json(200, base)
+                return
+
+            if username == "denied" and polls >= 2:
+                base["status"] = "denied"
+                self.send_json(200, base)
+                return
+
+            if username == "unavailable" and polls >= 2:
+                base["status"] = "error"
+                base["error"] = "temporarily_unavailable"
+                self.send_json(200, base)
+                return
+
+            if username == "missing-status" and polls >= 2:
+                base.pop("status", None)
+                self.send_json(200, base)
+                return
+
+            if username == "malformed" and polls == 2:
+                self.send_raw(200, b"{")
+                return
 
             if username == "expire" and polls >= 2:
                 base["status"] = "error"

@@ -101,3 +101,16 @@ assistive-technology-specific issue you find.
   accessible alternatives) is entirely up to the user's own
   authenticator and outside this project's control or visibility - see
   `docs/security.md`.
+
+## Native failure/recovery focus behaviour (v1.14.0)
+
+Terminal Native Theme recovery states move keyboard focus to an enabled
+recovery action. When immediate retry is intentionally unavailable, the
+password fallback is preferred instead of leaving focus stranded on a
+disabled control.
+
+QR failure retains a textual device-code/address alternative and never makes
+the image itself the only usable representation of the Smartphone flow.
+
+Failure state remains exposed through text and accessible alert semantics;
+colour is supplementary only.

@@ -31,11 +31,74 @@ Rectangle {
             (
                 controller.state === "error"
                 && controller.errorKind !== "not_authorized"
+                && controller.errorKind !== "no_account"
             )
             || controller.state === "expired"
             || controller.state === "denied"
             || controller.state === "cancelled"
         )
+
+    readonly property bool retryIsStartFailure:
+        controller
+        && (
+            controller.errorKind === "offline"
+            || controller.errorKind === "start_rate_limited"
+            || controller.errorKind === "start_error"
+            || controller.errorKind === "invalid_start_response"
+        )
+
+    readonly property bool qrUnavailable:
+        controller
+        && controller.state === "waiting"
+        && (
+            (
+                controller.qrPath.length === 0
+                && (
+                    controller.userCode.length > 0
+                    || controller.verificationUri.length > 0
+                )
+            )
+            || qrImage.status === Image.Error
+        )
+
+    readonly property string qrFallbackText:
+        !controller
+            ? ""
+            : controller.verificationUri.length > 0
+                ? qsTr(
+                    "QR-Code ist nicht verfügbar. Verwenden Sie den "
+                    + "Gerätecode oder die angezeigte Anmeldeadresse."
+                )
+                : qsTr(
+                    "QR-Code ist nicht verfügbar. Verwenden Sie den "
+                    + "Gerätecode."
+                )
+
+    readonly property string effectiveStatusText:
+        !controller
+            ? ""
+            : root.qrUnavailable
+                ? root.qrFallbackText
+                : controller.statusText
+
+    readonly property string retryButtonText:
+        !controller
+            ? ""
+            : controller.retryCooldownRemaining > 0
+                ? root.retryIsStartFailure
+                    ? qsTr(
+                        "Erneut versuchen in %1 s"
+                    ).arg(
+                        controller.retryCooldownRemaining
+                    )
+                    : qsTr(
+                        "Neuer Code in %1 s"
+                    ).arg(
+                        controller.retryCooldownRemaining
+                    )
+                : root.retryIsStartFailure
+                    ? qsTr("Erneut versuchen")
+                    : qsTr("Neuen Code anfordern")
 
     readonly property string accountKindLabel:
         !controller
@@ -92,6 +155,34 @@ Rectangle {
             Qt.callLater(function() {
                 if (closeButton.enabled)
                     closeButton.forceActiveFocus()
+            })
+        }
+    }
+
+    Connections {
+        target: root.controller
+
+        function onStateChanged() {
+            if (!root.open || !root.controller)
+                return
+
+            var terminal =
+                root.controller.state === "error"
+                || root.controller.state === "expired"
+                || root.controller.state === "denied"
+                || root.controller.state === "cancelled"
+
+            if (!terminal)
+                return
+
+            Qt.callLater(function() {
+                if (retryButton.visible && retryButton.enabled) {
+                    retryButton.forceActiveFocus()
+                } else if (passwordButton.enabled) {
+                    passwordButton.forceActiveFocus()
+                } else if (closeButton.enabled) {
+                    closeButton.forceActiveFocus()
+                }
             })
         }
     }
@@ -291,9 +382,7 @@ Rectangle {
             Layout.fillWidth: true
 
             text:
-                root.controller
-                    ? root.controller.statusText
-                    : ""
+                root.effectiveStatusText
 
             color: "#d9e4ef"
 
@@ -362,10 +451,12 @@ Rectangle {
                 Accessible.name: qsTr("QR-Code für die Smartphone-Anmeldung")
 
                 Accessible.description:
-                    qsTr(
-                        "Alternativ kann der angezeigte Gerätecode "
-                        + "verwendet werden."
-                    )
+                    root.qrUnavailable
+                        ? root.qrFallbackText
+                        : qsTr(
+                            "Alternativ kann der angezeigte Gerätecode "
+                            + "verwendet werden."
+                        )
 
                 Image {
                     id: qrImage
@@ -407,9 +498,11 @@ Rectangle {
                         || qrImage.status === Image.Error
 
                     text:
-                        qsTr(
-                            "QR-Code wird vorbereitet…"
-                        )
+                        root.qrUnavailable
+                            ? root.qrFallbackText
+                            : qsTr(
+                                "QR-Code wird vorbereitet…"
+                            )
 
                     color: "#263238"
 
@@ -504,7 +597,7 @@ Rectangle {
                     visible:
                         root.controller
                         && root.controller.verificationUri.length > 0
-                        && qrImage.status === Image.Error
+                        && root.qrUnavailable
 
                     text:
                         root.controller
@@ -601,6 +694,8 @@ Rectangle {
             }
 
             PolishedButton {
+                id: retryButton
+
                 useCustomAccent:
                     root.useCustomAccent
 
@@ -619,14 +714,7 @@ Rectangle {
                     && root.controller.targetUsername.length > 0
 
                 text:
-                    root.controller
-                    && root.controller.retryCooldownRemaining > 0
-                        ? qsTr(
-                            "Neuer Code in "
-                            + root.controller.retryCooldownRemaining
-                            + " s"
-                        )
-                        : qsTr("Neuen Code anfordern")
+                    root.retryButtonText
 
                 onClicked:
                     root.retryRequested()
@@ -637,6 +725,8 @@ Rectangle {
             }
 
             PolishedButton {
+                id: passwordButton
+
                 useCustomAccent:
                     root.useCustomAccent
 
