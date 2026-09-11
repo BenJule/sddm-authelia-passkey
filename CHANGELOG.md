@@ -6,6 +6,23 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Optional vendor-neutral Native Theme branding through SDDM
+  `theme.conf.user`.
+- Native branding supports brand name, absolute local logo, local hostname,
+  administrator-supplied domain/realm, avatar visibility and validated
+  custom accent colour.
+- Deterministic static, QML, runtime and package regression coverage for
+  Native Branding.
+
+### Security
+- Native branding remains presentation-only and cannot change PAM, broker,
+  KWallet, approval-marker, provider or username/session-binding decisions.
+- Remote logo URLs are rejected and custom accents accept only opaque
+  `#RRGGBB` values.
+
+## [1.12.0] - 2026-09-11
+
+### Added
 - Native Theme accessibility hardening with explicit semantic roles,
   accessible names/descriptions, account-selection state, QR/device-code
   alternatives and deterministic accessibility-contract tests.

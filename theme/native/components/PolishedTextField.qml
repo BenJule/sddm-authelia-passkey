@@ -5,6 +5,9 @@ import QtQuick.Controls.Basic as QQC2
 QQC2.TextField {
     id: control
 
+    property bool useCustomAccent: false
+    property color accentColor: "#3478e8"
+
     implicitHeight: 46
 
     leftPadding: 14
@@ -13,8 +16,13 @@ QQC2.TextField {
     color: "#f2f6fb"
     placeholderTextColor: "#718397"
 
-    selectionColor: "#3478e8"
-    selectedTextColor: "#ffffff"
+    selectionColor:
+        control.useCustomAccent
+            ? control.accentColor
+            : "#3478e8"
+
+    selectedTextColor:
+        "#ffffff"
 
     font.pixelSize: 13
 
@@ -25,8 +33,18 @@ QQC2.TextField {
 
         color:
             control.enabled
-                ? Qt.rgba(0.045, 0.070, 0.096, 0.98)
-                : Qt.rgba(0.045, 0.070, 0.096, 0.58)
+                ? Qt.rgba(
+                    0.045,
+                    0.070,
+                    0.096,
+                    0.98
+                )
+                : Qt.rgba(
+                    0.045,
+                    0.070,
+                    0.096,
+                    0.58
+                )
 
         border.width:
             control.activeFocus
@@ -35,7 +53,16 @@ QQC2.TextField {
 
         border.color:
             control.activeFocus
-                ? "#61a0ff"
-                : Qt.rgba(1, 1, 1, 0.105)
+                ? (
+                    control.useCustomAccent
+                        ? control.accentColor
+                        : "#61a0ff"
+                )
+                : Qt.rgba(
+                    1,
+                    1,
+                    1,
+                    0.105
+                )
     }
 }

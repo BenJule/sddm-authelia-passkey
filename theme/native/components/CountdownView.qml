@@ -9,6 +9,9 @@ ColumnLayout {
     property int remainingSeconds: 0
     property int totalSeconds: 0
 
+    property bool useCustomAccent: false
+    property color accentColor: "#3478e8"
+
     spacing: 5
 
     Accessible.role: Accessible.ProgressBar
@@ -110,7 +113,10 @@ ColumnLayout {
 
             radius: parent.radius
 
-            color: "#4f91f7"
+            color:
+                root.useCustomAccent
+                    ? root.accentColor
+                    : "#4f91f7"
 
             Behavior on width {
                 NumberAnimation {

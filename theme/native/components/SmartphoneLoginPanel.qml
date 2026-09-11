@@ -12,6 +12,10 @@ Rectangle {
     property real qrSide: 200
     property bool modalLayout: false
 
+    property bool showAvatar: true
+    property bool useCustomAccent: false
+    property color accentColor: "#3478e8"
+
     readonly property bool showQrArea:
         controller
         && (
@@ -165,6 +169,12 @@ Rectangle {
             }
 
             PolishedButton {
+                useCustomAccent:
+                    root.useCustomAccent
+
+                accentColor:
+                    root.accentColor
+
                 id: closeButton
 
                 compact: true
@@ -206,15 +216,26 @@ Rectangle {
                 spacing: 9
 
                 UserAvatar {
+                    visible:
+                        root.showAvatar
+
                     Layout.preferredWidth:
-                        root.compactLayout
-                            ? 34
-                            : 38
+                        root.showAvatar
+                            ? (
+                                root.compactLayout
+                                    ? 34
+                                    : 38
+                            )
+                            : 0
 
                     Layout.preferredHeight:
-                        root.compactLayout
-                            ? 34
-                            : 38
+                        root.showAvatar
+                            ? (
+                                root.compactLayout
+                                    ? 34
+                                    : 38
+                            )
+                            : 0
 
                     iconSource:
                         root.controller
@@ -321,13 +342,21 @@ Rectangle {
                 color: "#ffffff"
 
                 border.width: 3
+
                 border.color:
-                    Qt.rgba(
-                        0.31,
-                        0.57,
-                        0.96,
-                        0.26
-                    )
+                    root.useCustomAccent
+                        ? Qt.rgba(
+                            root.accentColor.r,
+                            root.accentColor.g,
+                            root.accentColor.b,
+                            0.26
+                        )
+                        : Qt.rgba(
+                            0.31,
+                            0.57,
+                            0.96,
+                            0.26
+                        )
 
                 Accessible.role: Accessible.Graphic
                 Accessible.name: qsTr("QR-Code für die Smartphone-Anmeldung")
@@ -420,7 +449,19 @@ Rectangle {
 
                     border.width: 1
                     border.color:
-                        Qt.rgba(0.35, 0.62, 1, 0.24)
+                        root.useCustomAccent
+                            ? Qt.rgba(
+                                root.accentColor.r,
+                                root.accentColor.g,
+                                root.accentColor.b,
+                                0.24
+                            )
+                            : Qt.rgba(
+                                0.35,
+                                0.62,
+                                1,
+                                0.24
+                            )
 
                     QQC2.Label {
                         id: deviceCodeLabel
@@ -486,6 +527,12 @@ Rectangle {
                 CountdownView {
                     Layout.fillWidth: true
 
+                    useCustomAccent:
+                        root.useCustomAccent
+
+                    accentColor:
+                        root.accentColor
+
                     visible:
                         root.controller
                         && root.controller.totalSecondsForFlow > 0
@@ -532,6 +579,12 @@ Rectangle {
             spacing: 8
 
             PolishedButton {
+                useCustomAccent:
+                    root.useCustomAccent
+
+                accentColor:
+                    root.accentColor
+
                 compact: true
 
                 visible:
@@ -548,6 +601,12 @@ Rectangle {
             }
 
             PolishedButton {
+                useCustomAccent:
+                    root.useCustomAccent
+
+                accentColor:
+                    root.accentColor
+
                 compact: true
                 primary: true
 
@@ -578,6 +637,12 @@ Rectangle {
             }
 
             PolishedButton {
+                useCustomAccent:
+                    root.useCustomAccent
+
+                accentColor:
+                    root.accentColor
+
                 compact: true
 
                 text:

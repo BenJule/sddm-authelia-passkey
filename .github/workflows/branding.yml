@@ -29,7 +29,8 @@ jobs:
             ca-certificates \
             patch \
             sddm-theme-debian-breeze \
-            qt6-declarative-dev-tools
+            qt6-declarative-dev-tools \
+            python3
 
       - name: Apply compatibility theme patch
         run: |
@@ -63,6 +64,10 @@ jobs:
             theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
           grep -q '^ui_accent=system$' \
             theme/debian-breeze-authelia-passkey-patch/theme.conf.user.example
+
+      - name: Validate Native Theme branding contract
+        run: |
+          python3 tests/native/test_branding_contract.py
 
       - name: Reject remote logo logic structurally
         run: |
