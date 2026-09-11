@@ -2,9 +2,9 @@
 
 Original, from-scratch Qt6 SDDM theme for this project.
 
-Current stable baseline: v1.11.1 visual quality on top of the
-v1.11 responsive presentation. v1.12.0 targets accessibility hardening;
-the Native Theme remains opt-in.
+Current stable baseline: v1.12.0 accessibility hardening on top of
+the v1.11.1 visual-quality and v1.11 responsive presentation. v1.13.0 adds
+optional vendor-neutral branding; the Native Theme remains opt-in.
 
 The native theme is installed alongside the existing compatibility theme
 and is never selected automatically.
@@ -45,8 +45,8 @@ and PAM still has to consume the corresponding protected approval marker.
 
 The Native Theme remains opt-in. v1.11 added responsive presentation
 without changing authentication semantics. v1.11.1 added visual-quality
-polish. v1.12 adds accessibility hardening; native branding remains a
-separate v1.13 roadmap release.
+polish. v1.12 added accessibility hardening. v1.13 adds optional Native
+Theme branding without changing authentication semantics.
 
 
 ## v1.11.1 visual-quality hotfix
@@ -69,3 +69,20 @@ keyboard controls expose explicit assistive-technology metadata.
 
 Authentication authority remains exclusively with SDDM/PAM and the local
 broker flow remains unchanged.
+
+
+## v1.13 native branding
+
+v1.13 adds optional vendor-neutral branding through SDDM
+`theme.conf.user`.
+
+Supported presentation controls include a brand name, absolute local logo,
+local hostname, administrator-supplied domain/realm, avatar visibility and
+a validated custom accent colour.
+
+Remote logo URLs are rejected. Invalid custom accents fall back to the
+normal Native Theme accent. With no override, the v1.12 appearance is
+preserved.
+
+Branding cannot change PAM, broker, KWallet, approval-marker or
+SmartphoneFlowController authentication decisions.

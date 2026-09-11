@@ -61,6 +61,8 @@ override_dh_auto_install:
 	install -D -m 0644 theme/native/Main.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml
 	install -D -m 0644 theme/native/metadata.desktop debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop
 	install -D -m 0644 theme/native/theme.conf debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
+	install -D -m 0644 theme/native/theme.conf.user.example debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/native-theme/theme.conf.user.example
+	install -D -m 0644 theme/native/components/BrandingConfig.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/BrandingConfig.qml
 	install -D -m 0644 theme/native/components/UserAvatar.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml
 	install -D -m 0644 theme/native/components/PowerActionsRow.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
 	install -D -m 0644 theme/native/components/ResponsiveMetrics.qml debian/sddm-authelia-passkey/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml

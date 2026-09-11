@@ -5,6 +5,9 @@ import QtQuick.Layouts
 RowLayout {
     id: root
 
+    property bool useCustomAccent: false
+    property color accentColor: "#3478e8"
+
     spacing: 7
 
     Accessible.role: Accessible.ToolBar
@@ -12,6 +15,12 @@ RowLayout {
 
     PolishedButton {
         compact: true
+
+        useCustomAccent:
+            root.useCustomAccent
+
+        accentColor:
+            root.accentColor
 
         text: qsTr("Ruhezustand")
 
@@ -26,6 +35,12 @@ RowLayout {
     PolishedButton {
         compact: true
 
+        useCustomAccent:
+            root.useCustomAccent
+
+        accentColor:
+            root.accentColor
+
         text: qsTr("Neu starten")
 
         visible:
@@ -39,6 +54,12 @@ RowLayout {
     PolishedButton {
         compact: true
         destructive: true
+
+        useCustomAccent:
+            root.useCustomAccent
+
+        accentColor:
+            root.accentColor
 
         text: qsTr("Ausschalten")
 

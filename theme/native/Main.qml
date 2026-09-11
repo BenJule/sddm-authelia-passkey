@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// SDDM Authelia Passkey Native v1.12.0
+// SDDM Authelia Passkey Native v1.13.0
 //
 // Presentation is original project work.
 // Authentication remains exclusively with SDDM/PAM.
@@ -21,6 +21,21 @@ Item {
 
     property bool loginFailedVisible: false
     property bool smartphonePanelOpen: false
+
+    BrandingConfig {
+        id: branding
+
+        configSource:
+            typeof config !== "undefined"
+                ? config
+                : null
+
+        hostName:
+            typeof sddm !== "undefined"
+            && sddm.hostName !== undefined
+                ? sddm.hostName
+                : ""
+    }
 
     ResponsiveMetrics {
         id: responsiveMetrics
@@ -217,7 +232,9 @@ Item {
             )
     }
 
-    QQC2.Label {
+    Image {
+        id: brandLogo
+
         anchors.left: parent.left
         anchors.top: parent.top
 
@@ -227,14 +244,90 @@ Item {
         anchors.topMargin:
             responsiveMetrics.safeMargin
 
-        text:
-            qsTr(
-                "SDDM · Authelia Passkey"
+        width:
+            branding.brandLogoLocal
+                ? 30
+                : 0
+
+        height: width
+
+        visible:
+            branding.brandLogoLocal
+
+        source:
+            branding.brandLogoSource
+
+        fillMode:
+            Image.PreserveAspectFit
+
+        asynchronous: true
+        smooth: true
+        cache: false
+
+        Accessible.role:
+            Accessible.Graphic
+
+        Accessible.name:
+            branding.brandName.length > 0
+                ? branding.brandName
+                : qsTr("Brandlogo")
+    }
+
+    QQC2.Label {
+        id: brandTitle
+
+        anchors.left: parent.left
+        anchors.top: parent.top
+
+        anchors.leftMargin:
+            responsiveMetrics.safeMargin
+            + (
+                brandLogo.visible
+                    ? brandLogo.width + 9
+                    : 0
             )
+
+        anchors.topMargin:
+            responsiveMetrics.safeMargin
+
+        text:
+            branding.brandName.length > 0
+                ? branding.brandName
+                : qsTr(
+                    "SDDM · Authelia Passkey"
+                )
 
         color: "#617589"
 
-        font.pixelSize: 9
+        font.pixelSize:
+            branding.brandName.length > 0
+                ? 12
+                : 9
+
+        font.weight:
+            branding.brandName.length > 0
+                ? Font.DemiBold
+                : Font.Medium
+    }
+
+    QQC2.Label {
+        anchors.left:
+            brandTitle.left
+
+        anchors.top:
+            brandTitle.bottom
+
+        anchors.topMargin: 2
+
+        visible:
+            branding.contextLabel.length > 0
+
+        text:
+            branding.contextLabel
+
+        color: "#51677c"
+
+        font.pixelSize: 8
         font.weight: Font.Medium
     }
 
@@ -431,6 +524,15 @@ Item {
                 compactMode:
                     responsiveMetrics.compactHeight
 
+                showAvatar:
+                    branding.showAvatar
+
+                useCustomAccent:
+                    branding.useCustomAccent
+
+                accentColor:
+                    branding.accentColor
+
                 userModelSource:
                     userModel
 
@@ -474,6 +576,12 @@ Item {
                 id: passwordField
 
                 Layout.fillWidth: true
+
+                useCustomAccent:
+                    branding.useCustomAccent
+
+                accentColor:
+                    branding.accentColor
 
                 echoMode: TextInput.Password
 
@@ -535,6 +643,12 @@ Item {
 
                 Layout.fillWidth: true
 
+                useCustomAccent:
+                    branding.useCustomAccent
+
+                accentColor:
+                    branding.accentColor
+
                 text:
                     qsTr(
                         "Mit Passwort anmelden"
@@ -551,6 +665,12 @@ Item {
 
             PolishedButton {
                 Layout.fillWidth: true
+
+                useCustomAccent:
+                    branding.useCustomAccent
+
+                accentColor:
+                    branding.accentColor
 
                 primary: true
 
@@ -591,6 +711,12 @@ Item {
 
                         Layout.fillWidth: true
 
+                        useCustomAccent:
+                            branding.useCustomAccent
+
+                        accentColor:
+                            branding.accentColor
+
                         Accessible.name: qsTr("Sitzung")
 
                         model: sessionModel
@@ -627,6 +753,12 @@ Item {
                         id: keyboardCombo
 
                         Layout.fillWidth: true
+
+                        useCustomAccent:
+                            branding.useCustomAccent
+
+                        accentColor:
+                            branding.accentColor
 
                         Accessible.name: qsTr("Tastaturlayout")
 
@@ -665,6 +797,12 @@ Item {
             PowerActionsRow {
                 Layout.alignment:
                     Qt.AlignHCenter
+
+                useCustomAccent:
+                    branding.useCustomAccent
+
+                accentColor:
+                    branding.accentColor
             }
         }
     }
@@ -722,6 +860,15 @@ Item {
             responsiveMetrics.qrSide
 
         modalLayout: responsiveMetrics.overlayLayout
+
+        showAvatar:
+            branding.showAvatar
+
+        useCustomAccent:
+            branding.useCustomAccent
+
+        accentColor:
+            branding.accentColor
 
         controller:
             smartphoneFlow

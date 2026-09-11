@@ -11,6 +11,10 @@ Item {
     property int initialIndex: 0
     property bool compactMode: false
 
+    property bool showAvatar: true
+    property bool useCustomAccent: false
+    property color accentColor: "#3478e8"
+
     property int selectedIndex: -1
     property string selectedUsername: ""
     property string selectedDisplayName: ""
@@ -285,11 +289,20 @@ Item {
 
                         color:
                             accountDelegate.highlighted
-                                ? Qt.rgba(
-                                    0.20,
-                                    0.46,
-                                    0.88,
-                                    0.26
+                                ? (
+                                    root.useCustomAccent
+                                        ? Qt.rgba(
+                                            root.accentColor.r,
+                                            root.accentColor.g,
+                                            root.accentColor.b,
+                                            0.26
+                                        )
+                                        : Qt.rgba(
+                                            0.20,
+                                            0.46,
+                                            0.88,
+                                            0.26
+                                        )
                                 )
                                 : accountDelegate.hovered
                                     ? Qt.rgba(
@@ -306,27 +319,45 @@ Item {
                                 : 0
 
                         border.color:
-                            Qt.rgba(
-                                0.35,
-                                0.62,
-                                1,
-                                0.42
-                            )
+                            root.useCustomAccent
+                                ? Qt.rgba(
+                                    root.accentColor.r,
+                                    root.accentColor.g,
+                                    root.accentColor.b,
+                                    0.42
+                                )
+                                : Qt.rgba(
+                                    0.35,
+                                    0.62,
+                                    1,
+                                    0.42
+                                )
                     }
 
                     contentItem: RowLayout {
                         spacing: 9
 
                         UserAvatar {
+                            visible:
+                                root.showAvatar
+
                             Layout.preferredWidth:
-                                root.compactMode
-                                    ? 30
-                                    : 34
+                                root.showAvatar
+                                    ? (
+                                        root.compactMode
+                                            ? 30
+                                            : 34
+                                    )
+                                    : 0
 
                             Layout.preferredHeight:
-                                root.compactMode
-                                    ? 30
-                                    : 34
+                                root.showAvatar
+                                    ? (
+                                        root.compactMode
+                                            ? 30
+                                            : 34
+                                    )
+                                    : 0
 
                             iconSource:
                                 accountDelegate.accountIcon
@@ -366,7 +397,11 @@ Item {
                                 accountDelegate.highlighted
 
                             radius: 4
-                            color: "#64a3ff"
+
+                            color:
+                                root.useCustomAccent
+                                    ? root.accentColor
+                                    : "#64a3ff"
 
                             Accessible.ignored: true
                         }
@@ -377,6 +412,12 @@ Item {
 
         PolishedButton {
             compact: true
+
+            useCustomAccent:
+                root.useCustomAccent
+
+            accentColor:
+                root.accentColor
 
             Layout.alignment: Qt.AlignLeft
 
@@ -417,6 +458,12 @@ Item {
 
             Layout.fillWidth: true
 
+            useCustomAccent:
+                root.useCustomAccent
+
+            accentColor:
+                root.accentColor
+
             Accessible.name: qsTr("Benutzername")
 
             Accessible.description:
@@ -435,6 +482,12 @@ Item {
 
         PolishedButton {
             compact: true
+
+            useCustomAccent:
+                root.useCustomAccent
+
+            accentColor:
+                root.accentColor
 
             text:
                 qsTr(

@@ -1,3 +1,15 @@
+sddm-authelia-passkey (1.13.0-1) unstable; urgency=medium
+
+  * Add optional vendor-neutral branding to the independent Native Theme.
+  * Support brand name, absolute local logo, hostname, administrator
+    domain/realm, avatar visibility and validated custom accent colour.
+  * Preserve v1.12 visual defaults when no override is present.
+  * Add deterministic static, QML, runtime and package regression coverage.
+  * Keep PAM, broker, KWallet and Smartphone authentication decisions
+    unchanged.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Fri, 11 Sep 2026 17:55:37 +0200
+
 sddm-authelia-passkey (1.12.0-1) unstable; urgency=medium
 
   * Harden Native Theme accessibility semantics for screen readers and
