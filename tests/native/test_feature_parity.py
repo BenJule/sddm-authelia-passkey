@@ -115,7 +115,10 @@ checks = {
     "device code":
         "userCode" in panel,
     "identity":
-        "identityDisplayName" in panel,
+        "identityDisplayName" in controller
+        and "identitySource" in controller
+        and "/identity?username=" in controller
+        and "accountKindLabel" in panel,
     "directory indication":
         "Verzeichniskonto" in panel,
     "password fallback":

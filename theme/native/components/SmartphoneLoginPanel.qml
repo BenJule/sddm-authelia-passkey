@@ -11,6 +11,36 @@ Rectangle {
     property bool compactLayout: false
     property real qrSide: 200
 
+    readonly property bool showQrArea:
+        controller
+        && (
+            controller.state === "starting"
+            || controller.state === "waiting"
+            || controller.state === "approved"
+            || controller.state === "logging_in"
+        )
+
+    readonly property bool canRetry:
+        controller
+        && (
+            (
+                controller.state === "error"
+                && controller.errorKind !== "not_authorized"
+            )
+            || controller.state === "expired"
+            || controller.state === "denied"
+            || controller.state === "cancelled"
+        )
+
+    readonly property string accountKindLabel:
+        !controller
+            ? ""
+            : controller.identitySource === "local"
+                ? qsTr("Lokales Konto")
+                : controller.identitySource.length > 0
+                    ? qsTr("Verzeichniskonto")
+                    : qsTr("Konto")
+
     signal closeRequested()
     signal cancelRequested()
     signal retryRequested()
@@ -182,17 +212,7 @@ Rectangle {
                         Layout.fillWidth: true
 
                         text:
-                            root.controller
-                            && root.controller.identityDisplayName.length > 0
-                            && root.controller.identityDisplayName
-                                !== root.controller.targetUsername
-                                ? root.controller.identityDisplayName
-                                : (
-                                    root.controller
-                                    && root.controller.identitySource === "nss"
-                                        ? qsTr("Verzeichniskonto")
-                                        : qsTr("Lokales Konto")
-                                )
+                            root.accountKindLabel
 
                         color: "#73869a"
 
@@ -222,8 +242,13 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
 
+            visible:
+                root.showQrArea
+
             Layout.preferredHeight:
-                root.qrSide + 18
+                root.showQrArea
+                    ? root.qrSide + 18
+                    : 0
 
             spacing:
                 root.compactLayout
@@ -305,21 +330,6 @@ Rectangle {
                 QQC2.Label {
                     Layout.fillWidth: true
 
-                    text:
-                        qsTr(
-                            "QR-Code scannen und die Anmeldung auf dem Smartphone bestätigen."
-                        )
-
-                    color: "#e3ebf4"
-
-                    font.pixelSize: 11
-
-                    wrapMode: Text.WordWrap
-                }
-
-                QQC2.Label {
-                    Layout.fillWidth: true
-
                     text: qsTr("Gerätecode")
 
                     color: "#73869a"
@@ -377,6 +387,7 @@ Rectangle {
                     visible:
                         root.controller
                         && root.controller.verificationUri.length > 0
+                        && qrImage.status === Image.Error
 
                     text:
                         root.controller
@@ -462,13 +473,7 @@ Rectangle {
                 primary: true
 
                 visible:
-                    root.controller
-                    && (
-                        root.controller.state === "error"
-                        || root.controller.state === "expired"
-                        || root.controller.state === "denied"
-                        || root.controller.state === "cancelled"
-                    )
+                    root.canRetry
 
                 enabled:
                     root.controller

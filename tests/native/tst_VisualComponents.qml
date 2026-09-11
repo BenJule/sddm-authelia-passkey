@@ -29,6 +29,37 @@ TestCase {
         connectionState: "waiting"
     }
 
+    ListModel {
+        id: accountModel
+
+        ListElement {
+            name: "alice"
+            realName: "Alice"
+            icon: ""
+        }
+
+        ListElement {
+            name: "benlue"
+            realName: "Debian"
+            icon: ""
+        }
+
+        ListElement {
+            name: "bob"
+            realName: "Bob"
+            icon: ""
+        }
+    }
+
+    Native.UserChooser {
+        id: chooser
+
+        width: 420
+
+        userModelSource:
+            accountModel
+    }
+
     function test_control_sizes() {
         verify(button.implicitHeight >= 38)
         verify(field.implicitHeight >= 42)
@@ -53,5 +84,40 @@ TestCase {
             status.labelForState("waiting"),
             "Wartet"
         )
+    }
+
+    function test_user_list_uses_whole_rows() {
+        chooser.compactMode = false
+        wait(0)
+
+        compare(
+            chooser.accountCount,
+            3
+        )
+
+        compare(
+            chooser.visibleRowCount,
+            3
+        )
+
+        compare(
+            chooser.listViewportHeight,
+            158
+        )
+
+        chooser.compactMode = true
+        wait(0)
+
+        compare(
+            chooser.visibleRowCount,
+            2
+        )
+
+        compare(
+            chooser.listViewportHeight,
+            99
+        )
+
+        chooser.compactMode = false
     }
 }

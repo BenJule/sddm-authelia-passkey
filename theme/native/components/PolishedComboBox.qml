@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic as QQC2
 
@@ -60,6 +61,8 @@ QQC2.ComboBox {
     }
 
     delegate: QQC2.ItemDelegate {
+        id: delegateItem
+
         required property int index
 
         width: control.width - 12
@@ -69,7 +72,7 @@ QQC2.ComboBox {
             control.highlightedIndex === index
 
         contentItem: Text {
-            text: control.textAt(index)
+            text: control.textAt(delegateItem.index)
 
             color: "#edf3fa"
 
@@ -83,7 +86,7 @@ QQC2.ComboBox {
             radius: 8
 
             color:
-                highlighted
+                delegateItem.highlighted
                     ? Qt.rgba(0.20, 0.46, 0.88, 0.38)
                     : "transparent"
         }

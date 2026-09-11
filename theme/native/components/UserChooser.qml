@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls.Basic as QQC2
@@ -23,6 +24,37 @@ Item {
     property string lastListIcon: ""
 
     signal accountChanged()
+
+    readonly property int accountCount:
+        userModelSource
+        && userModelSource.count !== undefined
+            ? userModelSource.count
+            : 0
+
+    readonly property int rowHeight:
+        compactMode ? 44 : 48
+
+    readonly property int rowSpacing: 3
+    readonly property int listPadding: 4
+
+    readonly property int visibleRowCount:
+        Math.max(
+            1,
+            Math.min(
+                compactMode ? 2 : 3,
+                accountCount > 0
+                    ? accountCount
+                    : 1
+            )
+        )
+
+    readonly property real listViewportHeight:
+        2 * listPadding
+        + visibleRowCount * rowHeight
+        + Math.max(
+            0,
+            visibleRowCount - 1
+        ) * rowSpacing
 
     implicitHeight:
         manualMode
@@ -162,18 +194,7 @@ Item {
             Layout.fillWidth: true
 
             Layout.preferredHeight:
-                Math.min(
-                    root.compactMode
-                        ? 102
-                        : 132,
-                    Math.max(
-                        root.compactMode
-                            ? 46
-                            : 50,
-                        userList.contentHeight
-                            + 8
-                    )
-                )
+                root.listViewportHeight
 
             radius: 12
 
@@ -186,12 +207,14 @@ Item {
                 id: userList
 
                 anchors.fill: parent
-                anchors.margins: 4
+                anchors.margins:
+                    root.listPadding
 
                 model: root.userModelSource
 
                 clip: true
-                spacing: 3
+                spacing:
+                    root.rowSpacing
 
                 currentIndex:
                     root.selectedIndex
@@ -214,9 +237,7 @@ Item {
                     width: ListView.view.width
 
                     height:
-                        root.compactMode
-                            ? 44
-                            : 48
+                        root.rowHeight
 
                     highlighted:
                         !root.manualMode
@@ -305,28 +326,6 @@ Item {
                                 font.bold: true
                             }
 
-                            QQC2.Label {
-                                Layout.fillWidth: true
-
-                                visible:
-                                    accountDelegate
-                                        .accountRealName
-                                        .length > 0
-                                    && accountDelegate
-                                        .accountRealName
-                                        !== accountDelegate
-                                            .accountName
-
-                                text:
-                                    accountDelegate
-                                        .accountRealName
-
-                                color: "#75879a"
-
-                                elide: Text.ElideRight
-
-                                font.pixelSize: 9
-                            }
                         }
 
                         Rectangle {
