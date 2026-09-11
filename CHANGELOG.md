@@ -5,6 +5,8 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-09-11
+
 ### Added
 - Optional vendor-neutral Native Theme branding through SDDM
   `theme.conf.user`.
