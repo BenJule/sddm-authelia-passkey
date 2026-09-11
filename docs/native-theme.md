@@ -95,6 +95,30 @@ lab verification item and is not claimed by CI.
 No broker, PAM, approval-marker or authentication decision changes are
 part of accessibility hardening.
 
+## v1.13 native branding
+
+v1.13 adds optional vendor-neutral branding to the independent Native Theme.
+
+Branding uses SDDM's native `theme.conf.user` mechanism and remains strictly
+presentation-only.
+
+Supported presentation controls include:
+
+- brand name
+- absolute local logo path
+- optional SDDM local hostname
+- administrator-supplied domain/realm
+- avatar visibility
+- validated custom accent colour
+
+Remote logo URLs are rejected. Custom accents accept only opaque
+`#RRGGBB` values. Invalid values fall back to the v1.12 Native Theme accent.
+
+With no override, the v1.12 presentation remains the default.
+
+No broker, PAM, KWallet, approval-marker, provider or authentication
+decision changes are part of Native Branding.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
@@ -134,12 +158,16 @@ authentication model unchanged.
 
 v1.11.1 added visual-quality polish while preserving that model.
 
-v1.12 adds Native Theme accessibility hardening while keeping the
+v1.12 added Native Theme accessibility hardening while keeping the
 authentication model unchanged.
+
+v1.13 adds optional vendor-neutral Native Theme branding while preserving
+the v1.12 default appearance and authentication model.
 
 Later releases separately address:
 
-- v1.13 native branding
-- later recovery, visual regression and cutover work
+- recovery and rollback hardening
+- visual-regression automation
+- Native Theme cutover work
 
 The compatibility theme remains supported throughout.

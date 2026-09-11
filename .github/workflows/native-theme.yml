@@ -30,7 +30,9 @@ jobs:
           test -f theme/native/Main.qml
           test -f theme/native/metadata.desktop
           test -f theme/native/theme.conf
+          test -f theme/native/theme.conf.user.example
           test -d theme/native/components
+          test -f theme/native/components/BrandingConfig.qml
           test -f theme/native/components/UserAvatar.qml
           test -f theme/native/components/PowerActionsRow.qml
           test -f theme/native/components/ResponsiveMetrics.qml
@@ -48,8 +50,10 @@ jobs:
           test -f tests/native/tst_ResponsiveMetrics.qml
           test -f tests/native/tst_VisualComponents.qml
           test -f tests/native/tst_AccessibilitySemantics.qml
+          test -f tests/native/tst_BrandingConfig.qml
           test -f tests/native/test_visual_quality.py
           test -f tests/native/test_accessibility_contract.py
+          test -f tests/native/test_branding_contract.py
 
       - name: 2. metadata.desktop declares QtVersion=6
         run: grep -qx 'QtVersion=6' theme/native/metadata.desktop
@@ -119,11 +123,13 @@ jobs:
           python3 tests/native/test_feature_parity.py
           python3 tests/native/test_visual_quality.py
           python3 tests/native/test_accessibility_contract.py
+          python3 tests/native/test_branding_contract.py
           PYTHONPYCACHEPREFIX=/tmp/native-pycache \
             python3 -m py_compile \
               tests/native/test_feature_parity.py \
               tests/native/test_visual_quality.py \
               tests/native/test_accessibility_contract.py \
+              tests/native/test_branding_contract.py \
               tests/native/mock_broker.py
 
           python3 tests/native/mock_broker.py >/tmp/native-mock.log 2>&1 &
@@ -191,6 +197,45 @@ jobs:
             fi
           done
 
+      - name: 10b. Native branding override runtime check
+        run: |
+          rm -rf /tmp/native-branded
+          cp -a theme/native /tmp/native-branded
+
+          cat > /tmp/native-brand.svg <<'SVG'
+          <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+            <rect width="96" height="96" rx="20" fill="#8b5cf6"/>
+            <circle cx="48" cy="48" r="24" fill="#ffffff"/>
+          </svg>
+          SVG
+
+          cat > /tmp/native-branded/theme.conf.user <<'CONF'
+          [General]
+          ui_brand_name=CI Native Branding
+          ui_brand_logo=/tmp/native-brand.svg
+          ui_show_hostname=true
+          ui_show_domain=true
+          ui_brand_domain=CI.EXAMPLE
+          ui_show_avatar=false
+          ui_accent=custom
+          ui_accent_color=#8b5cf6
+          CONF
+
+          LOG=/tmp/native-branding-runtime.log
+
+          if xvfb-run -a               --server-args="-screen 0 1920x1080x24"               timeout 10               sddm-greeter-qt6                 --test-mode                 --theme /tmp/native-branded                 > "$LOG" 2>&1
+          then
+            RC=0
+          else
+            RC=$?
+          fi
+
+          cat "$LOG"
+
+          test "$RC" -eq 0 -o "$RC" -eq 124
+
+          ! grep -qiE             'QQmlApplicationEngine failed|failed to load component|Type .* unavailable|Cannot override FINAL property|Fallback to embedded theme|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError|Unable to assign'             "$LOG"
+
   package-integration:
     runs-on: ubuntu-latest
     container: debian:13
@@ -233,6 +278,8 @@ jobs:
           grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/BrandingConfig.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm-authelia-passkey/native-theme/theme.conf.user.example' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedButton.qml' /tmp/deb-contents.txt
@@ -266,6 +313,8 @@ jobs:
       - name: Verify native theme content and ownership
         run: |
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
+          test -f /usr/share/sddm-authelia-passkey/native-theme/theme.conf.user.example
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/BrandingConfig.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedButton.qml
@@ -306,3 +355,32 @@ jobs:
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/Main.qml
           test -f /usr/share/sddm/themes/debian-breeze-authelia-passkey/Main.qml
           dpkg -V sddm-authelia-passkey
+
+      - name: 15. Native theme.conf.user survives package reinstall
+        run: |
+          OVERRIDE=/usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf.user
+
+          cat > "$OVERRIDE" <<'CONF'
+          [General]
+          ui_brand_name=Preserved CI Branding
+          ui_show_hostname=true
+          ui_accent=custom
+          ui_accent_color=#8b5cf6
+          CONF
+
+          chown root:root "$OVERRIDE"
+          chmod 0644 "$OVERRIDE"
+
+          BEFORE="$(sha256sum "$OVERRIDE" | awk '{print $1}')"
+
+          apt-get install             -y             --reinstall             --no-install-recommends             "$DEB"
+
+          AFTER="$(sha256sum "$OVERRIDE" | awk '{print $1}')"
+
+          test "$BEFORE" = "$AFTER"
+          test "$(stat -c '%u:%g' "$OVERRIDE")" = "0:0"
+          test "$(stat -c '%a' "$OVERRIDE")" = "644"
+
+          grep -qx             'ui_brand_name=Preserved CI Branding'             "$OVERRIDE"
+
+          rm -f "$OVERRIDE"
