@@ -80,7 +80,13 @@ checks = {
         "sddm.login(" in main
         and "passwordField.text" in main,
     "smartphone PAM handoff":
-        'sddm.login(username, "", sessionIndex)' in main,
+        re.search(
+            r'sddm\.login\s*\(\s*'
+            r'username\s*,\s*'
+            r'""\s*,\s*'
+            r'sessionIndex\s*\)',
+            main,
+        ) is not None,
     "immutable target username":
         "targetUsername" in controller,
     "immutable session index":

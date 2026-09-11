@@ -34,6 +34,9 @@ jobs:
           test -f theme/native/components/UserAvatar.qml
           test -f theme/native/components/PowerActionsRow.qml
           test -f theme/native/components/ResponsiveMetrics.qml
+          test -f theme/native/components/PolishedButton.qml
+          test -f theme/native/components/PolishedTextField.qml
+          test -f theme/native/components/PolishedComboBox.qml
           test -f theme/native/components/UserChooser.qml
           test -f theme/native/components/SmartphoneFlowController.qml
           test -f theme/native/components/ConnectionStatus.qml
@@ -43,6 +46,8 @@ jobs:
           test -f theme/native/README.md
           test -f theme/native/PROVENANCE.md
           test -f tests/native/tst_ResponsiveMetrics.qml
+          test -f tests/native/tst_VisualComponents.qml
+          test -f tests/native/test_visual_quality.py
 
       - name: 2. metadata.desktop declares QtVersion=6
         run: grep -qx 'QtVersion=6' theme/native/metadata.desktop
@@ -109,9 +114,12 @@ jobs:
         run: |
           set -eu
           python3 tests/native/test_feature_parity.py
-          python3 -m py_compile \
-            tests/native/test_feature_parity.py \
-            tests/native/mock_broker.py
+          python3 tests/native/test_visual_quality.py
+          PYTHONPYCACHEPREFIX=/tmp/native-pycache \
+            python3 -m py_compile \
+              tests/native/test_feature_parity.py \
+              tests/native/test_visual_quality.py \
+              tests/native/mock_broker.py
 
           python3 tests/native/mock_broker.py >/tmp/native-mock.log 2>&1 &
           MOCK_PID=$!
@@ -222,6 +230,9 @@ jobs:
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/metadata.desktop' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserAvatar.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedButton.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedTextField.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedComboBox.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml' /tmp/deb-contents.txt
@@ -252,6 +263,9 @@ jobs:
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/theme.conf
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PowerActionsRow.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/ResponsiveMetrics.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedButton.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedTextField.qml
+          test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/PolishedComboBox.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml
           test -f /usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml
