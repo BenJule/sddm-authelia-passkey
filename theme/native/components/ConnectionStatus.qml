@@ -20,6 +20,14 @@ Rectangle {
     border.width: 1
     border.color: Qt.rgba(1, 1, 1, 0.08)
 
+    Accessible.role: Accessible.StatusBar
+    Accessible.name:
+        qsTr("Verbindungsstatus: %1").arg(
+            root.labelForState(
+                root.connectionState
+            )
+        )
+
     function labelForState(value) {
         switch (value) {
         case "connecting":
@@ -71,6 +79,8 @@ Rectangle {
                 root.colorForState(
                     root.connectionState
                 )
+
+            Accessible.ignored: true
         }
 
         QQC2.Label {
@@ -83,6 +93,8 @@ Rectangle {
 
             font.pixelSize: 10
             font.weight: Font.Medium
+
+            Accessible.ignored: true
         }
     }
 }

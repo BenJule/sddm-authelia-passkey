@@ -16,6 +16,9 @@ Rectangle {
 
     clip: true
 
+    // Adjacent account text already conveys this information.
+    Accessible.ignored: true
+
     readonly property bool hasImage:
         iconSource !== ""
         && avatarImage.status === Image.Ready

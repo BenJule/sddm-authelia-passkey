@@ -7,6 +7,9 @@ RowLayout {
 
     spacing: 7
 
+    Accessible.role: Accessible.ToolBar
+    Accessible.name: qsTr("Systemaktionen")
+
     PolishedButton {
         compact: true
 

@@ -25,6 +25,9 @@ Item {
 
     signal accountChanged()
 
+    Accessible.role: Accessible.Pane
+    Accessible.name: qsTr("Benutzerkonto")
+
     readonly property int accountCount:
         userModelSource
         && userModelSource.count !== undefined
@@ -143,6 +146,11 @@ Item {
             root.lastListIcon
 
         root.accountChanged()
+
+        Qt.callLater(function() {
+            if (userList.currentItem)
+                userList.currentItem.forceActiveFocus()
+        })
     }
 
     Repeater {
@@ -188,6 +196,8 @@ Item {
 
             font.pixelSize: 10
             font.weight: Font.Medium
+
+            Accessible.ignored: true
         }
 
         Rectangle {
@@ -219,6 +229,9 @@ Item {
                 currentIndex:
                     root.selectedIndex
 
+                Accessible.role: Accessible.List
+                Accessible.name: qsTr("Benutzerkonten")
+
                 delegate: QQC2.ItemDelegate {
                     id: accountDelegate
 
@@ -243,6 +256,21 @@ Item {
                         !root.manualMode
                         && index
                             === root.selectedIndex
+
+                    activeFocusOnTab: true
+
+                    Accessible.role: Accessible.ListItem
+                    Accessible.name: accountName
+                    Accessible.selected: highlighted
+                    Accessible.focusable: true
+
+                    Accessible.onPressAction:
+                        root.chooseAccount(
+                            index,
+                            accountName,
+                            accountRealName,
+                            accountIcon
+                        )
 
                     onClicked:
                         root.chooseAccount(
@@ -324,6 +352,8 @@ Item {
 
                                 font.pixelSize: 12
                                 font.bold: true
+
+                                Accessible.ignored: true
                             }
 
                         }
@@ -337,6 +367,8 @@ Item {
 
                             radius: 4
                             color: "#64a3ff"
+
+                            Accessible.ignored: true
                         }
                     }
                 }
@@ -376,12 +408,21 @@ Item {
 
             font.pixelSize: 10
             font.weight: Font.Medium
+
+            Accessible.ignored: true
         }
 
         PolishedTextField {
             id: manualField
 
             Layout.fillWidth: true
+
+            Accessible.name: qsTr("Benutzername")
+
+            Accessible.description:
+                qsTr(
+                    "Benutzerkonto manuell eingeben"
+                )
 
             placeholderText:
                 qsTr(
