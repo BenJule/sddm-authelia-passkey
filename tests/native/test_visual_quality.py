@@ -29,8 +29,8 @@ panel = (COMP / "SmartphoneLoginPanel.qml").read_text()
 power = (COMP / "PowerActionsRow.qml").read_text()
 
 checks = {
-    "v1.11.1 marker":
-        "Native v1.11.1" in main,
+    "v1.12 marker":
+        "Native v1.12.0" in main,
 
     "German date":
         'Qt.locale("de_DE")' in main,

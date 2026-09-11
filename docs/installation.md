@@ -101,8 +101,9 @@ accessibility needs (screen reader, keyboard-only)? See
 
 - **Native SDDM theme** (experimental, opt-in, not selected by
   install/upgrade) - an original from-scratch Qt6 theme installed
-  alongside the compatibility theme. Feature-parity as of v1.10.0;
-  responsive UX is planned for v1.11 - see `docs/native-theme.md`.
+  alongside the compatibility theme. Feature parity arrived in v1.10.0
+  and responsive UX in v1.11.0; Native Theme accessibility hardening is
+  the v1.12.0 roadmap step - see `docs/native-theme.md`.
 
 ## Build from source (alternative)
 

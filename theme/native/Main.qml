@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// SDDM Authelia Passkey Native v1.11.1
+// SDDM Authelia Passkey Native v1.12.0
 //
 // Presentation is original project work.
 // Authentication remains exclusively with SDDM/PAM.
@@ -302,6 +302,9 @@ Item {
                 0.095
             )
 
+        Accessible.role: Accessible.Pane
+        Accessible.name: qsTr("Anmeldung")
+
         enabled:
             !(
                 root.smartphonePanelOpen
@@ -479,6 +482,21 @@ Item {
                         "Passwort eingeben"
                     )
 
+                Accessible.name: qsTr("Passwort")
+
+                Accessible.description:
+                    userChooser.selectedUsername.length > 0
+                        ? qsTr(
+                            "Passwort für %1"
+                        ).arg(
+                            userChooser.selectedUsername
+                        )
+                        : qsTr(
+                            "Passwort für das ausgewählte Benutzerkonto"
+                        )
+
+                Accessible.passwordEdit: true
+
                 enabled:
                     userChooser.selectedUsername.length > 0
 
@@ -487,6 +505,8 @@ Item {
             }
 
             QQC2.Label {
+                id: loginFailureLabel
+
                 Layout.fillWidth: true
 
                 visible:
@@ -505,15 +525,22 @@ Item {
                 color: "#ff8585"
 
                 font.pixelSize: 10
+
+                Accessible.role: Accessible.AlertMessage
+                Accessible.name: text
             }
 
             PolishedButton {
+                id: loginButton
+
                 Layout.fillWidth: true
 
                 text:
                     qsTr(
                         "Mit Passwort anmelden"
                     )
+
+                Accessible.defaultButton: true
 
                 enabled:
                     userChooser.selectedUsername.length > 0
@@ -555,12 +582,16 @@ Item {
                         color: "#687c91"
 
                         font.pixelSize: 8
+
+                        Accessible.ignored: true
                     }
 
                     PolishedComboBox {
                         id: sessionCombo
 
                         Layout.fillWidth: true
+
+                        Accessible.name: qsTr("Sitzung")
 
                         model: sessionModel
                         textRole: "name"
@@ -588,10 +619,16 @@ Item {
                         color: "#687c91"
 
                         font.pixelSize: 8
+
+                        Accessible.ignored: true
                     }
 
                     PolishedComboBox {
+                        id: keyboardCombo
+
                         Layout.fillWidth: true
+
+                        Accessible.name: qsTr("Tastaturlayout")
 
                         model:
                             typeof keyboard !== "undefined"
@@ -683,6 +720,8 @@ Item {
 
         qrSide:
             responsiveMetrics.qrSide
+
+        modalLayout: responsiveMetrics.overlayLayout
 
         controller:
             smartphoneFlow

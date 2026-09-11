@@ -11,6 +11,16 @@ ColumnLayout {
 
     spacing: 5
 
+    Accessible.role: Accessible.ProgressBar
+    Accessible.name: qsTr("Verbleibende Zeit")
+
+    Accessible.description:
+        qsTr("%1 verbleibend").arg(
+            root.formatted(
+                root.remainingSeconds
+            )
+        )
+
     readonly property real fraction:
         totalSeconds > 0
             ? Math.max(
@@ -62,6 +72,8 @@ ColumnLayout {
             color: "#7d8fa2"
 
             font.pixelSize: 9
+
+            Accessible.ignored: true
         }
 
         QQC2.Label {
@@ -74,6 +86,8 @@ ColumnLayout {
 
             font.pixelSize: 10
             font.bold: true
+
+            Accessible.ignored: true
         }
     }
 
@@ -84,6 +98,8 @@ ColumnLayout {
         radius: 3
 
         color: Qt.rgba(1, 1, 1, 0.075)
+
+        Accessible.ignored: true
 
         Rectangle {
             width:

@@ -6,8 +6,8 @@ The package ships two SDDM themes side by side:
 - the original Qt6 Native Theme at
   `/usr/share/sddm/themes/sddm-authelia-passkey-native`
 
-The Native Theme remains opt-in in v1.10.0. Package installation and upgrade
-do not select it automatically and do not restart SDDM.
+The Native Theme remains opt-in. Package installation and upgrade do
+not select it automatically and do not restart SDDM.
 
 ## v1.10.0 feature parity
 
@@ -66,6 +66,35 @@ formatting and the Smartphone-Login panel.
 No PAM, broker, approval-marker, OIDC/provider, KWallet authentication or
 username/session-binding behaviour changes are part of this patch.
 
+## v1.12 accessibility hardening
+
+v1.12 applies explicit accessibility semantics to the independent
+Native Theme while preserving the v1.11.1 presentation and
+authentication model.
+
+The Native Theme accessibility contract includes:
+
+- Dialog semantics for the modal Smartphone-Login layout and Pane
+  semantics for the non-modal sidebar layout
+- explicit names and descriptions for Smartphone Login, QR code,
+  device code, connection status and countdown
+- alert semantics for authentication states requiring attention
+- List/ListItem semantics and selected-state exposure for account choice
+- explicit accessible names for password, session and keyboard layout
+- decorative avatars and status indicators excluded from the
+  accessibility tree when semantic text already conveys the information
+- deterministic focus transfer into Smartphone Login, back to the
+  password path and into manual username entry
+
+The password path remains available throughout.
+
+Structural semantics are covered by deterministic tests and qmllint.
+Actual AT-SPI/Orca interaction in a real SDDM session remains a manual
+lab verification item and is not claimed by CI.
+
+No broker, PAM, approval-marker or authentication decision changes are
+part of accessibility hardening.
+
 ## Security model
 
 The Native Theme communicates only with the local broker at
@@ -100,12 +129,16 @@ No compatibility-theme QML is copied into the Native Theme.
 
 v1.10.0 established feature parity.
 
-v1.11 adds responsive Native Theme presentation while keeping the
+v1.11 added responsive Native Theme presentation while keeping the
+authentication model unchanged.
+
+v1.11.1 added visual-quality polish while preserving that model.
+
+v1.12 adds Native Theme accessibility hardening while keeping the
 authentication model unchanged.
 
 Later releases separately address:
 
-- v1.12 accessibility hardening
 - v1.13 native branding
 - later recovery, visual regression and cutover work
 

@@ -5,6 +5,21 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Native Theme accessibility hardening with explicit semantic roles,
+  accessible names/descriptions, account-selection state, QR/device-code
+  alternatives and deterministic accessibility-contract tests.
+- Layout-aware Smartphone-Login semantics: Dialog in modal overlay mode
+  and Pane in non-modal sidebar mode.
+
+### Changed
+- Native keyboard-focus transitions are explicit for Smartphone-Login,
+  manual username entry and password fallback.
+- Decorative avatars and status indicators are excluded from the
+  accessibility tree where adjacent semantic text already conveys the
+  same information.
+- Stable-status documentation no longer hard-codes the latest release.
+
 ## [1.11.1] - 2026-09-11
 
 ### Changed
@@ -15,6 +30,7 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 - Added explicit German date formatting.
 - Preserved v1.11 responsive geometry and authentication semantics.
 
+## [1.11.0] - 2026-09-10
 
 ### Added
 - Native Theme responsive UX with a geometry-derived sidebar/overlay
