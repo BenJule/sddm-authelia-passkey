@@ -5,6 +5,30 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Native Theme Failure & Recovery UX coverage for broker-offline,
+  provider-unavailable, rate-limited, expired, denied, account-ineligible,
+  malformed-response, QR-unavailable and post-approval login-failure states.
+- Deterministic controller, localhost-mock and presentation tests for the
+  v1.14 recovery contract.
+
+### Changed
+- Provider/infrastructure unavailability and terminal rate limiting are no
+  longer presented as QR expiry.
+- Missing or malformed status responses now have explicit recovery semantics
+  without exposing broker/provider internals to the greeter.
+- QR rendering failure now exposes the existing device-code/address fallback
+  instead of remaining indefinitely in a preparing message.
+- SDDM login failure after Smartphone approval invalidates the old
+  presentation generation before password/new-code recovery is offered.
+- Local start-throttle cooldown is presented only as a client retry guard;
+  upstream token-endpoint Retry-After remains broker-controlled.
+
+### Security
+- PAM authority, broker authentication/authorization decisions, KWallet,
+  approval-marker semantics, exact username/session binding and FIDO2 policy
+  remain unchanged.
+
 ## [1.13.0] - 2026-09-11
 
 ### Added

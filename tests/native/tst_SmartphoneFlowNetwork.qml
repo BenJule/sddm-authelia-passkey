@@ -118,6 +118,7 @@ TestCase {
 
         tryCompare(flow, "state", "error", 2000)
         compare(flow.errorKind, "not_authorized")
+        compare(flow.connectionState, "ready")
         compare(loginSpy.count, 0)
     }
 
@@ -135,6 +136,7 @@ TestCase {
 
         tryCompare(flow, "state", "error", 2000)
         compare(flow.connectionState, "rate_limited")
+        compare(flow.errorKind, "start_rate_limited")
         compare(loginSpy.count, 0)
     }
 
@@ -153,6 +155,104 @@ TestCase {
         tryCompare(flow, "state", "error", 3000)
         compare(flow.connectionState, "offline")
         compare(loginSpy.count, 0)
+    }
+
+    function test_mock_denied() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "denied",
+                "Denied",
+                "",
+                0
+            )
+        )
+
+        tryCompare(flow, "state", "denied", 3000)
+        compare(flow.errorKind, "denied")
+        compare(flow.connectionState, "ready")
+        compare(loginSpy.count, 0)
+    }
+
+    function test_mock_provider_unavailable() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "unavailable",
+                "Unavailable",
+                "",
+                0
+            )
+        )
+
+        tryCompare(flow, "state", "error", 3000)
+        compare(flow.errorKind, "provider_unavailable")
+        compare(flow.connectionState, "error")
+        compare(loginSpy.count, 0)
+    }
+
+    function test_mock_missing_status_is_malformed() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "missing-status",
+                "Missing",
+                "",
+                0
+            )
+        )
+
+        tryCompare(flow, "state", "error", 3000)
+        compare(flow.errorKind, "malformed_status")
+        compare(loginSpy.count, 0)
+    }
+
+    function test_malformed_poll_can_recover_without_denial() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "malformed",
+                "Malformed",
+                "",
+                1
+            )
+        )
+
+        tryCompare(flow, "state", "logging_in", 4000)
+        compare(flow.targetUsername, "malformed")
+        compare(loginSpy.count, 1)
+    }
+
+    function test_qrless_flow_keeps_alternate_path() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "qrless",
+                "QR Less",
+                "",
+                0
+            )
+        )
+
+        tryCompare(flow, "state", "waiting", 2000)
+
+        tryVerify(
+            function() {
+                return flow.userCode.length > 0
+                    && flow.verificationUri.length > 0
+            },
+            2000
+        )
+
+        compare(flow.qrPath, "")
+        compare(loginSpy.count, 0)
+
+        flow.cancelCurrent(false)
     }
 
     function test_explicit_cancel() {
