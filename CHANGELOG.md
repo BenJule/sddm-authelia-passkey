@@ -5,6 +5,23 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Explicit `native`, `compatibility`, and `backend-only` theme installation modes.
+- Machine-readable theme mode status through the fixed-dispatch admin CLI.
+- Persistent preservation of the previous SDDM theme selection.
+
+### Changed
+- Theme selection is now idempotent, reversible, and mode-aware.
+- Package upgrades refresh theme payloads without silently changing the
+  selected installation mode.
+- Native Theme version advances to 1.16.0.
+
+### Security
+- External SDDM configuration drift, invalid targets, and symlinked
+  configuration/theme payloads fail closed.
+- Theme mode operations never restart SDDM or terminate active sessions.
+- PAM, broker, KWallet, FIDO2 and username/session binding remain unchanged.
+
 ## [1.15.0] - 2026-09-12
 
 ### Added
