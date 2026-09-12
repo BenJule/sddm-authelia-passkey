@@ -353,6 +353,10 @@ func authorizeAccount(username string) (*user.User, error) {
 		return nil, fmt.Errorf("NSS lookup failed: %w", err)
 	}
 
+	if err := checkIdentityProvenance(username); err != nil {
+		return nil, err
+	}
+
 	uid, err := strconv.Atoi(u.Uid)
 	if err != nil {
 		return nil, fmt.Errorf("account has a non-numeric UID: %q", u.Uid)

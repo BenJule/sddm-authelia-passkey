@@ -78,6 +78,28 @@ type Config struct {
 	// this project refuses to start with - see Validate().
 	RequireGroupMatch bool
 
+	// RejectLocalShadowing and RequiredIdentitySource close a real gap
+	// found during v2.1.0's real-infrastructure validation: an ordinary
+	// NSS lookup (getpwnam) silently prefers whichever source
+	// nsswitch.conf lists first when a username exists in more than one
+	// (e.g. a local /etc/passwd account with the same name as a real
+	// directory account) - the broker has no way to tell which source
+	// actually answered. See docs/identity-binding.md. Both default to
+	// off/empty (no behavior change) and are only ever consulted when
+	// AccountSource is "nss".
+	//
+	// RejectLocalShadowing: when true, refuse (fail closed) any username
+	// that resolves via *both* the "files" and "sss" NSS services with a
+	// different UID - a proven collision, detected by asking each real
+	// backend directly (getent -s <service>), never by a UID-range
+	// heuristic.
+	RejectLocalShadowing bool
+	// RequiredIdentitySource: "" (default, any NSS source is eligible,
+	// unchanged from pre-v2.2.0 behavior) or "sssd" (the account must
+	// resolve via the "sss" NSS service specifically, independent of
+	// whether a "files" entry with the same name also exists).
+	RequiredIdentitySource string
+
 	ApprovalTTLSeconds      int
 	UserCooldownSeconds     int
 	MaxParallelFlows        int
@@ -136,6 +158,8 @@ var knownConfigKeys = map[string]bool{
 	"kwallet_auto_unlock":             true,
 	"minimum_uid":                     true,
 	"require_group_match":             true,
+	"reject_local_shadowing":          true,
+	"required_identity_source":        true,
 	"kwallet_credential_name":         true,
 	"fido2_authfile":                  true,
 	"fido2_require_user_verification": true,
@@ -280,6 +304,12 @@ func LoadConfig(path string) (Config, error) {
 	if cfg.RequireGroupMatch, err2 = getBool("require_group_match", cfg.RequireGroupMatch); err2 != nil {
 		return cfg, err2
 	}
+	if cfg.RejectLocalShadowing, err2 = getBool("reject_local_shadowing", cfg.RejectLocalShadowing); err2 != nil {
+		return cfg, err2
+	}
+	if v, ok := raw["required_identity_source"]; ok {
+		cfg.RequiredIdentitySource = strings.ToLower(strings.TrimSpace(v))
+	}
 	if v, ok := raw["kwallet_credential_name"]; ok {
 		cfg.KWalletCredentialName = v
 	}
@@ -328,6 +358,12 @@ func (c Config) Validate() error {
 		if len(c.AllowedUsers) == 0 {
 			return fmt.Errorf("allowed_users must list at least one local account (or set account_source=nss)")
 		}
+		if c.RejectLocalShadowing {
+			return fmt.Errorf("reject_local_shadowing is only meaningful when account_source=nss")
+		}
+		if c.RequiredIdentitySource != "" {
+			return fmt.Errorf("required_identity_source is only meaningful when account_source=nss")
+		}
 	case "nss":
 		if c.MinimumUID <= 0 {
 			return fmt.Errorf("minimum_uid must be positive when account_source=nss (UID 0/root is always rejected regardless)")
@@ -339,6 +375,9 @@ func (c Config) Validate() error {
 			// list) accidentally stop enforcing group membership. Refuse
 			// to start rather than guess which one was meant.
 			return fmt.Errorf("require_group_match=true needs at least one allowed_groups entry")
+		}
+		if c.RequiredIdentitySource != "" && c.RequiredIdentitySource != "sssd" {
+			return fmt.Errorf("required_identity_source must be empty or %q, got %q", "sssd", c.RequiredIdentitySource)
 		}
 	default:
 		return fmt.Errorf("account_source must be %q or %q, got %q", "local", "nss", c.AccountSource)
