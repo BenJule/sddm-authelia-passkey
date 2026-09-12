@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.0] - 2026-09-12
+
+### Fixed
+- **Security**: a superseded device-authorization flow could still
+  succeed if its token-poll request was already in flight (a real
+  network call, bounded to 15s by v2.7.0) when the supersede landed -
+  `pollAndDecide` did not re-check cancellation after the poll
+  returned, so a genuine approval arriving just after a supersede would
+  still write an approval marker. Fixed by re-checking cancellation
+  immediately after every poll, before processing its result.
+
+### Added
+- The approval marker now includes `SESSION_ID`/`IDENTITY_SOURCE`/
+  `PROVIDER`/`HOSTNAME`/`REQUESTED_ACTION` alongside the existing
+  `VERSION`/`USERNAME`/`UID`/`NONCE`/`APPROVED_AT` fields - explicit,
+  audit-traceable bound context. Unconditionally backward compatible
+  (the PAM consumer only ever reads the two keys it needs) and not
+  itself security-load-bearing (the invariants above already hold
+  without them).
+- `docs/transaction-binding.md`: verifies each of the roadmap's 12
+  named transaction-binding security requirements against real code
+  and existing/new tests.
+
 ## [2.7.0] - 2026-09-12
 
 ### Fixed
