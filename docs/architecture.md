@@ -934,3 +934,13 @@ succeed). The approval marker (`writeApprovalMarker`/
 backward compatible with the unchanged PAM consumer. See
 `docs/transaction-binding.md` for the full verification of every named
 transaction-binding security requirement.
+
+## Mechanism selection (v2.9.0, first real increment)
+
+The smartphone/EIdP button is now disabled (with a visible reason)
+whenever `oidc_ready` is false, and the FIDO2-available hint moved to
+the main login screen - a real, narrow first step of v3.0.0's generic
+mechanism-selection vision, not the full framework. See
+`docs/mechanism-selection.md` for what this does and does not cover,
+including why hardware-key login has no selectable UI action to bind
+(`pam_u2f.so` tries silently ahead of both other paths in PAM).

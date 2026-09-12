@@ -1,3 +1,14 @@
+sddm-authelia-passkey (2.9.0-1) unstable; urgency=medium
+
+  * Add capability-driven mechanism offering (first real increment of
+    the generic mechanism-selection framework): the smartphone/EIdP
+    login button is now disabled, with a visible reason, whenever
+    oidc_ready is false. The FIDO2-available hint moved to the main
+    login screen. No security decision is affected - capability data
+    continues to drive UX offering only, never authorization.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 20:51:58 +0200
+
 sddm-authelia-passkey (2.8.0-1) unstable; urgency=medium
 
   * Fix a real security gap: a superseded device-authorization flow
