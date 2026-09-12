@@ -65,6 +65,11 @@ Check the current state with:
 See `docs/theme-installation-modes.md` for the full mode and rollback
 contract.
 
+Since v1.17.0, guided migration between modes (`sddm-authelia-passkey-admin
+migrate`) and its undo (`rollback-migration`) are themselves never
+triggered by an upgrade either - upgrading never starts, resumes, or
+rolls back a migration on its own. See `docs/theme-migration.md`.
+
 ## If something goes wrong after an upgrade
 
 `sudo /usr/sbin/sddm-authelia-passkey-admin test-config` validates the

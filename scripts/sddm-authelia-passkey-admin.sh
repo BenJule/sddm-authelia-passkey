@@ -18,6 +18,10 @@
 #   audit-log    - security-relevant broker log lines (journalctl, "SECURITY:"
 #                  tagged entries only - authorization denials, identity
 #                  mismatches, successful approvals)
+#   migrate-preflight, migrate, rollback-migration, migrate-resume,
+#   migrate-status - theme mode migration tooling (delegates to
+#                  theme-migrate.sh, same as apply-mode delegates to
+#                  theme-mode.sh)
 set -euo pipefail
 
 CONFIG=/etc/sddm-authelia-passkey/config.conf
@@ -34,7 +38,7 @@ else
 fi
 
 usage() {
-    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode}" >&2
+    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status}" >&2
     exit 1
 }
 
@@ -118,6 +122,98 @@ apply-mode)
     }
 
     exec bash "$SHARE_DIR/theme-mode.sh" apply "$MODE"
+    ;;
+
+migrate-preflight)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    MODE="${2:-}"
+
+    case "$MODE" in
+        native|compatibility|backend-only)
+            ;;
+        *)
+            echo                 "usage: $0 migrate-preflight {native|compatibility|backend-only}"                 >&2
+            false
+            ;;
+    esac
+
+    [ -f "$SHARE_DIR/theme-migrate.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-migrate.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-migrate.sh" preflight "$MODE"
+    ;;
+
+migrate)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    MODE="${2:-}"
+
+    case "$MODE" in
+        native|compatibility|backend-only)
+            ;;
+        *)
+            echo                 "usage: $0 migrate {native|compatibility|backend-only}"                 >&2
+            false
+            ;;
+    esac
+
+    [ -f "$SHARE_DIR/theme-migrate.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-migrate.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-migrate.sh" migrate "$MODE"
+    ;;
+
+rollback-migration)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    [ -f "$SHARE_DIR/theme-migrate.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-migrate.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-migrate.sh" rollback-migration
+    ;;
+
+migrate-resume)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    [ -f "$SHARE_DIR/theme-migrate.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-migrate.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-migrate.sh" resume
+    ;;
+
+migrate-status)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    [ -f "$SHARE_DIR/theme-migrate.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-migrate.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-migrate.sh" status
     ;;
 
 audit-log)

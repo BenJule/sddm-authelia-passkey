@@ -37,6 +37,7 @@ override_dh_auto_install:
 	install -D -m 0755 scripts/setup-kwallet-credential.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/setup-kwallet-credential.sh
 	install -D -m 0755 scripts/install-theme.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/install-theme.sh
 	install -D -m 0755 scripts/theme-mode.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme-mode.sh
+	install -D -m 0755 scripts/theme-migrate.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/theme-migrate.sh
 	install -D -m 0755 scripts/enable-fido2.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/enable-fido2.sh
 	install -D -m 0755 scripts/disable-fido2.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/disable-fido2.sh
 	install -D -m 0755 scripts/setup-fido2-credential.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/setup-fido2-credential.sh

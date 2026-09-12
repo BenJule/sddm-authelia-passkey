@@ -46,6 +46,15 @@ jobs:
       - name: Theme mode command contract regression
         run: bash tests/integration/theme-mode-command-test.sh
 
+      - name: Theme mode check-target regression
+        run: bash tests/integration/theme-mode-check-target-test.sh
+
+      - name: Theme migration regression
+        run: bash tests/integration/theme-migrate-test.sh
+
+      - name: Theme migration command contract regression
+        run: bash tests/integration/theme-migrate-command-test.sh
+
       - name: Shellcheck all shipped scripts
         run: |
           apt-get install -y --no-install-recommends shellcheck
@@ -79,6 +88,7 @@ jobs:
           dpkg-deb -c out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/install-theme.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme-mode.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme-migrate.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/disable-pam.sh'
@@ -154,6 +164,8 @@ jobs:
         run: |
           test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
           test -x /usr/share/sddm-authelia-passkey/break-glass.sh
+          test -x /usr/share/sddm-authelia-passkey/theme-mode.sh
+          test -x /usr/share/sddm-authelia-passkey/theme-migrate.sh
 
   lifecycle:
     runs-on: ubuntu-latest
@@ -184,6 +196,7 @@ jobs:
           test -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
           test -x /usr/share/sddm-authelia-passkey/install-theme.sh
           test -x /usr/share/sddm-authelia-passkey/theme-mode.sh
+          test -x /usr/share/sddm-authelia-passkey/theme-migrate.sh
           test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
           test -x /usr/share/sddm-authelia-passkey/break-glass.sh
           test -x /usr/sbin/sddm-authelia-passkey-admin
