@@ -40,6 +40,12 @@ jobs:
       - name: Break-glass transform regression
         run: bash tests/integration/break-glass-test.sh
 
+      - name: Theme mode regression
+        run: bash tests/integration/theme-mode-test.sh
+
+      - name: Theme mode command contract regression
+        run: bash tests/integration/theme-mode-command-test.sh
+
       - name: Shellcheck all shipped scripts
         run: |
           apt-get install -y --no-install-recommends shellcheck
@@ -72,6 +78,7 @@ jobs:
           dpkg-deb -I out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/install-theme.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme-mode.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/metadata.desktop.patch'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/disable-pam.sh'
@@ -176,6 +183,7 @@ jobs:
           test -f /usr/lib/sddm-authelia-passkey/kwallet-secretd
           test -f /usr/lib/x86_64-linux-gnu/security/pam_authelia_passkey.so
           test -x /usr/share/sddm-authelia-passkey/install-theme.sh
+          test -x /usr/share/sddm-authelia-passkey/theme-mode.sh
           test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
           test -x /usr/share/sddm-authelia-passkey/break-glass.sh
           test -x /usr/sbin/sddm-authelia-passkey-admin
@@ -208,6 +216,49 @@ jobs:
           test "$BEFORE" = "$AFTER"
           sha256sum -c /tmp/breeze-before.sha256
           dpkg -V sddm-theme-debian-breeze
+
+      - name: Theme mode lifecycle and package-reinstall preservation
+        run: |
+          ADMIN=/usr/sbin/sddm-authelia-passkey-admin
+          PKG=/tmp/pkg/sddm-authelia-passkey_*.deb
+
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=backend-only$'
+          $ADMIN mode-status | grep -q '^THEME_SELECTION_MANAGED=NO$'
+
+          cat > /etc/sddm.conf <<'EOF'
+          [Theme]
+          Current=debian-breeze
+          EOF
+          sed -i 's/^ *//' /etc/sddm.conf
+          chmod 0640 /etc/sddm.conf
+
+          sha256sum /etc/sddm.conf > /tmp/sddm-before-mode.sha256
+          BASE_MODE="$(stat -c '%a' /etc/sddm.conf)"
+
+          $ADMIN apply-mode native | grep -q '^MODE_APPLY=GREEN$'
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=native$'
+          grep -q '^Current=sddm-authelia-passkey-native$' /etc/sddm.conf
+
+          apt-get install --reinstall -y --no-install-recommends $PKG
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=native$'
+          $ADMIN mode-status | grep -q '^EFFECTIVE_THEME=sddm-authelia-passkey-native$'
+
+          $ADMIN apply-mode compatibility | grep -q '^MODE_APPLY=GREEN$'
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=compatibility$'
+
+          apt-get install --reinstall -y --no-install-recommends $PKG
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=compatibility$'
+          $ADMIN mode-status | grep -q '^EFFECTIVE_THEME=debian-breeze-authelia-passkey$'
+
+          $ADMIN apply-mode backend-only | grep -q '^MODE_APPLY=GREEN$'
+          $ADMIN mode-status | grep -q '^INSTALL_MODE=backend-only$'
+          $ADMIN mode-status | grep -q '^THEME_SELECTION_MANAGED=NO$'
+
+          sha256sum -c /tmp/sddm-before-mode.sha256
+          test "$(stat -c '%a' /etc/sddm.conf)" = "$BASE_MODE"
+          grep -q '^Current=debian-breeze$' /etc/sddm.conf
+
+          echo "THEME_MODE_PACKAGE_LIFECYCLE=GREEN"
 
       - name: Invariant - plain install must not touch PAM
         run: |

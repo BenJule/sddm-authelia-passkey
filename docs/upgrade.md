@@ -43,6 +43,28 @@ shipped in a given release (a new `fido2_*` key, `provider_kind=oidc`,
 you on exactly the behavior you had before, nothing is silently
 upgraded to a new default that could change who is authorized.
 
+## Theme installation mode across upgrades
+
+Since v1.16.0, SDDM theme selection uses an explicit persistent mode:
+
+- `native`
+- `compatibility`
+- `backend-only`
+
+Package upgrades never apply a mode automatically and never silently
+switch the selected mode.
+
+An upgrade may refresh the installed Native Theme or regenerate the
+compatibility-theme payload, but the managed SDDM theme selection and
+its rollback baseline remain unchanged.
+
+Check the current state with:
+
+    sudo sddm-authelia-passkey-admin mode-status
+
+See `docs/theme-installation-modes.md` for the full mode and rollback
+contract.
+
 ## If something goes wrong after an upgrade
 
 `sudo /usr/sbin/sddm-authelia-passkey-admin test-config` validates the
