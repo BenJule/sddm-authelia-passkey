@@ -59,10 +59,24 @@ var (
 	oidcDiscoveryCache *oidcDiscoveryDoc
 )
 
+// providerHTTPClient bounds every outbound broker->identity-provider HTTP
+// call (discovery, device-authorization, token, userinfo/JWKS). Unlike
+// the QML side (armRequestTimeout, v1.18.0), none of these calls
+// previously had any timeout at all - a provider that accepts a TCP
+// connection but never responds would hang the calling goroutine
+// forever. For pollAndDecide's polling loop specifically, that would
+// leak the flow's background goroutine indefinitely rather than
+// reaching any terminal state - the exact "network timeout" failure
+// case docs/failure-policy.md documents. 15s comfortably exceeds any
+// real provider's normal response time (device-authorization/token/
+// userinfo calls are all single, synchronous round trips) while still
+// bounding the worst case to a fixed, small delay.
+var providerHTTPClient = &http.Client{Timeout: 15 * time.Second}
+
 // fetchOIDCDiscovery is a var so tests can stub it without a real HTTP
 // round-trip.
 var fetchOIDCDiscovery = func(discoveryURL string) (*oidcDiscoveryDoc, error) {
-	resp, err := http.Get(discoveryURL)
+	resp, err := providerHTTPClient.Get(discoveryURL)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +167,7 @@ func genericOIDCDeviceAuthorize() (*deviceAuthResponse, error) {
 		"client_id": {cfg.OIDCClientID},
 		"scope":     {cfg.OIDCScopes},
 	}
-	resp, err := http.PostForm(d.DeviceAuthorizationEndpoint, form)
+	resp, err := providerHTTPClient.PostForm(d.DeviceAuthorizationEndpoint, form)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +197,7 @@ func genericOIDCPollToken(deviceCode string) (accessToken string, oauthErr strin
 		"device_code": {deviceCode},
 		"client_id":   {cfg.OIDCClientID},
 	}
-	resp, err := http.PostForm(d.TokenEndpoint, form)
+	resp, err := providerHTTPClient.PostForm(d.TokenEndpoint, form)
 	if err != nil {
 		return "", "", outcomeAmbiguous, 0, err
 	}
@@ -225,7 +239,7 @@ func genericOIDCVerifyIdentity(accessToken string) (string, error) {
 	}
 	req, _ := http.NewRequest(http.MethodGet, d.UserinfoEndpoint, nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := providerHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}

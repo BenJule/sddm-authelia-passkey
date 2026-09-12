@@ -1,3 +1,18 @@
+sddm-authelia-passkey (2.7.0-1) unstable; urgency=medium
+
+  * Fix unbounded broker->identity-provider HTTP calls: every such call
+    (discovery, device-authorization, token, userinfo) previously used
+    http.DefaultClient/bare http.Get/http.PostForm, none of which have
+    any timeout. A hung provider response could block the calling
+    goroutine forever. Fixed via a single providerHTTPClient with a
+    15-second timeout.
+  * Add docs/failure-policy.md: an explicit FAIL_CLOSED/SAFE_LOCAL_FALLBACK
+    decision for every enumerated failure scenario, with real VM124
+    findings on SSSD cache resilience and broker-restart-mid-flow
+    safety.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 20:05:23 +0200
+
 sddm-authelia-passkey (2.6.0-1) unstable; urgency=medium
 
   * Add sddm-authelia-passkey-admin provider-test (optional --json): a
