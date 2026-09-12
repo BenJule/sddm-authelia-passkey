@@ -17,6 +17,12 @@ Item {
     property string brokerOrigin: "http://127.0.0.1:7899"
     property int pollIntervalMs: 2000
     property int approvalDelayMs: 350
+    // A hung TCP connection (accepted but never answered) is not the
+    // same as a refused one: xhr.status stays 0 either way, but a
+    // refused connection reaches DONE almost instantly while a hung one
+    // never would without an explicit timeout, leaking an in-flight
+    // request every poll interval for as long as the hang lasts.
+    property int requestTimeoutMs: 8000
 
     property string state: "idle"
     property string connectionState: "ready"
@@ -82,6 +88,51 @@ Item {
         interval: Math.max(1, root.approvalDelayMs)
         repeat: false
         onTriggered: root.emitApprovedLogin()
+    }
+
+    Component {
+        id: requestTimeoutComponent
+
+        Timer {
+            repeat: false
+        }
+    }
+
+    // A broker that accepts a connection and never responds must not be
+    // able to keep a request (and, over repeated polls, an unbounded
+    // number of requests) pending forever. abort() drives readyState to
+    // DONE with status 0, so existing status-0 handling (already used
+    // for a refused connection) covers a timeout the same way.
+    //
+    // The returned object's "aborted" flag is checked at the top of
+    // every onreadystatechange handler rather than relying solely on
+    // abort() suppressing a later response: this is deliberately
+    // defensive against any client-library timing quirk where a
+    // response that was already in flight when abort() ran could still
+    // reach the handler once.
+    function armRequestTimeout(xhr) {
+        var timer = requestTimeoutComponent.createObject(
+            root,
+            {
+                interval: Math.max(1, root.requestTimeoutMs)
+            }
+        )
+
+        var timeoutState = {
+            aborted: false
+        }
+
+        timer.triggered.connect(function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) {
+                timeoutState.aborted = true
+                xhr.abort()
+            }
+
+            timer.destroy()
+        })
+
+        timer.start()
+        return timeoutState
     }
 
     function safeParse(text) {
@@ -157,6 +208,7 @@ Item {
                 + "/cancel?session_id="
                 + encodeURIComponent(session)
         )
+        root.armRequestTimeout(xhr)
         xhr.send()
     }
 
@@ -170,7 +222,12 @@ Item {
                 + encodeURIComponent(username)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr)
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 
@@ -264,7 +321,12 @@ Item {
                 + encodeURIComponent(cleanUsername)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr)
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 
@@ -371,7 +433,12 @@ Item {
                 + encodeURIComponent(pollingSession)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr)
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 

@@ -57,10 +57,29 @@ QtObject {
         return root.configSource.boolValue(key)
     }
 
+    // Defensive cap only: normal branding names/domains are far shorter
+    // than this. Bounds how much layout/text-shaping work an admin
+    // misconfiguration (or a compromised, already-neutralized-by-
+    // validate-branding-overrides.sh-in-the-worst-case override) can
+    // force onto the greeter, without affecting any realistic value.
+    readonly property int maxDisplayLength: 96
+
+    function truncateDisplay(text) {
+        if (text.length <= root.maxDisplayLength)
+            return text
+
+        return text.substring(
+            0,
+            root.maxDisplayLength
+        ) + "…"
+    }
+
     readonly property string brandName:
-        root.readString(
-            "ui_brand_name"
-        ).trim()
+        root.truncateDisplay(
+            root.readString(
+                "ui_brand_name"
+            ).trim()
+        )
 
     readonly property string brandLogoPath:
         root.readString(
@@ -85,9 +104,11 @@ QtObject {
         && root.hostName.trim().length > 0
 
     readonly property string brandDomain:
-        root.readString(
-            "ui_brand_domain"
-        ).trim()
+        root.truncateDisplay(
+            root.readString(
+                "ui_brand_domain"
+            ).trim()
+        )
 
     readonly property bool showDomain:
         root.readBool(

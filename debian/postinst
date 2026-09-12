@@ -6,6 +6,10 @@ if [ "$1" = "configure" ]; then
         /usr/share/sddm-authelia-passkey/install-theme.sh
     fi
 
+    if [ -x /usr/share/sddm-authelia-passkey/validate-branding-overrides.sh ]; then
+        /usr/share/sddm-authelia-passkey/validate-branding-overrides.sh
+    fi
+
     echo "sddm-authelia-passkey: installed."
     echo "PAM integration is NOT automatic."
     echo "SDDM was NOT restarted."

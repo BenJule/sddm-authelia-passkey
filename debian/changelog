@@ -1,3 +1,19 @@
+sddm-authelia-passkey (1.18.0-1) unstable; urgency=medium
+
+  * Add branding-status admin CLI subcommand and
+    validate-branding-overrides.sh: neutralize an unsafe theme.conf.user
+    (symlink, wrong ownership, group/world-writable) instead of trusting
+    it, for both the Native Theme and the compatibility theme. Runs
+    automatically on every install/upgrade.
+  * Add bounded request timeouts to every Native Theme broker XHR.
+  * Bound Image sourceSize for QR/avatar/brand-logo rendering.
+  * Add a defensive length cap on branding name/domain text.
+  * Threat-model review of the native greeter and broker client
+    (docs/native-theme-hardening.md); no authentication invariant
+    changes.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 14:30:41 +0200
+
 sddm-authelia-passkey (1.17.0-1) unstable; urgency=medium
 
   * Add guided migration between theme installation modes (migrate,
