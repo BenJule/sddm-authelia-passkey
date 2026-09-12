@@ -55,6 +55,9 @@ jobs:
       - name: Theme migration command contract regression
         run: bash tests/integration/theme-migrate-command-test.sh
 
+      - name: Branding override safety regression
+        run: bash tests/integration/validate-branding-overrides-test.sh
+
       - name: Shellcheck all shipped scripts
         run: |
           apt-get install -y --no-install-recommends shellcheck
@@ -87,6 +90,7 @@ jobs:
           dpkg-deb -I out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/install-theme.sh'
+          dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/validate-branding-overrides.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme-mode.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme-migrate.sh'
           dpkg-deb -c out/sddm-authelia-passkey_*.deb | grep -q '/usr/share/sddm-authelia-passkey/theme/Main.qml.patch'
@@ -197,6 +201,7 @@ jobs:
           test -x /usr/share/sddm-authelia-passkey/install-theme.sh
           test -x /usr/share/sddm-authelia-passkey/theme-mode.sh
           test -x /usr/share/sddm-authelia-passkey/theme-migrate.sh
+          test -x /usr/share/sddm-authelia-passkey/validate-branding-overrides.sh
           test -x /usr/share/sddm-authelia-passkey/disable-pam.sh
           test -x /usr/share/sddm-authelia-passkey/break-glass.sh
           test -x /usr/sbin/sddm-authelia-passkey-admin
@@ -229,6 +234,17 @@ jobs:
           test "$BEFORE" = "$AFTER"
           sha256sum -c /tmp/breeze-before.sha256
           dpkg -V sddm-theme-debian-breeze
+
+      - name: Branding override safety runs on real postinst
+        run: |
+          NATIVE_DIR=/usr/share/sddm/themes/sddm-authelia-passkey-native
+          ln -sf /etc/shadow "$NATIVE_DIR/theme.conf.user"
+          apt-get install --reinstall -y --no-install-recommends /tmp/pkg/sddm-authelia-passkey_*.deb
+          test ! -e "$NATIVE_DIR/theme.conf.user"
+          test ! -L "$NATIVE_DIR/theme.conf.user"
+          test -e /etc/shadow
+          ls "$NATIVE_DIR"/theme.conf.user.rejected-unsafe.* >/dev/null
+          rm -f "$NATIVE_DIR"/theme.conf.user.rejected-unsafe.*
 
       - name: Theme mode lifecycle and package-reinstall preservation
         run: |

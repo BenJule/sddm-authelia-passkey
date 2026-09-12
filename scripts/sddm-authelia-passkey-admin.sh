@@ -22,6 +22,11 @@
 #   migrate-status - theme mode migration tooling (delegates to
 #                  theme-migrate.sh, same as apply-mode delegates to
 #                  theme-mode.sh)
+#   branding-status - checks the optional theme.conf.user branding
+#                  override (native + compatibility theme) for unsafe
+#                  ownership/symlink/writability and neutralizes it if
+#                  found (delegates to validate-branding-overrides.sh;
+#                  also runs automatically on every install/upgrade)
 set -euo pipefail
 
 CONFIG=/etc/sddm-authelia-passkey/config.conf
@@ -38,7 +43,7 @@ else
 fi
 
 usage() {
-    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status}" >&2
+    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status|branding-status}" >&2
     exit 1
 }
 
@@ -214,6 +219,20 @@ migrate-status)
     }
 
     exec bash "$SHARE_DIR/theme-migrate.sh" status
+    ;;
+
+branding-status)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    [ -f "$SHARE_DIR/validate-branding-overrides.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/validate-branding-overrides.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/validate-branding-overrides.sh"
     ;;
 
 audit-log)
