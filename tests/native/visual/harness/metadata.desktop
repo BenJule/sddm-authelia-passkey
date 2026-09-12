@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=SDDM Authelia Passkey Visual Regression Harness
+Description=Deterministic test-only Native Theme harness
+Author=BenJule
+License=GPL-3
+Type=sddm-theme
+Version=1.15.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=sddm-authelia-passkey-visual-regression-harness
+QtVersion=6

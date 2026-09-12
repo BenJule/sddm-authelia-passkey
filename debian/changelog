@@ -1,3 +1,13 @@
+sddm-authelia-passkey (1.15.0-1) unstable; urgency=medium
+
+  * Add deterministic Native Theme visual regression testing.
+  * Cover all 16 required visual states with version-controlled baselines.
+  * Add representative 1920x1080 scale-factor regression cases.
+  * Add CI pixel-diff diagnostics for visual failures.
+  * Preserve PAM, broker, KWallet and authentication semantics.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Fri, 11 Sep 2026 21:34:07 +0200
+
 sddm-authelia-passkey (1.14.0-1) unstable; urgency=medium
 
   * Harden Native Theme failure and recovery presentation.
