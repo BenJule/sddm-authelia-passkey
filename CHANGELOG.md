@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- Frozen stability contract (`docs/stability.md`) for the install-mode
+  interface, migration interface, and branding schema added since
+  v1.16.0-v1.18.0: field names/meaning will not silently change from
+  v1.19.0 onward, matching the existing `config.conf` stability rule.
+- `interface-freeze-test.sh`: regression test guarding every frozen
+  field/key against accidental removal.
+
+### Verified (Native Release Candidate)
+- Accessibility, visual regression, security (v1.18.0 hardening),
+  upgrade, and package/lintian regressions all re-run and green.
+- Native, compatibility, and backend-only deployment modes all
+  verified green on VM124.
+- No new feature work in this release beyond the freeze documentation
+  and its regression guard.
+
 ## [1.18.0] - 2026-09-12
 
 ### Added

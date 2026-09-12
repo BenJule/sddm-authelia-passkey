@@ -45,7 +45,7 @@ cross-version compatibility requirement for this format - unlike
 
 ## Command-line tools
 
-- `sddm-authelia-passkey-admin`'s five subcommands
+- `sddm-authelia-passkey-admin`'s subcommands
   (`status`/`health`/`test-config`/`list-users`/`audit-log`) and their
   general output shape are considered stable; new subcommands may be
   added, existing ones will not be removed or repurposed without a
@@ -59,6 +59,51 @@ cross-version compatibility requirement for this format - unlike
   script around them - but their human-readable `[OK]`/`[FAIL]`/`[INFO]`
   detail lines are not guaranteed to stay byte-identical between
   releases.
+
+## Frozen as of v1.19.0: theme installation mode, migration, and branding
+
+The following interfaces, all added since v1.0.0, are frozen from
+v1.19.0 onward under the same rule as `config.conf` above: an existing
+field's meaning will not silently change, and a backward-incompatible
+change ships as a new field with the old one deprecated for at least
+one full release cycle, documented in `CHANGELOG.md`. As with
+`config.conf`, this covers the field *names and meaning*, not their
+exact ordering or the presence of human-readable text alongside them.
+
+**Install-mode interface** (`sddm-authelia-passkey-admin
+mode-status`/`apply-mode`, delegating to `theme-mode.sh`): the three
+mode names (`native`, `compatibility`, `backend-only`) and every
+`KEY=VALUE` field they print - `INSTALL_MODE`, `THEME_SELECTION_MANAGED`,
+`EFFECTIVE_THEME`, `MODE_TARGET`, `TARGET_VALID`, `SELECTION_FILE`,
+`BASELINE_THEME`, `RESTORED_THEME`, `MODE_APPLY`, `SDDM_RESTART_USED`,
+`TARGET` (from `check-target`), and the `THEME_MODE_ERROR=` failure
+prefix. See `docs/theme-installation-modes.md`.
+
+**Migration interface** (`sddm-authelia-passkey-admin
+migrate-preflight`/`migrate`/`rollback-migration`/`migrate-resume`/
+`migrate-status`, delegating to `theme-migrate.sh`): every
+`MIGRATE_*`/`MIGRATION_ID=` field these five subcommands print, and the
+`THEME_MIGRATE_ERROR=` failure prefix. Single-level-undo semantics for
+`rollback-migration` (documented in `docs/theme-migration.md`) are part
+of this frozen contract - a future release cannot silently turn this
+into multi-level history without a new subcommand.
+
+**Branding schema** (`theme.conf.user`, both the Native Theme and the
+compatibility theme): `ui_brand_name`, `ui_brand_logo`,
+`ui_show_hostname`, `ui_show_domain`, `ui_brand_domain`,
+`ui_show_avatar`, `ui_accent`, `ui_accent_color`, and the safety
+behavior around them - a missing/invalid/unsafe value always falls
+back to the pre-branding zero-config appearance, never a startup
+failure. `sddm-authelia-passkey-admin branding-status`'s
+`BRANDING_OVERRIDE_NATIVE=`/`BRANDING_OVERRIDE_COMPAT=`/
+`BRANDING_VALIDATION_RESULT=` fields are likewise frozen.
+
+Internal state file formats backing these interfaces
+(`/var/lib/sddm-authelia-passkey/theme-mode/`,
+`/var/lib/sddm-authelia-passkey/migrate/`) are explicitly **not**
+covered by this freeze, for the same reason the approval marker format
+above isn't: they are read only by this project's own scripts, which
+are always upgraded together as one package.
 
 ## What is explicitly *not* covered by any stability guarantee
 
