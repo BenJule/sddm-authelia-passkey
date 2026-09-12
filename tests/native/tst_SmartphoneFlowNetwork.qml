@@ -284,6 +284,16 @@ TestCase {
         compare(loginSpy.count, 0)
     }
 
+    function test_capabilities_are_fetched_from_broker() {
+        makeFlow("http://127.0.0.1:17899")
+
+        // capabilitiesTimer has triggeredOnStart: true, so this needs no
+        // flow to be started at all - purely a pre-login, informational
+        // fact independent of any username/session (v2.4.0).
+        tryCompare(flow, "fido2Wired", true, 2000)
+        compare(flow.oidcReady, true)
+    }
+
     function test_explicit_cancel() {
         makeFlow("http://127.0.0.1:17899")
 

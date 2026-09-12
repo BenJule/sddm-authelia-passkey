@@ -893,3 +893,17 @@ approval is never replayed automatically.
 QR image failure is presentation-only when the broker still supplied a
 device code and verification address. The explicit alternate path remains
 available, as does password login.
+
+## Capability negotiation (v2.4.0, partial)
+
+A read-only, unauthenticated `GET /capabilities` broker endpoint reports
+`oidc_ready` (fresh, throttled reachability check against the
+configured identity provider), `fido2_wired` (whether `pam_u2f.so` is
+actually present in `/etc/pam.d/sddm`), and `smartcard_ready` (always
+`false` - not implemented). The native theme polls it independently of
+any login flow and uses it only to drive a small informational hint,
+never a flow-control or security decision - see
+`docs/capability-negotiation.md` for the full scope and what remains
+explicitly out of scope (a generic mechanism-selection framework,
+capability-driven mechanism offering, dedicated hardware-key/smartcard
+UI states).

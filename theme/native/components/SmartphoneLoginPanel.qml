@@ -250,6 +250,27 @@ Rectangle {
 
                     font.pixelSize: 9
                 }
+
+                QQC2.Label {
+                    Layout.fillWidth: true
+
+                    visible:
+                        !!(
+                            root.controller
+                            && root.controller.fido2Wired
+                        )
+
+                    text:
+                        qsTr(
+                            "Hardware-Sicherheitsschlüssel verfügbar"
+                        )
+
+                    color: "#5fb88a"
+
+                    font.pixelSize: 9
+
+                    Accessible.ignored: true
+                }
             }
 
             ConnectionStatus {
