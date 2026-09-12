@@ -129,11 +129,13 @@ jobs:
           /usr/lib/qt6/bin/qmllint /tmp/theme-lint/Main.qml || \
             echo "qmllint findings are currently best-effort, matching theme.yml policy"
 
-      - name: Authentication implementation remains outside branding scope
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          test -n "$BASE_SHA"
-          git -c safe.directory="$GITHUB_WORKSPACE" cat-file -e "${BASE_SHA}^{commit}"
-          git -c safe.directory="$GITHUB_WORKSPACE" diff --exit-code "$BASE_SHA"...HEAD --             src/broker             src/pam             src/kwallet-secretd
+      # A blanket "src/broker|src/pam|src/kwallet-secretd unchanged" diff
+      # guard used to run here, from the v1.8-v2.0 Native Theme track
+      # where theme-only development was never supposed to touch
+      # authentication code. That track is complete; post-v2.0 releases
+      # deliberately evolve broker/PAM authentication architecture. The
+      # permanent trust boundary - theme is presentation-only, never
+      # authentication authority - is enforced by
+      # tests/native/test_feature_parity.py's content-based checks
+      # (localhost-only broker origin, no ldap://ldaps://, no direct
+      # /api/oidc/ access) instead of a source-directory diff.
