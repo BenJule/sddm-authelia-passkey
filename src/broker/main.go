@@ -473,7 +473,18 @@ func handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verURI, err := validateVerificationURI(dev.VerificationURIComplete, cfg.AllowedVerificationHost, cfg.DevInsecureHTTP)
+	trustedOrigins, err := trustedVerificationOrigins()
+	if err != nil {
+		fs.mu.Lock()
+		fs.Status, fs.Error = "error", "server returned an unexpected verification URL"
+		fs.mu.Unlock()
+		log.Printf("session %s: cannot determine trusted verification origins: %v", sessionID, err)
+		release(releaseNeutral)
+		writeJSON(w, map[string]string{"session_id": sessionID})
+		return
+	}
+
+	verURI, err := validateVerificationURI(dev.VerificationURIComplete, trustedOrigins, cfg.DevInsecureHTTP)
 	if err != nil {
 		fs.mu.Lock()
 		fs.Status, fs.Error = "error", "server returned an unexpected verification URL"
@@ -1030,44 +1041,4 @@ func sanitizeUsername(u string) string {
 		}
 	}
 	return b.String()
-}
-
-// validateVerificationURI enforces https-only (unless devInsecureHTTP),
-// a pinned host, the exact expected Authelia consent path, and only a
-// user_code query parameter, with bounded length and no control
-// characters.
-func validateVerificationURI(raw, wantHost string, devInsecureHTTP bool) (string, error) {
-	if len(raw) == 0 || len(raw) > 512 {
-		return "", fmt.Errorf("length %d out of bounds", len(raw))
-	}
-	if strings.ContainsAny(raw, "\n\r\x00") {
-		return "", fmt.Errorf("control characters present")
-	}
-	u, err := url.Parse(raw)
-	if err != nil {
-		return "", err
-	}
-	wantScheme := "https"
-	if devInsecureHTTP {
-		wantScheme = "http"
-	}
-	if u.Scheme != wantScheme {
-		return "", fmt.Errorf("scheme %q", u.Scheme)
-	}
-	if u.Host != wantHost {
-		return "", fmt.Errorf("host %q", u.Host)
-	}
-	if u.Path != "/consent/openid/device-authorization" {
-		return "", fmt.Errorf("path %q", u.Path)
-	}
-	q := u.Query()
-	if q.Get("user_code") == "" {
-		return "", fmt.Errorf("missing user_code")
-	}
-	for k := range q {
-		if k != "user_code" {
-			return "", fmt.Errorf("unexpected query param %q", k)
-		}
-	}
-	return raw, nil
 }

@@ -76,6 +76,39 @@ and `account_source=nss` group-based authorization) have therefore been
 exercised on the lab VM, even though production has only ever run a
 single-allowed-user configuration (see above).
 
+- **Real infrastructure (v2.1.0)**: this milestone specifically requires
+  never marking an integration TESTED without a real, live instance
+  behind it - not a mock, and not a simulation.
+  - **Authelia**: real - this project's own lab (VM124) and production
+    deployments both run continuously against a real, live Authelia
+    instance; this predates v2.1.0 and is exercised throughout this
+    entire document.
+  - **Samba AD / SSSD**: real - VM124 configured with SSSD against a
+    real Samba AD domain controller over LDAPS (no StartTLS mixing,
+    certificate validation proven both to succeed with the correct CA
+    and fail with an untrusted one), using a dedicated low-privilege
+    bind account and the directory's real RFC2307 POSIX attributes
+    (not a synthetic SID-based mapping). `account_source=nss` proven
+    end-to-end against a real AD-only identity (fake user still 403,
+    the real identity correctly authorized). This is a validation
+    exercise, not a permanent VM124 configuration - the lab VM's
+    `config.conf` and SSSD setup were restored/left in a documented
+    state rather than being a new standing baseline (see the
+    private roadmap tracking issue for the exact end state).
+  - **Authentik**: real - an isolated lab OAuth2/OIDC application
+    (Device Code grant, public client, explicit RS256 signing key,
+    minimal scopes) on a real, live Authentik instance, discovered and
+    validated read-only before any mutation. This is what surfaced the
+    `verification_uri` origin-validation gap fixed in this release (see
+    `docs/architecture.md`'s "Provider abstraction" section) - real
+    infrastructure validation catching what mock-based tests could not.
+  - **Keycloak**: not tested - no real Keycloak instance exists in this
+    environment. Not simulated, not counted as validated.
+  - **FIDO2 hardware**: not tested - no physical FIDO2/U2F security key
+    is available in this environment. PAM-stacking behavior (v0.6.0/
+    v0.8.0 above) is real; a live authentication with actual hardware is
+    not.
+
 ## Theme deployment modes (as of v2.0.0)
 
 Three modes are supported (`sddm-authelia-passkey-admin

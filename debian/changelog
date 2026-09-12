@@ -1,3 +1,23 @@
+sddm-authelia-passkey (2.1.0-1) unstable; urgency=medium
+
+  * Fix provider_kind=oidc verification_uri validation: it no longer
+    hardcodes Authelia's exact URL shape. It now checks the returned
+    URI's network origin against a set derived only from the
+    already-validated discovery document (issuer,
+    device_authorization_endpoint, authorization_endpoint), while
+    allowing any provider-specific path/query. token_endpoint/jwks_uri
+    are excluded from the trusted set. Found via real validation
+    against a live Authentik instance.
+  * Discovery documents are now checked for a matching issuer before
+    being trusted (OpenID Connect Discovery 1.0 SS4.3).
+  * Real Hardware Validation (v2.1.0): documents real (not mocked)
+    validation against a live Samba AD domain controller (SSSD/LDAPS,
+    account_source=nss) and a live Authentik instance. Keycloak and
+    physical FIDO2 hardware remain explicitly not tested - no real
+    instance/device exists in this environment.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 16:54:41 +0200
+
 sddm-authelia-passkey (2.0.0-1) unstable; urgency=medium
 
   * Native Theme is now the recommended deployment mode for new
