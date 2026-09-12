@@ -5,6 +5,8 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-09-12
+
 ### Added
 - Native Theme Visual Regression Framework with deterministic
   `sddm-greeter-qt6 --test-mode` rendering.
