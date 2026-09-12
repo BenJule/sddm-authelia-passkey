@@ -669,6 +669,8 @@ Item {
             }
 
             PolishedButton {
+                id: smartphoneLoginButton
+
                 Layout.fillWidth: true
 
                 useCustomAccent:
@@ -684,11 +686,76 @@ Item {
                         "Mit Smartphone anmelden"
                     )
 
+                // v2.9.0: a first, real increment of capability-driven
+                // mechanism offering (docs/mechanism-selection.md) -
+                // oidcReady never gates a login decision (the broker
+                // remains solely authoritative for that), it only
+                // controls whether this button offers to start a flow
+                // that is already known to be unable to reach the
+                // identity provider right now. A stale-by-up-to-20s
+                // capability answer cannot itself deny or grant a
+                // login, since starting an /start attempt would still
+                // go through the exact same real authorization path
+                // either way.
                 enabled:
                     userChooser.selectedUsername.length > 0
+                    && smartphoneFlow.oidcReady
+
+                Accessible.description:
+                    smartphoneFlow.oidcReady
+                        ? ""
+                        : qsTr(
+                            "Derzeit nicht erreichbar"
+                        )
 
                 onClicked:
                     root.openSmartphoneLogin()
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+
+                visible:
+                    !smartphoneFlow.oidcReady
+
+                horizontalAlignment:
+                    Text.AlignHCenter
+
+                wrapMode: Text.WordWrap
+
+                text:
+                    qsTr(
+                        "Smartphone-Anmeldung derzeit nicht erreichbar"
+                    )
+
+                color: "#a2aebb"
+
+                font.pixelSize: 9
+
+                Accessible.ignored: true
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+
+                visible:
+                    smartphoneFlow.fido2Wired
+
+                horizontalAlignment:
+                    Text.AlignHCenter
+
+                wrapMode: Text.WordWrap
+
+                text:
+                    qsTr(
+                        "Hardware-Sicherheitsschlüssel verfügbar - einfach berühren"
+                    )
+
+                color: "#5fb88a"
+
+                font.pixelSize: 9
+
+                Accessible.ignored: true
             }
 
             RowLayout {

@@ -177,12 +177,35 @@ compatible with the unchanged PAM consumer. See
 `docs/transaction-binding.md` for verification of all 12 named
 security requirements against real code and tests.
 
-### v3.0.0 - Generic authentication mechanism framework (design only)
+### v2.9.0 - Mechanism selection, first increment (implemented)
+
+The smartphone/EIdP login button is now disabled, with a visible
+reason, whenever `oidc_ready` is false, rather than only showing an
+informational hint - closing v2.4.0's own explicitly-deferred
+capability-*offering* gap. The FIDO2-available hint moved to the main
+login screen. See `docs/mechanism-selection.md` for the real scope,
+including why hardware-key login has no selectable UI action to bind
+at all (`pam_u2f.so` tries silently ahead of both other paths in PAM,
+so there is no "start passkey login" action a button could trigger).
+Not the full generic mechanism-selection framework v3.0.0 envisions -
+see that milestone for what remains.
+
+### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Direction: this project's OIDC integration becomes one provider within
 a more general SDDM/PAM authentication-mechanism model (password /
 passkey / eIdP / smartcard / future mechanisms), rather than staying a
-single-purpose "SDDM OIDC" project.
+single-purpose "SDDM OIDC" project. Defined as the closure gate for
+this whole phase of work, requiring every milestone above to be fully
+green. As of v2.9.0, two things keep it from honestly closing: a
+generic, standardized mechanism data model/UI still needs real design
+and implementation work (not itself blocked, just not yet done), and
+three external blockers only resolvable outside this project's own
+code - no real Keycloak instance for provider-conformance testing, no
+physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
+compiled passkey/libfido2 support. See the private roadmap for the
+full, honest gap assessment; this milestone will not be marked closed
+until it actually is.
 
 ## Security invariants (apply across every milestone above)
 
