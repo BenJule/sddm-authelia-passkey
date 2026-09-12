@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.6.0] - 2026-09-12
+
+### Added
+- **`sddm-authelia-passkey-admin provider-test`** (optional `--json`):
+  a real, live conformance check against the currently configured
+  identity provider - discovery, issuer binding, device endpoint,
+  `verification_uri` trust-origin validation, JWKS reachability, and
+  RFC 8628 `authorization_pending` behavior - using the exact same
+  production dispatch functions every real login flow uses
+  (`providerDeviceAuthorize`/`providerPollToken`,
+  `trustedVerificationOrigins`/`validateVerificationURI`), never a
+  reimplementation. Creates one real, short-lived, unapproved
+  device-authorization session (it simply expires) but never requires
+  human interaction. Delegates to a new broker `--provider-test` flag
+  (no root required). See `docs/provider-conformance.md` for scope and
+  what this deliberately does not attempt (a full multi-provider
+  conformance-lab test matrix with negative/malformed fixtures).
+
 ## [2.5.0] - 2026-09-12
 
 ### Investigated (no functional change)
