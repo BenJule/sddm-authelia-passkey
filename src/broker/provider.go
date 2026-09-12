@@ -45,6 +45,13 @@ type oidcDiscoveryDoc struct {
 	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
 	TokenEndpoint               string `json:"token_endpoint"`
 	UserinfoEndpoint            string `json:"userinfo_endpoint"`
+	// JWKSURI is only used by the v2.6.0 --provider-test conformance
+	// check (reachability/shape only, see conformance.go) - this broker
+	// does not itself validate ID token signatures against it (identity
+	// is established via the userinfo endpoint, see verifyUserinfo/
+	// genericOIDCVerifyIdentity), so it plays no role in the trust
+	// chain verification_uri.go implements.
+	JWKSURI string `json:"jwks_uri"`
 }
 
 var (

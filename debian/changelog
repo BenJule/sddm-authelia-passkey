@@ -1,3 +1,16 @@
+sddm-authelia-passkey (2.6.0-1) unstable; urgency=medium
+
+  * Add sddm-authelia-passkey-admin provider-test (optional --json): a
+    real, live conformance check against the currently configured
+    identity provider - discovery, issuer binding, device endpoint,
+    verification_uri trust-origin validation, JWKS reachability, and
+    RFC 8628 authorization_pending behavior - using the exact same
+    production dispatch functions every real login flow uses. Creates
+    one real, short-lived, unapproved device-authorization session
+    (it simply expires) but never requires human interaction.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 19:43:33 +0200
+
 sddm-authelia-passkey (2.5.0-1) unstable; urgency=medium
 
   * Investigate native SSSD passkey integration (no functional

@@ -12,6 +12,13 @@
 #   test-config  - validate /etc/sddm-authelia-passkey/config.conf
 #                  without starting anything (delegates to the broker's
 #                  own --check-config flag, no root required)
+#   provider-test - real, live conformance check against the currently
+#                  configured identity provider (discovery, issuer
+#                  binding, device endpoint, verification_uri trust
+#                  origin, JWKS reachability, RFC 8628
+#                  authorization_pending) - delegates to the broker's
+#                  own --provider-test flag, no root required; optional
+#                  --json. See docs/provider-conformance.md.
 #   list-users   - who is currently eligible for the passwordless path,
 #                  and who has a FIDO2 credential enrolled (delegates to
 #                  list-fido2-credentials.sh for the latter)
@@ -49,7 +56,7 @@ else
 fi
 
 usage() {
-    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status|branding-status|doctor|diagnose} [--explain|--json]" >&2
+    echo "usage: $0 {status|health|test-config|provider-test|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status|branding-status|doctor|diagnose} [--explain|--json]" >&2
     exit 1
 }
 
@@ -66,6 +73,16 @@ status|health)
 test-config)
     [ -f "$BROKER_BIN" ] || { echo "[FAIL] $BROKER_BIN not installed" >&2; exit 1; }
     exec "$BROKER_BIN" --check-config
+    ;;
+
+provider-test)
+    [ -f "$BROKER_BIN" ] || { echo "[FAIL] $BROKER_BIN not installed" >&2; exit 1; }
+    flag="${2:-}"
+    case "$flag" in
+        "") exec "$BROKER_BIN" --provider-test ;;
+        --json) exec "$BROKER_BIN" --provider-test --json ;;
+        *) usage ;;
+    esac
     ;;
 
 list-users)

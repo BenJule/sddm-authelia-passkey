@@ -127,14 +127,22 @@ documenting the relevant config directives. No code implemented in
 this milestone; the existing `pam_u2f.so` path remains the recommended,
 real, shipped hardware-key mechanism.
 
-### v2.6.0 - Multi-IdP / provider hardening (design only)
+### v2.6.0 - Multi-IdP / provider hardening (conformance test implemented)
 
-Direction: real (not mocked) validation against Authelia, Authentik,
-*and* Keycloak once a real Keycloak instance is available, with
-`provider_kind` special-casing kept to only the places a real,
-unavoidable provider difference exists - standards-conformant behavior
-stays in the generic code path (this is the same principle v2.1.0
-applied to `verification_uri`).
+Shipped `sddm-authelia-passkey-admin provider-test`: a real, live
+conformance check against the currently configured provider (discovery,
+issuer binding, device endpoint, `verification_uri` trust origin, JWKS
+reachability, RFC 8628 `authorization_pending`), reusing the exact same
+production dispatch functions every real login flow uses - never a
+reimplementation. See `docs/provider-conformance.md`. Real (not mocked)
+validation against Authelia and Authentik, `provider_kind`
+special-casing kept to only the places a real, unavoidable provider
+difference exists - standards-conformant behavior stays in the generic
+code path (the same principle v2.1.0 applied to `verification_uri`).
+Real validation against Keycloak remains deferred - no real instance is
+available in this environment - and a full multi-provider conformance
+lab (negative/malformed fixtures, `slow_down`/`access_denied` coverage,
+an automatically-derived public support matrix) remains design-only.
 
 ### v2.7.0 - Offline & failure policy (design only)
 
