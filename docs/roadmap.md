@@ -160,6 +160,23 @@ meaningful resilience during both a stopped daemon and a
 network-unreachable AD backend (a previously-undocumented finding); a
 broker restart mid-flow recovers safely by construction.
 
+### v2.8.0 - Transaction-bound remote approval (implemented)
+
+An approval must be bound to the exact local transaction that
+requested it - never "any login for this username" - and no
+cryptographic device attestation is claimed. Found and fixed a real
+gap while verifying this: `pollAndDecide` did not re-check cancellation
+immediately after a token-poll network call returned, so a superseded
+flow's in-flight poll could still succeed if it happened to return a
+genuine approval just after being superseded. Reproduced with a real
+test against a token endpoint that holds its response open, fixed by
+re-checking cancellation right after every poll. The approval marker
+now also carries explicit bound context (`SESSION_ID`/
+`IDENTITY_SOURCE`/`PROVIDER`/`HOSTNAME`/`REQUESTED_ACTION`), backward
+compatible with the unchanged PAM consumer. See
+`docs/transaction-binding.md` for verification of all 12 named
+security requirements against real code and tests.
+
 ### v3.0.0 - Generic authentication mechanism framework (design only)
 
 Direction: this project's OIDC integration becomes one provider within
