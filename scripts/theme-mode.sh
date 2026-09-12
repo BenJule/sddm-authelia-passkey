@@ -656,9 +656,38 @@ status_mode() {
     echo "SDDM_RESTART_USED=NO"
 }
 
+check_target_theme() {
+    local requested="$1"
+    local target=""
+
+    case "$requested" in
+        native)
+            target="$NATIVE_THEME"
+            ;;
+        compatibility)
+            target="$COMPAT_THEME"
+            ;;
+        backend-only)
+            ;;
+        *)
+            fail "unsupported theme mode: $requested"
+            ;;
+    esac
+
+    echo "TARGET=${target:-<none>}"
+
+    if [ -z "$target" ]; then
+        echo "TARGET_VALID=N/A"
+    elif theme_is_valid "$target"; then
+        echo "TARGET_VALID=YES"
+    else
+        echo "TARGET_VALID=NO"
+    fi
+}
+
 usage() {
     echo \
-        "usage: $0 {status|apply native|apply compatibility|apply backend-only}" \
+        "usage: $0 {status|apply native|apply compatibility|apply backend-only|check-target native|check-target compatibility|check-target backend-only}" \
         >&2
     false
 }
@@ -683,6 +712,19 @@ case "$COMMAND" in
                 ;;
             backend-only)
                 apply_backend_only
+                ;;
+            *)
+                usage
+                ;;
+        esac
+        ;;
+
+    check-target)
+        REQUESTED="${2:-}"
+
+        case "$REQUESTED" in
+            native|compatibility|backend-only)
+                check_target_theme "$REQUESTED"
                 ;;
             *)
                 usage

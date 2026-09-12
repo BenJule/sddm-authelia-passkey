@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- Guided migration between theme installation modes (`migrate`,
+  `migrate-preflight`, `migrate-status`) through the fixed-dispatch
+  admin CLI, delegating to the existing v1.16.0 `apply-mode` logic.
+- Single-level `rollback-migration` undo command for the most recent
+  migration.
+- Interrupted-migration detection and recovery (`migrate-resume` or
+  `rollback-migration`).
+
+### Security
+- Migration tooling never touches PAM, the broker, FIDO2/OIDC
+  configuration, or package management, and never restarts SDDM or
+  terminates active sessions.
+- No package downgrade is ever required to change or undo a mode.
+
 ## [1.16.0] - 2026-09-12
 
 ### Added
