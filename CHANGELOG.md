@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [2.0.0] - 2026-09-12
 
 ### Changed
 - Native Theme is now the **recommended** deployment mode for new
