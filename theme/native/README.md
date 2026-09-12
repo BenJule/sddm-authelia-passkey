@@ -2,12 +2,19 @@
 
 Original, from-scratch Qt6 SDDM theme for this project.
 
-Current stable baseline: v1.12.0 accessibility hardening on top of
-the v1.11.1 visual-quality and v1.11 responsive presentation. v1.13.0 adds
-optional vendor-neutral branding; the Native Theme remains opt-in.
+As of v2.0.0, this is the **recommended** deployment mode for new
+installations (see `docs/stability.md` and the theme deployment mode
+matrix in `docs/validated-environment.md`). See `CHANGELOG.md` for the
+full v1.14.0-v2.0.0 history (failure/recovery UX, the visual regression
+framework, theme installation modes, migration/rollback tooling, and
+the v1.18.0 security hardening review).
 
-The native theme is installed alongside the existing compatibility theme
-and is never selected automatically.
+The native theme is installed alongside the existing compatibility
+theme and is never selected automatically - "recommended" is a
+statement about which mode to choose, not a change to that: choosing
+any mode (native, compatibility, or staying backend-only) is always an
+explicit administrator action via `sddm-authelia-passkey-admin
+apply-mode`/`migrate`.
 
 ## v1.10.0
 

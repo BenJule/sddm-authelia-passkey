@@ -22,7 +22,11 @@ Restore the previous SDDM theme selection:
 
     sudo sddm-authelia-passkey-admin apply-mode backend-only
 
-The Native Theme remains opt-in.
+As of v2.0.0, `native` is the recommended choice for new installations
+(see `docs/validated-environment.md`'s theme deployment mode matrix);
+`compatibility` and `backend-only` remain fully supported. The Native
+Theme remains opt-in either way - no installation or upgrade selects
+any mode automatically.
 
 ## Safety
 
