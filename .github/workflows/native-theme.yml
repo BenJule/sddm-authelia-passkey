@@ -44,6 +44,7 @@ jobs:
           test -f theme/native/components/ConnectionStatus.qml
           test -f theme/native/components/CountdownView.qml
           test -f theme/native/components/SmartphoneLoginPanel.qml
+          test -f theme/native/components/MechanismModel.qml
           test ! -e theme/native/components/SmartphoneLoginPreview.qml
           test -f theme/native/README.md
           test -f theme/native/PROVENANCE.md
@@ -52,6 +53,7 @@ jobs:
           test -f tests/native/tst_AccessibilitySemantics.qml
           test -f tests/native/tst_BrandingConfig.qml
           test -f tests/native/tst_FailureRecoveryPresentation.qml
+          test -f tests/native/tst_MechanismModel.qml
           test -f tests/native/test_failure_recovery_contract.py
           test -f tests/native/test_visual_regression_contract.py
           test -f tests/native/test_visual_quality.py
@@ -339,6 +341,7 @@ jobs:
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/UserChooser.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneFlowController.qml' /tmp/deb-contents.txt
           grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/SmartphoneLoginPanel.qml' /tmp/deb-contents.txt
+          grep -q '/usr/share/sddm/themes/sddm-authelia-passkey-native/components/MechanismModel.qml' /tmp/deb-contents.txt
 
       - name: Install package
         run: apt-get install -y --no-install-recommends "$DEB"

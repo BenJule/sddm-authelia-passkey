@@ -112,6 +112,11 @@ Item {
             stateName === "fido2_available"
     }
 
+    MechanismModel {
+        id: mechanismModel
+        smartphoneFlow: controller
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "#071018"
@@ -243,25 +248,25 @@ Item {
                 Layout.fillWidth: true
                 primary: true
                 text: "Mit Smartphone anmelden"
-                enabled: controller.oidcReady
+                enabled: mechanismModel.mechanism("eidp").ready
             }
 
             QQC2.Label {
                 Layout.fillWidth: true
-                visible: !controller.oidcReady
+                visible: !mechanismModel.mechanism("eidp").ready
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: "Smartphone-Anmeldung derzeit nicht erreichbar"
+                text: mechanismModel.mechanism("eidp").statusHint
                 color: "#a2aebb"
                 font.pixelSize: 9
             }
 
             QQC2.Label {
                 Layout.fillWidth: true
-                visible: controller.fido2Wired
+                visible: mechanismModel.mechanism("passkey").ready
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                text: "Hardware-Sicherheitsschlüssel verfügbar - einfach berühren"
+                text: mechanismModel.mechanism("passkey").statusHint
                 color: "#5fb88a"
                 font.pixelSize: 9
             }

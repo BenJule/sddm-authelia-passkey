@@ -944,3 +944,15 @@ mechanism-selection vision, not the full framework. See
 `docs/mechanism-selection.md` for what this does and does not cover,
 including why hardware-key login has no selectable UI action to bind
 (`pam_u2f.so` tries silently ahead of both other paths in PAM).
+
+## Generic mechanism data model (v2.11.0)
+
+`theme/native/components/MechanismModel.qml` now provides a single,
+documented `Mechanism` data shape (`id`/`displayName`/`kind`/
+`available`/`ready`/`statusHint`) for all four mechanisms this project
+knows about (`password`/`eidp`/`passkey`/`smartcard`), backing the
+v2.9.0 button/hint-label bindings above via one named lookup instead of
+two raw property reads. Never gates an authentication decision - the
+broker/PAM stack remains sole authority regardless. See
+`docs/generic-mechanism-model.md` for the full interface and what
+remains unwired.

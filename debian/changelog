@@ -1,3 +1,16 @@
+sddm-authelia-passkey (2.11.0-1) unstable; urgency=medium
+
+  * Introduce MechanismModel.qml: a single, documented Mechanism data
+    model (password/eidp/passkey/smartcard) backing the v2.9.0
+    smartphone button/hint-label bindings, replacing two raw property
+    reads with one named lookup. A real first step of v3.0.0's generic
+    mechanism-selection framework; see docs/generic-mechanism-model.md.
+    Verified as a pure, byte-identical refactor: the 26-case visual
+    regression suite, mirrored onto the test harness and re-run in a
+    real debian:13 container, shows CHANGED=0 for every case.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sun, 13 Sep 2026 01:51:36 +0200
+
 sddm-authelia-passkey (2.10.0-1) unstable; urgency=medium
 
   * Extend the Native Theme visual regression framework with two new
