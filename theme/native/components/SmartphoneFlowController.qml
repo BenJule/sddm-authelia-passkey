@@ -100,17 +100,15 @@ Item {
 
     // A broker that accepts a connection and never responds must not be
     // able to keep a request (and, over repeated polls, an unbounded
-    // number of requests) pending forever. abort() drives readyState to
-    // DONE with status 0, so existing status-0 handling (already used
-    // for a refused connection) covers a timeout the same way.
-    //
-    // The returned object's "aborted" flag is checked at the top of
-    // every onreadystatechange handler rather than relying solely on
-    // abort() suppressing a later response: this is deliberately
-    // defensive against any client-library timing quirk where a
-    // response that was already in flight when abort() ran could still
-    // reach the handler once.
-    function armRequestTimeout(xhr) {
+    // number of requests) pending forever. abort() does not reliably
+    // drive onreadystatechange to DONE across client-library versions,
+    // so the timeout itself - not a hoped-for later readystatechange -
+    // is what calls onTimeout() to apply the "connection failed" state
+    // transition. The "aborted" flag is separate, defensive insurance
+    // against a response that was already in flight when abort() ran
+    // still reaching onreadystatechange afterwards: callers check it
+    // first and do nothing further in that case.
+    function armRequestTimeout(xhr, onTimeout) {
         var timer = requestTimeoutComponent.createObject(
             root,
             {
@@ -126,6 +124,9 @@ Item {
             if (xhr.readyState !== XMLHttpRequest.DONE) {
                 timeoutState.aborted = true
                 xhr.abort()
+
+                if (onTimeout)
+                    onTimeout()
             }
 
             timer.destroy()
@@ -321,7 +322,19 @@ Item {
                 + encodeURIComponent(cleanUsername)
         )
 
-        var timeoutState = root.armRequestTimeout(xhr)
+        var timeoutState = root.armRequestTimeout(xhr, function() {
+            if (generation !== root.flowGeneration
+                    || cleanUsername !== root.targetUsername)
+                return
+
+            root.requestInFlight = false
+            root.setStartError(
+                "offline",
+                "offline",
+                qsTr("Der Anmeldedienst ist derzeit nicht erreichbar."),
+                4
+            )
+        })
 
         xhr.onreadystatechange = function() {
             if (timeoutState.aborted)
@@ -433,7 +446,18 @@ Item {
                 + encodeURIComponent(pollingSession)
         )
 
-        var timeoutState = root.armRequestTimeout(xhr)
+        var timeoutState = root.armRequestTimeout(xhr, function() {
+            if (generation !== root.flowGeneration
+                    || pollingSession !== root.sessionId
+                    || root.state !== "waiting")
+                return
+
+            root.connectionState = "offline"
+            root.statusText = qsTr(
+                "Verbindung zum Anmeldedienst unterbrochen. "
+                + "Der aktuelle Code bleibt bestehen."
+            )
+        })
 
         xhr.onreadystatechange = function() {
             if (timeoutState.aborted)
