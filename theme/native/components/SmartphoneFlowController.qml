@@ -17,6 +17,12 @@ Item {
     property string brokerOrigin: "http://127.0.0.1:7899"
     property int pollIntervalMs: 2000
     property int approvalDelayMs: 350
+    // A hung TCP connection (accepted but never answered) is not the
+    // same as a refused one: xhr.status stays 0 either way, but a
+    // refused connection reaches DONE almost instantly while a hung one
+    // never would without an explicit timeout, leaking an in-flight
+    // request every poll interval for as long as the hang lasts.
+    property int requestTimeoutMs: 8000
 
     property string state: "idle"
     property string connectionState: "ready"
@@ -82,6 +88,52 @@ Item {
         interval: Math.max(1, root.approvalDelayMs)
         repeat: false
         onTriggered: root.emitApprovedLogin()
+    }
+
+    Component {
+        id: requestTimeoutComponent
+
+        Timer {
+            repeat: false
+        }
+    }
+
+    // A broker that accepts a connection and never responds must not be
+    // able to keep a request (and, over repeated polls, an unbounded
+    // number of requests) pending forever. abort() does not reliably
+    // drive onreadystatechange to DONE across client-library versions,
+    // so the timeout itself - not a hoped-for later readystatechange -
+    // is what calls onTimeout() to apply the "connection failed" state
+    // transition. The "aborted" flag is separate, defensive insurance
+    // against a response that was already in flight when abort() ran
+    // still reaching onreadystatechange afterwards: callers check it
+    // first and do nothing further in that case.
+    function armRequestTimeout(xhr, onTimeout) {
+        var timer = requestTimeoutComponent.createObject(
+            root,
+            {
+                interval: Math.max(1, root.requestTimeoutMs)
+            }
+        )
+
+        var timeoutState = {
+            aborted: false
+        }
+
+        timer.triggered.connect(function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE) {
+                timeoutState.aborted = true
+                xhr.abort()
+
+                if (onTimeout)
+                    onTimeout()
+            }
+
+            timer.destroy()
+        })
+
+        timer.start()
+        return timeoutState
     }
 
     function safeParse(text) {
@@ -157,6 +209,7 @@ Item {
                 + "/cancel?session_id="
                 + encodeURIComponent(session)
         )
+        root.armRequestTimeout(xhr)
         xhr.send()
     }
 
@@ -170,7 +223,12 @@ Item {
                 + encodeURIComponent(username)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr)
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 
@@ -264,7 +322,24 @@ Item {
                 + encodeURIComponent(cleanUsername)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr, function() {
+            if (generation !== root.flowGeneration
+                    || cleanUsername !== root.targetUsername)
+                return
+
+            root.requestInFlight = false
+            root.setStartError(
+                "offline",
+                "offline",
+                qsTr("Der Anmeldedienst ist derzeit nicht erreichbar."),
+                4
+            )
+        })
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 
@@ -371,7 +446,23 @@ Item {
                 + encodeURIComponent(pollingSession)
         )
 
+        var timeoutState = root.armRequestTimeout(xhr, function() {
+            if (generation !== root.flowGeneration
+                    || pollingSession !== root.sessionId
+                    || root.state !== "waiting")
+                return
+
+            root.connectionState = "offline"
+            root.statusText = qsTr(
+                "Verbindung zum Anmeldedienst unterbrochen. "
+                + "Der aktuelle Code bleibt bestehen."
+            )
+        })
+
         xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
             if (xhr.readyState !== XMLHttpRequest.DONE)
                 return
 

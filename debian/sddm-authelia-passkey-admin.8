@@ -3,7 +3,7 @@
 sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
 .SH SYNOPSIS
 .B sddm-authelia-passkey-admin
-.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status }
+.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status | branding-status }
 .br
 .B sddm-authelia-passkey-admin apply-mode
 .RI { native | compatibility | backend-only }
@@ -97,8 +97,19 @@ Fails if no migration is currently marked interrupted. Requires root.
 .B migrate-status
 Report the last completed migration (from/to mode, completion time) and
 whether a migration is currently marked interrupted. Requires root.
+.TP
+.B branding-status
+Check the optional
+.I theme.conf.user
+branding override for both the Native Theme and the compatibility
+theme for unsafe ownership, symlinks, or group/world writability, and
+neutralize (move aside, never delete) anything found unsafe so the
+greeter always falls back to safe zero-config branding instead of
+trusting it. Runs automatically on every install/upgrade; safe to
+re-run at any time. Requires root.
 .SH FILES
 .I /etc/sddm-authelia-passkey/config.conf
 .SH SEE ALSO
 .IR /usr/share/doc/sddm-authelia-passkey/rollback.md ,
-.IR /usr/share/doc/sddm-authelia-passkey/theme-migration.md
+.IR /usr/share/doc/sddm-authelia-passkey/theme-migration.md ,
+.IR /usr/share/doc/sddm-authelia-passkey/native-theme-hardening.md

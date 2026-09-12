@@ -45,6 +45,7 @@ run "theme-mode-command-test"    bash "$ROOT_DIR/tests/integration/theme-mode-co
 run "theme-mode-check-target-test" bash "$ROOT_DIR/tests/integration/theme-mode-check-target-test.sh"
 run "theme-migrate-test"         bash "$ROOT_DIR/tests/integration/theme-migrate-test.sh"
 run "theme-migrate-command-test" bash "$ROOT_DIR/tests/integration/theme-migrate-command-test.sh"
+run "validate-branding-overrides-test" bash "$ROOT_DIR/tests/integration/validate-branding-overrides-test.sh"
 run "pam-flow-test"              bash "$ROOT_DIR/tests/integration/pam-flow-test.sh" "$USER1"
 run "pam-multiuser-test"         bash "$ROOT_DIR/tests/integration/pam-multiuser-test.sh" "$USER1" "$USER2"
 

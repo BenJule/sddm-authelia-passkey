@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- Branding override safety check (`branding-status` admin CLI
+  subcommand, `scripts/validate-branding-overrides.sh`): an unsafe
+  `theme.conf.user` (symlink, wrong ownership, group/world-writable)
+  is neutralized instead of trusted, for both the Native Theme and the
+  compatibility theme. Runs automatically on every install/upgrade.
+- Bounded request timeouts on every Native Theme broker XHR, so a
+  broker that accepts a connection but never responds no longer leaves
+  requests pending indefinitely.
+- Bounded image decode size (`sourceSize`) for the QR code, avatar,
+  and brand logo images.
+- Defensive length cap (with ellipsis) on branding name/domain text.
+
+### Security
+- See `docs/native-theme-hardening.md` for the full v1.18.0
+  threat-model review (native greeter + broker client), including
+  categories reviewed and found already safe.
+- No authentication invariant changes: PAM remains sole authority, the
+  greeter still only ever talks to the local broker.
+
 ## [1.17.0] - 2026-09-12
 
 ### Added

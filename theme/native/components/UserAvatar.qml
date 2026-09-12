@@ -55,6 +55,11 @@ Rectangle {
 
         source: root.iconSource
 
+        // Bounds decode cost to the actual displayed size regardless of
+        // how large the underlying file on disk is.
+        sourceSize.width: Math.max(1, root.width)
+        sourceSize.height: Math.max(1, root.height)
+
         fillMode: Image.PreserveAspectCrop
 
         asynchronous: true

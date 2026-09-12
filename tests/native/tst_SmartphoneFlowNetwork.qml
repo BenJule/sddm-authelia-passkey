@@ -15,6 +15,7 @@ TestCase {
         Native.SmartphoneFlowController {
             pollIntervalMs: 50
             approvalDelayMs: 10
+            requestTimeoutMs: 200
         }
     }
 
@@ -253,6 +254,34 @@ TestCase {
         compare(loginSpy.count, 0)
 
         flow.cancelCurrent(false)
+    }
+
+    function test_hung_start_times_out_instead_of_blocking_forever() {
+        makeFlow("http://127.0.0.1:17899")
+
+        verify(
+            flow.startFlow(
+                "hang",
+                "Hang",
+                "",
+                0
+            )
+        )
+
+        // requestTimeoutMs is 200; the mock broker holds the connection
+        // for 5000ms before ever answering. If armRequestTimeout()
+        // regressed (e.g. no longer wired to xhr.send()), this would
+        // stay "starting" until the mock's real response and fail the
+        // tryCompare well before that.
+        tryCompare(flow, "connectionState", "offline", 2000)
+        compare(flow.errorKind, "offline")
+        compare(loginSpy.count, 0)
+
+        // The late response arrives ~4800ms after the timeout already
+        // fired and this test's flow moved to a new generation; it must
+        // never be treated as belonging to the current flow.
+        wait(5200)
+        compare(loginSpy.count, 0)
     }
 
     function test_explicit_cancel() {

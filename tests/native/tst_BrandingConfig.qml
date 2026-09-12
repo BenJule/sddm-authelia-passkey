@@ -255,4 +255,38 @@ TestCase {
             ""
         )
     }
+
+    function test_huge_brand_name_is_truncated() {
+        var huge = new Array(500).join("X")
+
+        applyValues({
+            "ui_brand_name": huge
+        })
+
+        verify(branding.brandName.length <= branding.maxDisplayLength + 1)
+        verify(branding.brandName.indexOf("…") >= 0)
+    }
+
+    function test_huge_brand_domain_is_truncated() {
+        var huge = new Array(500).join("Y")
+
+        applyValues({
+            "ui_brand_domain": huge,
+            "ui_show_domain": true
+        })
+
+        verify(branding.brandDomain.length <= branding.maxDisplayLength + 1)
+        verify(branding.brandDomain.indexOf("…") >= 0)
+    }
+
+    function test_short_brand_name_is_not_truncated() {
+        applyValues({
+            "ui_brand_name": "Example Corp"
+        })
+
+        compare(
+            branding.brandName,
+            "Example Corp"
+        )
+    }
 }
