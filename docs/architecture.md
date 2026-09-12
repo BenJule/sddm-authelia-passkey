@@ -920,3 +920,17 @@ from ever running). See `docs/failure-policy.md` for the full,
 per-case `FAIL_CLOSED`/`SAFE_LOCAL_FALLBACK` decision matrix, including
 real VM124 findings on SSSD's cache resilience and broker-restart-mid-
 flow safety.
+
+## Transaction-bound remote approval (v2.8.0)
+
+`pollAndDecide` re-checks `fs.cancelled` immediately after every
+`providerPollToken` call returns, before processing that poll's result
+- a real gap fixed in v2.8.0 (a supersede landing while a poll request
+was genuinely in flight could otherwise still let that flow's approval
+succeed). The approval marker (`writeApprovalMarker`/
+`buildApprovalMarkerToken`) also carries explicit bound context
+(`SESSION_ID`/`IDENTITY_SOURCE`/`PROVIDER`/`HOSTNAME`/
+`REQUESTED_ACTION`) alongside the existing security-critical fields,
+backward compatible with the unchanged PAM consumer. See
+`docs/transaction-binding.md` for the full verification of every named
+transaction-binding security requirement.
