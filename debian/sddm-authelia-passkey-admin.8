@@ -3,16 +3,25 @@
 sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
 .SH SYNOPSIS
 .B sddm-authelia-passkey-admin
-.RI { status | health | test-config | list-users | audit-log | mode-status }
+.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status }
 .br
 .B sddm-authelia-passkey-admin apply-mode
 .RI { native | compatibility | backend-only }
+.br
+.B sddm-authelia-passkey-admin migrate-preflight
+.RI { native | compatibility | backend-only }
+.br
+.B sddm-authelia-passkey-admin migrate
+.RI { native | compatibility | backend-only }
+.br
+.B sddm-authelia-passkey-admin
+.RI { rollback-migration | migrate-resume }
 .SH DESCRIPTION
 A fixed-dispatch helper for common sddm-authelia-passkey administration.
 It is not a general shell or configuration-editing interface.
 Only
-.B apply-mode
-changes SDDM theme selection; all other subcommands are read-only.
+.BR apply-mode ", " migrate ", " rollback-migration " and " migrate-resume
+change SDDM theme selection; all other subcommands are read-only.
 .SH SUBCOMMANDS
 .TP
 .B status\fR, \fBhealth
@@ -58,7 +67,38 @@ broker log lines (authorization denials, identity mismatches,
 successful approvals) via
 .BR journalctl (1).
 Requires root.
+.TP
+.B migrate-preflight native|compatibility|backend-only
+Read-only check of a prospective mode migration: current mode, whether
+the target is a no-op, whether the target theme is valid, and whether an
+earlier migration was left interrupted. Never changes state. Requires root.
+.TP
+.B migrate native|compatibility|backend-only
+Migrate to the given mode, recording the prior mode so it can be undone
+with
+.BR rollback-migration .
+Refuses to proceed if an earlier migration is still marked interrupted;
+resolve that first with
+.B migrate-resume
+or
+.BR rollback-migration .
+Idempotent, does not restart SDDM and does not terminate active sessions.
+Requires root.
+.TP
+.B rollback-migration
+Undo the most recent successful migration (single-level undo, not a
+history stack), or - if an operation was left interrupted - restore the
+mode that was active before that interrupted attempt. Requires root.
+.TP
+.B migrate-resume
+Re-apply the target mode of an interrupted migration to complete it.
+Fails if no migration is currently marked interrupted. Requires root.
+.TP
+.B migrate-status
+Report the last completed migration (from/to mode, completion time) and
+whether a migration is currently marked interrupted. Requires root.
 .SH FILES
 .I /etc/sddm-authelia-passkey/config.conf
 .SH SEE ALSO
-.IR /usr/share/doc/sddm-authelia-passkey/rollback.md
+.IR /usr/share/doc/sddm-authelia-passkey/rollback.md ,
+.IR /usr/share/doc/sddm-authelia-passkey/theme-migration.md

@@ -46,3 +46,10 @@ State is stored below:
     /var/lib/sddm-authelia-passkey/theme-mode/
 
 Do not edit this state manually.
+
+## Migrating between modes
+
+Since v1.17.0, `sddm-authelia-passkey-admin migrate` provides guided
+migration between modes with preflight checks, an undo command, and
+interrupted-operation recovery on top of `apply-mode`. See
+[theme-migration.md](theme-migration.md).
