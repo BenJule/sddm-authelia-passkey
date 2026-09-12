@@ -40,6 +40,8 @@ run "pam-disable-structure-test" bash "$ROOT_DIR/tests/integration/pam-disable-s
 run "break-glass-test"           bash "$ROOT_DIR/tests/integration/break-glass-test.sh"
 run "fido2-authfile-test"        bash "$ROOT_DIR/tests/integration/fido2-authfile-test.sh"
 run "fido2-pam-integration-test" bash "$ROOT_DIR/tests/integration/fido2-pam-integration-test.sh"
+run "theme-mode-test"            bash "$ROOT_DIR/tests/integration/theme-mode-test.sh"
+run "theme-mode-command-test"    bash "$ROOT_DIR/tests/integration/theme-mode-command-test.sh"
 run "pam-flow-test"              bash "$ROOT_DIR/tests/integration/pam-flow-test.sh" "$USER1"
 run "pam-multiuser-test"         bash "$ROOT_DIR/tests/integration/pam-multiuser-test.sh" "$USER1" "$USER2"
 

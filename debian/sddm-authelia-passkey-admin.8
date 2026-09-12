@@ -1,14 +1,18 @@
-.TH SDDM-AUTHELIA-PASSKEY-ADMIN 8 "2026-09-10" "sddm-authelia-passkey" "System Administration"
+.TH SDDM-AUTHELIA-PASSKEY-ADMIN 8 "2026-09-12" "sddm-authelia-passkey" "System Administration"
 .SH NAME
 sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
 .SH SYNOPSIS
 .B sddm-authelia-passkey-admin
-.RI { status | health | test-config | list-users | audit-log }
+.RI { status | health | test-config | list-users | audit-log | mode-status }
+.br
+.B sddm-authelia-passkey-admin apply-mode
+.RI { native | compatibility | backend-only }
 .SH DESCRIPTION
-A fixed-dispatch, read-only helper for the handful of questions an admin
-asks day to day about the sddm-authelia-passkey stack. Every subcommand
-delegates to an existing, already-tested script or broker mechanism
-rather than reimplementing any logic itself.
+A fixed-dispatch helper for common sddm-authelia-passkey administration.
+It is not a general shell or configuration-editing interface.
+Only
+.B apply-mode
+changes SDDM theme selection; all other subcommands are read-only.
 .SH SUBCOMMANDS
 .TP
 .B status\fR, \fBhealth
@@ -35,6 +39,17 @@ Show which accounts are currently eligible for the passwordless path
 and
 .IR allowed_groups ),
 and which accounts have a FIDO2 credential enrolled. Requires root.
+.TP
+.B mode-status
+Report the current installation mode, effective SDDM theme, managed
+selection state, target validation and preserved baseline theme.
+Requires root.
+.TP
+.B apply-mode native|compatibility|backend-only
+Explicitly select the Native Theme, compatibility theme, or restore the
+previous SDDM theme selection and return to backend-only operation.
+The operation is idempotent, does not restart SDDM and does not terminate
+active sessions. Requires root.
 .TP
 .B audit-log
 Show

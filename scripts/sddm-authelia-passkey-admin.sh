@@ -1,7 +1,7 @@
 #!/bin/bash
 # Fixed-dispatch admin CLI for sddm-authelia-passkey - a single, safe
-# entry point for the handful of read-only questions an admin actually
-# asks day to day. Deliberately NOT a general shell/config-editing tool:
+# entry point for common day-to-day administration. Deliberately NOT a
+# general shell/config-editing tool; only apply-mode changes theme selection:
 # every subcommand delegates to an existing, already-tested script or
 # broker mechanism rather than reimplementing any logic here.
 #
@@ -34,7 +34,7 @@ else
 fi
 
 usage() {
-    echo "usage: $0 {status|health|test-config|list-users|audit-log}" >&2
+    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode}" >&2
     exit 1
 }
 
@@ -79,6 +79,45 @@ list-users)
     else
         echo "  (list-fido2-credentials.sh not found)"
     fi
+    ;;
+
+mode-status)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    [ -f "$SHARE_DIR/theme-mode.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-mode.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-mode.sh" status
+    ;;
+
+apply-mode)
+    [ "$(id -u)" -eq 0 ] || {
+        echo "must run as root" >&2
+        false
+    }
+
+    MODE="${2:-}"
+
+    case "$MODE" in
+        native|compatibility|backend-only)
+            ;;
+        *)
+            echo                 "usage: $0 apply-mode {native|compatibility|backend-only}"                 >&2
+            false
+            ;;
+    esac
+
+    [ -f "$SHARE_DIR/theme-mode.sh" ] || {
+        echo "[FAIL] $SHARE_DIR/theme-mode.sh not found" >&2
+        false
+    }
+
+    exec bash "$SHARE_DIR/theme-mode.sh" apply "$MODE"
     ;;
 
 audit-log)
