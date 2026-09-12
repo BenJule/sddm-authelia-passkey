@@ -53,6 +53,7 @@ jobs:
           test -f tests/native/tst_BrandingConfig.qml
           test -f tests/native/tst_FailureRecoveryPresentation.qml
           test -f tests/native/test_failure_recovery_contract.py
+          test -f tests/native/test_visual_regression_contract.py
           test -f tests/native/test_visual_quality.py
           test -f tests/native/test_accessibility_contract.py
           test -f tests/native/test_branding_contract.py
@@ -127,6 +128,7 @@ jobs:
           python3 tests/native/test_accessibility_contract.py
           python3 tests/native/test_branding_contract.py
           python3 tests/native/test_failure_recovery_contract.py
+          python3 tests/native/test_visual_regression_contract.py
           PYTHONPYCACHEPREFIX=/tmp/native-pycache \
             python3 -m py_compile \
               tests/native/test_feature_parity.py \
@@ -246,6 +248,42 @@ jobs:
           test "$RC" -eq 0 -o "$RC" -eq 124
 
           ! grep -qiE             'QQmlApplicationEngine failed|failed to load component|Type .* unavailable|Cannot override FINAL property|Fallback to embedded theme|ReferenceError|TypeError|missing module|invalid type|nonexistent property|SyntaxError|Unable to assign|Error decoding|Unsupported image format'             "$LOG"
+
+
+  visual-regression:
+    runs-on: ubuntu-latest
+    container: debian:13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install visual regression dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            sddm \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window \
+            imagemagick \
+            xvfb \
+            xauth \
+            fonts-noto-core
+
+      - name: Run Native Theme visual regression
+        run: |
+          chmod +x tests/native/visual/run_visual_regression.sh
+          tests/native/visual/run_visual_regression.sh \
+            "$GITHUB_WORKSPACE/out/visual-regression"
+
+      - name: Upload visual regression diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-visual-regression-diagnostics
+          path: out/visual-regression
+          if-no-files-found: warn
 
   package-integration:
     runs-on: ubuntu-latest
