@@ -1,3 +1,18 @@
+sddm-authelia-passkey (2.8.0-1) unstable; urgency=medium
+
+  * Fix a real security gap: a superseded device-authorization flow
+    could still succeed if its token-poll request was already in
+    flight when the supersede landed - pollAndDecide did not re-check
+    cancellation after the poll returned. Fixed by re-checking
+    cancellation immediately after every poll, before processing its
+    result.
+  * Add SESSION_ID/IDENTITY_SOURCE/PROVIDER/HOSTNAME/REQUESTED_ACTION
+    to the approval marker - explicit, audit-traceable bound context,
+    unconditionally backward compatible with the existing PAM
+    consumer.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 20:25:14 +0200
+
 sddm-authelia-passkey (2.7.0-1) unstable; urgency=medium
 
   * Fix unbounded broker->identity-provider HTTP calls: every such call

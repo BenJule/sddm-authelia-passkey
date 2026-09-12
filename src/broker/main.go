@@ -784,6 +784,24 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 		}
 
 		tok, status, outcome, retryAfter, err := providerPollToken(dev.DeviceCode)
+
+		// v2.8.0: providerPollToken is a real network call that can take
+		// up to providerHTTPClient's timeout to return - a supersede
+		// (or explicit cancel) landing while it was in flight would
+		// otherwise go unnoticed here, letting even a genuine approval
+		// from an already-superseded flow still succeed. A superseded/
+		// cancelled flow must never be able to approve a login no
+		// matter what the provider just answered - checked before any
+		// other handling of this specific poll result, deliberately
+		// including the outcomeOK case.
+		fs.mu.Lock()
+		cancelledAfterPoll := fs.cancelled
+		fs.mu.Unlock()
+		if cancelledAfterPoll {
+			log.Printf("session %s: cancelled/superseded for %s while a poll was in flight, discarding its result", sessionID, username)
+			return
+		}
+
 		if err != nil {
 			log.Printf("session %s: token poll error: %v", sessionID, err)
 			consecutiveAmbiguous++
@@ -869,7 +887,7 @@ func pollAndDecide(sessionID string, fs *flowState, dev *deviceAuthResponse, use
 				log.Printf("session %s: SECURITY: token username %q != requested %q", sessionID, gotUser, username)
 				return
 			}
-			writeApprovalMarker(username, fs.UID)
+			writeApprovalMarker(sessionID, username, fs.UID)
 			fs.mu.Lock()
 			fs.Status = "approved"
 			fs.mu.Unlock()
@@ -1054,18 +1072,47 @@ func errorFlow(fs *flowState, reason string) {
 // by the PAM module, which also deletes it on read - so a marker can
 // grant at most one login, within a short window, no matter how this
 // HTTP API is otherwise reached from localhost.
-func writeApprovalMarker(username, uid string) {
-	path := fmt.Sprintf("%s/approved-%s", markerDir, sanitizeUsername(username))
-	// v2: PAM re-resolves the requesting account's UID via NSS at
-	// consumption time and compares it against UID= below - this is what
-	// makes a marker minted for an account that has since been deleted
-	// and recreated (same username, different UID) fail closed instead
-	// of silently trusting the username string alone.
-	token := "VERSION=2\n" +
+// buildApprovalMarkerToken is a pure function (no I/O) so its exact
+// content can be unit-tested without needing write access to the real,
+// root-owned markerDir.
+//
+// v2: PAM re-resolves the requesting account's UID via NSS at
+// consumption time and compares it against UID= below - this is what
+// makes a marker minted for an account that has since been deleted and
+// recreated (same username, different UID) fail closed instead of
+// silently trusting the username string alone.
+//
+// v2.8.0: SESSION_ID/IDENTITY_SOURCE/PROVIDER/HOSTNAME/REQUESTED_ACTION
+// bind the marker to the concrete transaction that produced it
+// (docs/transaction-binding.md's "bound context") - none of these are
+// validated by the PAM consumer (the security-critical invariants -
+// single-use, TTL, UID-rebinding, and never letting a superseded
+// flow's poll result reach this function at all - are already enforced
+// without them), but they make the marker self-describing for audit/
+// traceability, matching the roadmap's explicit bound-context list.
+// The PAM-side parser reads only named keys it recognizes, so adding
+// lines here is unconditionally backward compatible.
+func buildApprovalMarkerToken(sessionID, username, uid string) string {
+	providerKind := cfg.ProviderKind
+	if providerKind == "" {
+		providerKind = "authelia"
+	}
+	hostname, _ := os.Hostname()
+	return "VERSION=2\n" +
 		"USERNAME=" + sanitizeUsername(username) + "\n" +
 		"UID=" + uid + "\n" +
 		"NONCE=" + randomHex(32) + "\n" +
-		"APPROVED_AT=" + time.Now().UTC().Format(time.RFC3339) + "\n"
+		"APPROVED_AT=" + time.Now().UTC().Format(time.RFC3339) + "\n" +
+		"SESSION_ID=" + sessionID + "\n" +
+		"IDENTITY_SOURCE=" + cfg.AccountSource + "\n" +
+		"PROVIDER=" + providerKind + "\n" +
+		"HOSTNAME=" + hostname + "\n" +
+		"REQUESTED_ACTION=desktop_login\n"
+}
+
+func writeApprovalMarker(sessionID, username, uid string) {
+	path := fmt.Sprintf("%s/approved-%s", markerDir, sanitizeUsername(username))
+	token := buildApprovalMarkerToken(sessionID, username, uid)
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, []byte(token), 0600); err != nil {
 		log.Printf("writeApprovalMarker: %v", err)
