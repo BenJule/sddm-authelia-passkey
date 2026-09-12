@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.5.0] - 2026-09-12
+
+### Investigated (no functional change)
+- **Native SSSD passkey integration**: real investigation on lab VM124
+  into SSSD's native FIDO2/passkey support (`SDDM -> PAM -> SSSD ->
+  libfido2`), documented in `docs/sssd-native-passkey.md`. Found a
+  harder blocker than the already-known absence of physical FIDO2
+  hardware: Debian 13's SSSD package (`2.10.1-2+b1`) does not appear to
+  include compiled passkey support at all - `pam_sss.so` has no
+  libfido2 linkage and no `passkey_child` helper binary exists, despite
+  `libfido2` itself being installed and `sssd.conf`'s man page
+  documenting the relevant config directives. No code changed; the
+  existing `pam_u2f.so` hardware-key path (`docs/fido2.md`) remains the
+  real, shipped mechanism.
+
 ## [2.4.0] - 2026-09-12
 
 ### Added
