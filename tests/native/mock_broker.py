@@ -74,6 +74,18 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
+        if parsed.path == "/capabilities":
+            self.send_json(
+                200,
+                {
+                    "account_source": "local",
+                    "oidc_ready": True,
+                    "fido2_wired": True,
+                    "smartcard_ready": False,
+                },
+            )
+            return
+
         if parsed.path == "/status":
             session_id = query.get("session_id", [""])[0]
 
