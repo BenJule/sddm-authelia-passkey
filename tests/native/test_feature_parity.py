@@ -42,6 +42,7 @@ for endpoint in (
     "/identity?username=",
     "/status?session_id=",
     "/cancel?session_id=",
+    "/capabilities",
 ):
     if endpoint not in controller:
         raise SystemExit(f"missing broker endpoint use: {endpoint}")

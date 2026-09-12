@@ -292,6 +292,7 @@ func main() {
 	mux.HandleFunc("/status", handleStatus)
 	mux.HandleFunc("/cancel", handleCancel)
 	mux.HandleFunc("/identity", handleIdentity)
+	mux.HandleFunc("/capabilities", handleCapabilities)
 	if cfg.AccountSource == "nss" {
 		log.Printf("sddm-authelia-passkey broker listening on %s (account_source=nss, minimum_uid=%d, allowed_groups=%v, extra allowed_users=%v)",
 			listenAddr, cfg.MinimumUID, allowedGroupsList(), allowedUsersList())

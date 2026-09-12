@@ -38,6 +38,14 @@ Item {
     property string identitySource: ""
     property string identityIconSource: ""
 
+    // System-wide, pre-login capability facts (v2.4.0) - informational
+    // only, never gate any flow/auth decision here. See
+    // docs/capability-negotiation.md. oidcReady defaults optimistic
+    // (matches ConnectionStatus's own "ready" default) until the first
+    // poll response arrives, rather than flashing a false "offline" hint.
+    property bool fido2Wired: false
+    property bool oidcReady: true
+
     property string qrPath: ""
     property string verificationUri: ""
     property string userCode: ""
@@ -88,6 +96,19 @@ Item {
         interval: Math.max(1, root.approvalDelayMs)
         repeat: false
         onTriggered: root.emitApprovedLogin()
+    }
+
+    // Low-frequency, independent of any specific flow/session - purely
+    // refreshes the informational fido2Wired/oidcReady hints, so it runs
+    // regardless of root.state and is never generation-guarded like the
+    // per-flow requests below.
+    Timer {
+        id: capabilitiesTimer
+        interval: 20000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: root.fetchCapabilities()
     }
 
     Component {
@@ -210,6 +231,36 @@ Item {
                 + encodeURIComponent(session)
         )
         root.armRequestTimeout(xhr)
+        xhr.send()
+    }
+
+    // Purely informational (see docs/capability-negotiation.md) - a
+    // failed/slow request here just leaves the last-known (or default)
+    // values in place, never surfaces as a flow error.
+    function fetchCapabilities() {
+        var xhr = new XMLHttpRequest()
+        xhr.open("GET", root.brokerOrigin + "/capabilities")
+
+        var timeoutState = root.armRequestTimeout(xhr)
+
+        xhr.onreadystatechange = function() {
+            if (timeoutState.aborted)
+                return
+
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return
+
+            if (xhr.status !== 200)
+                return
+
+            var response = root.safeParse(xhr.responseText)
+            if (!response)
+                return
+
+            root.fido2Wired = !!response.fido2_wired
+            root.oidcReady = response.oidc_ready !== false
+        }
+
         xhr.send()
     }
 
