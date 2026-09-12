@@ -46,6 +46,7 @@ override_dh_auto_install:
 	install -D -m 0755 scripts/list-fido2-credentials.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/list-fido2-credentials.sh
 	install -D -m 0755 scripts/disable-pam.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/disable-pam.sh
 	install -D -m 0755 scripts/break-glass.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/break-glass.sh
+	install -D -m 0755 scripts/doctor.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/doctor.sh
 	install -D -m 0755 scripts/sddm-authelia-passkey-admin.sh debian/sddm-authelia-passkey/usr/sbin/sddm-authelia-passkey-admin
 	install -D -m 0644 debian/sddm-authelia-passkey-admin.8 debian/sddm-authelia-passkey/usr/share/man/man8/sddm-authelia-passkey-admin.8
 	install -D -m 0644 scripts/lib/credstore-dir.sh debian/sddm-authelia-passkey/usr/share/sddm-authelia-passkey/lib/credstore-dir.sh

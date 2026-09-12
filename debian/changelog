@@ -1,3 +1,16 @@
+sddm-authelia-passkey (2.3.0-1) unstable; urgency=medium
+
+  * Add sddm-authelia-passkey-admin doctor (alias diagnose): a
+    read-only production-readiness diagnostic aggregating SDDM/PAM/
+    broker state with new checks - OIDC discovery/JWKS reachability,
+    NSS/SSSD state, identity-provenance config consistency, and a
+    systematic files-vs-sss UID-collision scan across every local
+    account with UID >= 1000 - into a single LOGIN_ENABLEMENT verdict.
+    Supports --explain and --json output. Never writes anything, never
+    restarts/enables/disables any service, never touches PAM.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 18:41:06 +0200
+
 sddm-authelia-passkey (2.2.0-1) unstable; urgency=medium
 
   * Add reject_local_shadowing and required_identity_source config keys
