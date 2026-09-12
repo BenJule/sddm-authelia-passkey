@@ -1,3 +1,18 @@
+sddm-authelia-passkey (2.0.0-1) unstable; urgency=medium
+
+  * Native Theme is now the recommended deployment mode for new
+    installations (documentation/messaging only, no functional or
+    default-selection change).
+  * Add a theme deployment mode support matrix to
+    docs/validated-environment.md.
+  * End of the native theme track (v1.8.0-v2.0.0): full test corpus
+    re-verified green, all three deployment modes re-verified on
+    VM124, no dependency on Debian Breeze source, SBOM/signed release
+    process confirmed.
+  * No feature or authentication invariant changes.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 15:20:47 +0200
+
 sddm-authelia-passkey (1.19.0-1) unstable; urgency=medium
 
   * Freeze the install-mode, migration, and branding schema interfaces

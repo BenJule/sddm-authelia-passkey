@@ -50,6 +50,22 @@ See `docs/architecture.md` for the full diagram and design rationale
 (including why a separate broker process is unavoidable given SDDM's PAM
 architecture).
 
+## Theme
+
+Three deployment modes are supported side by side, switchable at any
+time (`sddm-authelia-passkey-admin apply-mode`/`migrate`, never
+selected automatically by install or upgrade):
+
+- **Native Theme** (recommended as of v2.0.0) - an original, from-scratch
+  Qt6 SDDM theme with no dependency on Debian Breeze source. See
+  `docs/native-theme.md`.
+- **Compatibility Theme** - small patches against the existing
+  `sddm-theme-debian-breeze` package.
+- **Backend/PAM only** - no theme change at all.
+
+See `docs/theme-installation-modes.md`, `docs/theme-migration.md`, and
+`docs/validated-environment.md`'s theme deployment mode matrix.
+
 ## Tested configuration
 
 | Component | Version |
