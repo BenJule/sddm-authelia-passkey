@@ -5,6 +5,20 @@ follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Native Theme Visual Regression Framework with deterministic
+  `sddm-greeter-qt6 --test-mode` rendering.
+- 24 version-controlled screenshot baselines covering all 16 required
+  visual states and representative resolution/scale cases.
+- Automated ImageMagick pixel comparison with CI diagnostic artifacts.
+
+### Changed
+- Native Theme version advances to 1.15.0.
+
+### Security
+- Visual fixtures remain test-only and are not authentication authority.
+- PAM, broker, KWallet, FIDO2 and username/session binding remain unchanged.
+
 ## [1.14.0] - 2026-09-11
 
 ### Added

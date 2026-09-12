@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// SDDM Authelia Passkey Native v1.14.0
+// SDDM Authelia Passkey Native v1.15.0
 //
 // Presentation is original project work.
 // Authentication remains exclusively with SDDM/PAM.

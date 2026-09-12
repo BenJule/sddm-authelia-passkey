@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "renderer": "sddm-greeter-qt6 --test-mode",
+  "backend": "xcb+xvfb+software",
+  "font": "Noto Sans",
+  "dpi": 96,
+  "state_count": 16,
+  "case_count": 24,
+  "cases": [
+    {
+      "state": "alternate_code",
+      "file": "1280x720@1.00/alternate_code.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "39d9505885f7ec8b0cf42de6e37967abddb4540e68d6c364862374a5b041f247"
+    },
+    {
+      "state": "approved",
+      "file": "1280x720@1.00/approved.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "0b655b3282abfe7b06b6372bc415f9f54d0dcc3149e88eb8680e8ab520012e35"
+    },
+    {
+      "state": "denied",
+      "file": "1280x720@1.00/denied.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "3f7767bdf6ec7d286570cd95266aa310d47a108d8fa80fcbbd7a95af9cbbf72b"
+    },
+    {
+      "state": "directory_account",
+      "file": "1280x720@1.00/directory_account.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "cada7606873ae651d6ca2f62c55c50dd35e4c891c92185451b882338586bf457"
+    },
+    {
+      "state": "expired",
+      "file": "1280x720@1.00/expired.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "de1b281d5b9fd4860eae93a5285ca153e4db3ba132181395e1456ac1b5e937ec"
+    },
+    {
+      "state": "idle",
+      "file": "1280x720@1.00/idle.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "6ea3b2d6c7b0840b63f0ee8159a48521f3c428eb054d03fdfe76d3a9f87343f2"
+    },
+    {
+      "state": "invalid_branding_asset",
+      "file": "1280x720@1.00/invalid_branding_asset.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "b86f0c58d4e1bad86888619fbdd2dfb4fe498af666dc5ad16b643ede02ca1e70"
+    },
+    {
+      "state": "logging_in",
+      "file": "1280x720@1.00/logging_in.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "a2daf23dceb67c703cb06a0ca165a7b7450ff77cdeab53d7b78db9e9a7991a81"
+    },
+    {
+      "state": "long_branding",
+      "file": "1280x720@1.00/long_branding.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "0c0a4d617d17d27b5621456e6af8cb1dcde197c8a0e105d03b934f55bcc5e96e"
+    },
+    {
+      "state": "no_avatar",
+      "file": "1280x720@1.00/no_avatar.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "8971ce89bdd1ed8a3a58c432bd576773ded04a1e9ad8c7b36ba59270f31792fd"
+    },
+    {
+      "state": "offline",
+      "file": "1280x720@1.00/offline.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "012e6f3724d9d0694e80f770480ab43abbe6b7ffb81060d5d6f77c89c7ea8023"
+    },
+    {
+      "state": "password",
+      "file": "1280x720@1.00/password.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "04f90244f45f66d0cf0653105b6b7034911c8d01a91c989b6165603859db7f81"
+    },
+    {
+      "state": "rate_limited",
+      "file": "1280x720@1.00/rate_limited.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "1c438fc4af65c74b983e3195e312e0baaf75c941a07967002c851db83320e6d9"
+    },
+    {
+      "state": "smartphone_panel_idle",
+      "file": "1280x720@1.00/smartphone_panel_idle.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "adce030d2e6c43222895c56553b041068671ed2ea5c1754b93f1c01ad07fb85c"
+    },
+    {
+      "state": "starting",
+      "file": "1280x720@1.00/starting.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "c4c39351b8dec8b9069ee0f43ebae8bf1fc5802a7d66125fbd9d4547f4fa86b6"
+    },
+    {
+      "state": "waiting",
+      "file": "1280x720@1.00/waiting.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "58f444f7ed8ae8a34ee3b3f273950752fb0de68aa2852a631b8c5d5250f977f1"
+    },
+    {
+      "state": "idle",
+      "file": "1920x1080@1.00/idle.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.0,
+      "sha256": "d183b7526efcb6513e89bf452d7862b428bfd0f89948cc3374be1b480b315825"
+    },
+    {
+      "state": "long_branding",
+      "file": "1920x1080@1.00/long_branding.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.0,
+      "sha256": "81ca0080576118d25a77c9d528717c1396b00b783ce0688d33d9f7d601d117ba"
+    },
+    {
+      "state": "offline",
+      "file": "1920x1080@1.00/offline.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.0,
+      "sha256": "36dcde43ccbcf4f848aa123cc97ef9adb94a03dfc3d137c8462c6a412e0d739f"
+    },
+    {
+      "state": "waiting",
+      "file": "1920x1080@1.00/waiting.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.0,
+      "sha256": "eba48e80332b59634de1c5936ef8fb16ff8e9f979320084b630e6a9faef0f5a7"
+    },
+    {
+      "state": "idle",
+      "file": "1920x1080@1.25/idle.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.25,
+      "sha256": "79c71cd82065009de75559b545705ffd2c2514de595a1b665785239aa29166f4"
+    },
+    {
+      "state": "long_branding",
+      "file": "1920x1080@1.25/long_branding.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.25,
+      "sha256": "1701413a07193a81028a155aed005d49478d5c9b849bdc9680c09936e3b67cad"
+    },
+    {
+      "state": "offline",
+      "file": "1920x1080@1.25/offline.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.25,
+      "sha256": "97c79bd4e5f5ec5950436e7516a76d0fc41e2530e4f3b57b24523f0a40c6e3ab"
+    },
+    {
+      "state": "waiting",
+      "file": "1920x1080@1.25/waiting.png",
+      "width": 1920,
+      "height": 1080,
+      "scale": 1.25,
+      "sha256": "deae4b50805ad789db734d7e56b5b09ee456eb3c2d40548ba549af35d6df2814"
+    }
+  ]
+}
