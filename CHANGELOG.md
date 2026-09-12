@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.18.0] - 2026-09-12
 
 ### Added
 - Branding override safety check (`branding-status` admin CLI
