@@ -172,6 +172,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_empty(429)
                 return
 
+            if username == "hang":
+                # Accepts the connection and holds it open far longer
+                # than any test's requestTimeoutMs, to prove the client
+                # times out and recovers instead of waiting forever.
+                # Still responds eventually, so the late/stale-response
+                # rejection path (generation check) is exercised too.
+                time.sleep(5)
+
             if not username:
                 self.send_empty(403)
                 return

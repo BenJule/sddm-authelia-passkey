@@ -471,6 +471,11 @@ Rectangle {
                             ? "file://" + root.controller.qrPath
                             : ""
 
+                    // Bounds decode cost to the actual displayed size
+                    // regardless of how large the underlying file is.
+                    sourceSize.width: Math.max(1, width)
+                    sourceSize.height: Math.max(1, height)
+
                     fillMode: Image.PreserveAspectFit
 
                     smooth: false
