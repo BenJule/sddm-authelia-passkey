@@ -58,6 +58,9 @@ jobs:
       - name: Branding override safety regression
         run: bash tests/integration/validate-branding-overrides-test.sh
 
+      - name: Frozen interface regression (v1.19.0 stability contract)
+        run: bash tests/integration/interface-freeze-test.sh
+
       - name: Shellcheck all shipped scripts
         run: |
           apt-get install -y --no-install-recommends shellcheck
