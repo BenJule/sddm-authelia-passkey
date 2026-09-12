@@ -3,6 +3,33 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Changed
+- Native Theme is now the **recommended** deployment mode for new
+  installations (`README.md`, `docs/native-theme.md`,
+  `docs/theme-installation-modes.md`, `theme/native/README.md`).
+  Documentation/messaging only: no installation or upgrade path
+  selects any mode automatically, and `apply-mode`/`migrate` behavior
+  is unchanged.
+- Added a theme deployment mode support matrix to
+  `docs/validated-environment.md` (Native/Compatibility/Backend-only:
+  TESTED; other distributions/display managers: UNSUPPORTED).
+
+### Verified (v2.0.0 - Native Theme Recommended, end of the native
+theme track)
+- Full existing test corpus re-run and green: accessibility, visual
+  regression, v1.18.0 security hardening, upgrade regression,
+  interface freeze, package/lintian, broker (129) + kwallet-secretd
+  (11) Go unit tests.
+- All three deployment modes (native/compatibility/backend-only)
+  re-verified on VM124, including migration/rollback round trips.
+- No dependency on Debian Breeze source in the Native Theme
+  (`theme/native/PROVENANCE.md`, unchanged since v1.9.0).
+- SBOM (CycloneDX) and signed release artifacts, unchanged process
+  since v1.16.0.
+- No feature or auth-invariant changes in this release.
+
 ## [1.19.0] - 2026-09-12
 
 ### Added

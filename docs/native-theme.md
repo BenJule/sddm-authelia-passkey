@@ -6,8 +6,15 @@ The package ships two SDDM themes side by side:
 - the original Qt6 Native Theme at
   `/usr/share/sddm/themes/sddm-authelia-passkey-native`
 
-The Native Theme remains opt-in. Package installation and upgrade do
-not select it automatically and do not restart SDDM.
+As of v2.0.0, the Native Theme is the **recommended** choice for new
+deployments (see `docs/stability.md` and `docs/validated-environment.md`'s
+theme deployment mode matrix) - but it remains opt-in in the literal
+sense: package installation and upgrade never select it automatically,
+never change an existing installation's mode, and never restart SDDM.
+Choosing it (or the compatibility theme, or staying backend-only) is
+always an explicit administrator action via
+`sddm-authelia-passkey-admin apply-mode`/`migrate` - see
+`docs/theme-installation-modes.md` and `docs/theme-migration.md`.
 
 ## v1.10.0 feature parity
 

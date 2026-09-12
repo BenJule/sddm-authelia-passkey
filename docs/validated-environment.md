@@ -76,6 +76,30 @@ and `account_source=nss` group-based authorization) have therefore been
 exercised on the lab VM, even though production has only ever run a
 single-allowed-user configuration (see above).
 
+## Theme deployment modes (as of v2.0.0)
+
+Three modes are supported (`sddm-authelia-passkey-admin
+mode-status`/`apply-mode`/`migrate`, see
+`docs/theme-installation-modes.md`). Only the platform documented
+above (Debian 13 / SDDM 0.21.x / KDE Plasma 6) has actually been
+exercised - no other distribution, display manager, or desktop
+environment is claimed as TESTED anywhere below.
+
+| Mode | Status | Verified |
+| --- | --- | --- |
+| Native Theme | **TESTED, RECOMMENDED** | Full feature parity, responsive layout, accessibility roles, vendor-neutral optional branding, visual regression baselines (v1.10.0-v1.18.0); no dependency on Debian Breeze source (`theme/native/PROVENANCE.md`); v1.18.0 threat-model hardening; real install/upgrade/migrate/rollback on VM124 across every release since v1.16.0. |
+| Compatibility Theme (patched Debian Breeze) | TESTED | Patch-based install/upgrade idempotency, branding parity with Native (v1.8.0), migrate/rollback round-trip on VM124 alongside Native. |
+| Backend/PAM only (no theme) | TESTED | The original, longest-validated mode - see "What has been validated on a real production host" above; unaffected by any Native/compat theme work. |
+| Other distributions (Ubuntu, Fedora, openSUSE, ...) | UNSUPPORTED | Not exercised in any form. |
+| Other display managers (GDM, LightDM, ...) | UNSUPPORTED | This project is SDDM-specific by design (PAM stack, theme mechanism). |
+| Wayland-only / X11-only session restrictions | UNSUPPORTED | Not exercised as a distinct configuration; sessions are whatever SDDM's own session list offers on the tested platform. |
+
+"Recommended" reflects which mode this project suggests choosing for a
+*new* deployment (see `docs/native-theme.md`); it is not a claim that
+compatibility or backend-only are less correct or less maintained, and
+no installation or upgrade selects any mode automatically regardless of
+this recommendation.
+
 ## What is not yet validated
 
 - Only one production host and one lab VM have been exercised - not
