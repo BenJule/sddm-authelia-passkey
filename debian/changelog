@@ -1,3 +1,15 @@
+sddm-authelia-passkey (1.19.0-1) unstable; urgency=medium
+
+  * Freeze the install-mode, migration, and branding schema interfaces
+    added since v1.16.0-v1.18.0 as a stable contract (docs/stability.md).
+  * Add interface-freeze-test.sh regression guard.
+  * Native Release Candidate: re-verified accessibility, visual
+    regression, security, upgrade, and package/lintian regressions;
+    re-verified native/compatibility/backend-only deployment modes.
+  * No new feature work beyond the freeze documentation and its guard.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 14:58:46 +0200
+
 sddm-authelia-passkey (1.18.0-1) unstable; urgency=medium
 
   * Add branding-status admin CLI subcommand and
