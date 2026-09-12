@@ -48,7 +48,9 @@ kept as a fallback.
 
 See `docs/architecture.md` for the full diagram and design rationale
 (including why a separate broker process is unavoidable given SDDM's PAM
-architecture).
+architecture). See `docs/roadmap.md` for the direction beyond the
+current release (OIDC as authentication proof, SSSD/NSS as the
+authoritative Unix identity, generic provider support).
 
 ## Theme
 

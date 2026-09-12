@@ -1,5 +1,23 @@
 # Architecture
 
+## Core principle: authentication is not identity
+
+```
+OIDC (Authelia/Authentik/Keycloak/generic) = AUTHENTICATION PROOF
+SSSD/NSS                                   = AUTHORITATIVE UNIX IDENTITY
+```
+
+A successful OIDC device-authorization flow proves *who approved the
+login on their phone*, per that provider's own userinfo claim - it does
+not, by itself, establish which Unix account that identity is allowed
+to become. That binding is always the exact-match check described in
+"Identity mapping" below, resolved through NSS/SSSD, never through a
+UID/GID store this project maintains itself. See `docs/roadmap.md` for
+where this principle is headed (a general SDDM/PAM authentication-
+mechanism model, not a single-purpose OIDC integration) and
+`docs/identity-binding.md` for a concrete gap this principle surfaced
+(NSS/local-account shadowing) and its planned fix.
+
 ## Components
 
 - **broker** (`src/broker`) - talks to Authelia's OIDC Device Authorization
@@ -649,17 +667,59 @@ simply dispatch to those unchanged functions unless `provider_kind=oidc`
 is explicitly configured. This keeps the already-proven Authelia code
 path's risk at zero.
 
-**Validated**: the generic OIDC path end-to-end (device-authorization,
-token polling including rate-limit passthrough, and identity extraction
-with both the default and a custom claim name) against a mock server
-shaped like Keycloak's real endpoint layout
-(`/protocol/openid-connect/{auth/device,token,userinfo}`), and discovery
-capability detection refusing a provider that doesn't advertise
-`device_authorization_endpoint`. **Not validated**: a real, live
-Keycloak or Authentik instance - none was stood up in this environment;
-the implementation follows the OIDC/RFC 8628 standards both providers
-document, but was not independently re-verified against their actual
-deployments.
+**Validated** (mock, all releases through v2.0.0): the generic OIDC path
+end-to-end (device-authorization, token polling including rate-limit
+passthrough, and identity extraction with both the default and a custom
+claim name) against a mock server shaped like Keycloak's real endpoint
+layout (`/protocol/openid-connect/{auth/device,token,userinfo}`), and
+discovery capability detection refusing a provider that doesn't
+advertise `device_authorization_endpoint`.
+
+**Validated for real (v2.1.0)**: a real, live Authentik instance
+(isolated lab application, Device Code grant, public client, RS256),
+end-to-end through a real Samba AD account resolved via
+`account_source=nss`/SSSD - discovery, issuer verification, device
+authorization, RFC 8628 `authorization_pending` polling, and a real
+approved session with a real QR code rendered. This uncovered and fixed
+a real pre-existing gap (see "verification_uri trust model" below) that
+the mock-based tests above never exercised, because they call
+`providerDeviceAuthorize`/`providerPollToken`/`providerVerifyIdentity`
+directly and never went through the HTTP-handler-level
+`validateVerificationURI` check at all.
+
+**Still not validated**: a real, live Keycloak instance - none exists in
+this environment. Real physical FIDO2/U2F hardware similarly remains
+untested (see `docs/fido2.md`) for the same reason: no device
+available, not a fabricated pass.
+
+### `verification_uri` trust model
+
+The device-authorization response's `verification_uri`/
+`verification_uri_complete` is the one part of that response this
+broker renders as a QR code and hands to the user - so its origin must
+be pinned to something trustworthy, while its path/query stays whatever
+shape that specific provider actually uses (Authelia's
+`/consent/openid/device-authorization?user_code=...`, Authentik's
+`/device?code=...`, Keycloak's own shape, etc. - RFC 8628 does not
+mandate one, and this broker does not try to guess which query
+parameter carries the user code).
+
+`src/broker/verification_uri.go` implements this as: the discovery
+document's own `issuer` (verified to match the configured
+`oidc_discovery_url` - never trusted merely because it arrived over the
+network), `device_authorization_endpoint`, and `authorization_endpoint`
+(when present) each contribute a **trusted origin**
+(scheme+host+effective-port, case-insensitive host, no
+prefix/suffix/substring matching). `token_endpoint` and `jwks_uri`
+deliberately do **not** - a provider may run token/key infrastructure on
+a separate host from its user-facing pages, and that alone must not
+authorize sending a user's browser there. The returned
+`verification_uri`'s own origin must be a member of that already-derived
+set; nothing about the device-authorization response itself is ever
+allowed to expand it. `provider_kind=authelia` keeps its original,
+unchanged trust model instead (a single origin from the explicitly
+configured `allowed_verification_host` - Authelia mode does no OIDC
+discovery at all).
 
 ## Native FIDO2/U2F hardware security keys
 

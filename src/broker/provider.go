@@ -33,7 +33,15 @@ import (
 
 // oidcDiscoveryDoc holds only the fields this broker actually needs from
 // an OIDC discovery document (RFC 8414 / OpenID Connect Discovery 1.0).
+// Issuer and AuthorizationEndpoint are not otherwise used by this
+// provider's device-flow calls, but both are trust anchors: Issuer is
+// verified against the configured discovery URL, and both feed
+// trustedOriginsForOIDC() - the only two other origins (besides
+// DeviceAuthorizationEndpoint) a returned verification_uri is ever
+// allowed to point at. See verification_uri.go.
 type oidcDiscoveryDoc struct {
+	Issuer                      string `json:"issuer"`
+	AuthorizationEndpoint       string `json:"authorization_endpoint"`
 	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
 	TokenEndpoint               string `json:"token_endpoint"`
 	UserinfoEndpoint            string `json:"userinfo_endpoint"`
@@ -91,8 +99,42 @@ func oidcDiscover() (*oidcDiscoveryDoc, error) {
 	if d.UserinfoEndpoint == "" {
 		return nil, fmt.Errorf("provider at %s does not advertise userinfo_endpoint", cfg.OIDCDiscoveryURL)
 	}
+	if d.Issuer == "" {
+		return nil, fmt.Errorf("provider at %s does not advertise an issuer", cfg.OIDCDiscoveryURL)
+	}
+	wantIssuer, err := expectedIssuerFromDiscoveryURL(cfg.OIDCDiscoveryURL)
+	if err != nil {
+		return nil, fmt.Errorf("cannot derive expected issuer from oidc_discovery_url: %w", err)
+	}
+	// Some real providers (Authentik among them) report a path-based
+	// issuer with a trailing slash even though the well-known URL
+	// construction in OpenID Connect Discovery 1.0 SS4.1 requires that
+	// slash to be removed before appending the well-known suffix - so a
+	// single optional trailing slash is tolerated on either side, but
+	// nothing else about the comparison is relaxed.
+	if strings.TrimSuffix(d.Issuer, "/") != strings.TrimSuffix(wantIssuer, "/") {
+		return nil, fmt.Errorf("discovery document issuer %q does not match the configured discovery URL (expected %q) - refusing untrusted provider metadata", d.Issuer, wantIssuer)
+	}
 	oidcDiscoveryCache = d
 	return d, nil
+}
+
+// expectedIssuerFromDiscoveryURL derives the issuer identifier OpenID
+// Connect Discovery 1.0 requires a well-known discovery URL to be built
+// from (issuer + "/.well-known/openid-configuration", or the RFC 8414
+// "/.well-known/oauth-authorization-server" variant), so the discovery
+// document's own "issuer" claim can be checked against it rather than
+// trusted merely because it arrived over the network.
+func expectedIssuerFromDiscoveryURL(discoveryURL string) (string, error) {
+	for _, suffix := range []string{
+		"/.well-known/openid-configuration",
+		"/.well-known/oauth-authorization-server",
+	} {
+		if strings.HasSuffix(discoveryURL, suffix) {
+			return strings.TrimSuffix(discoveryURL, suffix), nil
+		}
+	}
+	return "", fmt.Errorf("oidc_discovery_url %q does not end in a recognized well-known discovery suffix", discoveryURL)
 }
 
 func genericOIDCDeviceAuthorize() (*deviceAuthResponse, error) {
