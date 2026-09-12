@@ -80,16 +80,19 @@ actually answered. Shipped `reject_local_shadowing`/
 queries (`getent -s files`/`getent -s sss`) to detect and refuse a
 genuine collision, not a UID-range heuristic.
 
-### v2.3.0 - Debian production packaging & safe deployment (design only)
+### v2.3.0 - Debian production packaging & safe deployment (doctor implemented)
 
-Direction: a proper preflight gate before PAM activation, checking
-`BROKER_CONFIG`, `OIDC_DISCOVERY`, `JWKS` reachability, `NSS`, `SSSD`,
-`USER_COLLISIONS` (v2.2.0), `PAM_CONFIG`, and `BREAK_GLASS` readiness -
-extending the existing `preflight.sh`/`postflight.sh`/admin-CLI pattern
-rather than replacing it. PAM is never mutated blindly today (see
-`docs/architecture.md`'s "PAM control flow"); this milestone is about
-making the pre-activation checklist itself more complete and
-machine-checkable.
+Shipped `sddm-authelia-passkey-admin doctor` (alias `diagnose`): a
+read-only diagnostic checking `SDDM`, `PAM_CONFIG`, `BROKER_CONFIG`,
+`BROKER`, `OIDC_DISCOVERY`, `JWKS` reachability, `NSS`, `SSSD`,
+`IDENTITY_PROVENANCE`, `USER_COLLISIONS` (a systematic files-vs-sss
+UID-collision scan, not just the one already-known case), and
+`BREAK_GLASS` readiness, aggregated into a single `LOGIN_ENABLEMENT`
+verdict - with `--explain`/`--json` output modes. Extends the existing
+`preflight.sh`/`postflight.sh`/admin-CLI pattern rather than replacing
+it; see `docs/doctor.md`. A versioned overall config schema, an
+upgrade/downgrade compatibility matrix, and pre-change lockout
+simulation remain design-only, deferred to a later iteration.
 
 ### v2.4.0 - SDDM rich authentication UI (design only)
 
