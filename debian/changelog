@@ -1,3 +1,16 @@
+sddm-authelia-passkey (1.17.0-1) unstable; urgency=medium
+
+  * Add guided migration between theme installation modes (migrate,
+    migrate-preflight, migrate-status) via the fixed-dispatch admin CLI.
+  * Add single-level rollback-migration undo for the most recent
+    migration.
+  * Add interrupted-migration detection and recovery (migrate-resume,
+    rollback-migration).
+  * Delegate all mode changes to the existing v1.16.0 apply-mode logic;
+    never restart SDDM, terminate sessions, or touch PAM/broker/FIDO2.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 13:52:07 +0200
+
 sddm-authelia-passkey (1.16.0-1) unstable; urgency=medium
 
   * Add explicit native, compatibility and backend-only theme
