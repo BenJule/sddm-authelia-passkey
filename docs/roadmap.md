@@ -144,14 +144,21 @@ available in this environment - and a full multi-provider conformance
 lab (negative/malformed fixtures, `slow_down`/`access_denied` coverage,
 an automatically-derived public support matrix) remains design-only.
 
-### v2.7.0 - Offline & failure policy (design only)
+### v2.7.0 - Offline & failure policy (implemented)
 
-Direction: explicitly documented behavior (not just incidental
-behavior) for IdP/DNS/JWKS/SSSD/AD outages, expired discovery caches,
-expired signing keys, network timeouts, user cancellation, device-flow
-timeout, `slow_down`/`authorization_pending`/`access_denied`/
-`expired_token`, distinguishing **fail closed** from a genuinely safe
-local fallback. No automatic unsafe fallback.
+Explicitly documented, traced-to-code behavior for every enumerated
+failure case - IdP/DNS/JWKS/SSSD/AD outages, network timeouts, user
+cancellation, device-flow timeout, `slow_down`/`authorization_pending`/
+`access_denied`/`expired_token`, broker restart mid-flow, capability
+loss mid-flow - distinguishing **fail closed** from a genuinely safe
+local fallback, never an automatic unsafe one. See
+`docs/failure-policy.md`. Fixed a real gap along the way: every
+broker->identity-provider HTTP call previously had no timeout at all
+and could hang forever on a non-responding provider; now bounded to 15
+seconds. Real-tested on VM124: SSSD's own on-disk cache provides
+meaningful resilience during both a stopped daemon and a
+network-unreachable AD backend (a previously-undocumented finding); a
+broker restart mid-flow recovers safely by construction.
 
 ### v3.0.0 - Generic authentication mechanism framework (design only)
 
