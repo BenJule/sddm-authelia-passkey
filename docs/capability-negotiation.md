@@ -79,8 +79,8 @@ preflight decision.** Concretely here:
 - Any smartcard/PKCS#11 implementation whatsoever.
 - Hotplug/dynamic capability re-negotiation beyond the existing 20s
   poll.
-- A visual regression suite for a mechanism/capability matrix (no such
-  matrix exists yet to test against).
+- ~~A visual regression suite for a mechanism/capability matrix~~ -
+  closed as a follow-up; see `docs/mechanism-selection.md`.
 
 These remain open items for a later iteration, tracked in the private
 roadmap.

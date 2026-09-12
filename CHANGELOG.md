@@ -3,6 +3,20 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.10.0] - 2026-09-12
+
+### Added
+- Extended the v1.15.0 Native Theme visual regression framework with
+  two new deterministic baseline states covering v2.9.0's capability-
+  driven mechanism offering: `smartphone_unreachable` (button disabled
+  with visible reason, `oidc_ready=false`) and `fido2_available`
+  (green hint shown, `fido2_wired=true`). Now 18 states / 26 cases
+  total (previously 16/24). No functional/shipped theme code changed -
+  test infrastructure and documentation only. Baselines generated in a
+  real `debian:13` container matching CI exactly; all 24 pre-existing
+  baselines verified byte-identical (`CHANGED=0`) against the harness
+  change, proving zero regression.
+
 ## [2.9.0] - 2026-09-12
 
 ### Added

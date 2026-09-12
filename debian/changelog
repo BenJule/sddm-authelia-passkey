@@ -1,3 +1,13 @@
+sddm-authelia-passkey (2.10.0-1) unstable; urgency=medium
+
+  * Extend the Native Theme visual regression framework with two new
+    deterministic baseline states covering v2.9.0's capability-driven
+    mechanism offering (smartphone_unreachable, fido2_available). Now
+    18 states / 26 cases total. No functional/shipped theme code
+    changed - test infrastructure and documentation only.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 22:08:04 +0200
+
 sddm-authelia-passkey (2.9.0-1) unstable; urgency=medium
 
   * Add capability-driven mechanism offering (first real increment of
