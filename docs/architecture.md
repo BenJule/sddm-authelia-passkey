@@ -907,3 +907,16 @@ never a flow-control or security decision - see
 explicitly out of scope (a generic mechanism-selection framework,
 capability-driven mechanism offering, dedicated hardware-key/smartcard
 UI states).
+
+## Failure and recovery policy (v2.7.0)
+
+Every broker->identity-provider HTTP call (discovery, device-
+authorization, token, userinfo) is bounded by a single
+`providerHTTPClient` with a 15-second timeout - a real gap fixed in
+v2.7.0 (previously none of these calls had any timeout, so a
+non-responding provider could hang the calling goroutine forever,
+preventing `pollAndDecide`'s own bounded-retry-then-fail-closed logic
+from ever running). See `docs/failure-policy.md` for the full,
+per-case `FAIL_CLOSED`/`SAFE_LOCAL_FALLBACK` decision matrix, including
+real VM124 findings on SSSD's cache resilience and broker-restart-mid-
+flow safety.
