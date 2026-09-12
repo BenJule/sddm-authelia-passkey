@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.7.0] - 2026-09-12
+
+### Fixed
+- **Security/reliability**: every broker->identity-provider HTTP call
+  (discovery, device-authorization, token, userinfo) previously used
+  `http.DefaultClient`/the bare `http.Get`/`http.PostForm` package
+  functions, none of which have any timeout. A provider that accepted a
+  TCP connection but never responded would have hung the calling
+  goroutine forever, meaning the existing bounded-retry-then-fail-
+  closed logic in `pollAndDecide` could never actually run. Fixed by
+  routing every such call through a single `providerHTTPClient` with a
+  15-second timeout.
+
+### Added
+- `docs/failure-policy.md`: an explicit, per-case decision (`FAIL_CLOSED`
+  or a justified `SAFE_LOCAL_FALLBACK`) for every failure scenario
+  `docs/roadmap.md`'s v2.7.0 milestone enumerates, tracing each decision
+  to the actual code that implements it. Includes real VM124 findings:
+  SSSD's on-disk cache provides real resilience during both a stopped
+  daemon and a network-unreachable AD backend (not previously
+  documented anywhere in this project); a broker restart mid-flow
+  recovers safely by construction (no marker is ever written for an
+  interrupted attempt).
+
 ## [2.6.0] - 2026-09-12
 
 ### Added

@@ -692,7 +692,7 @@ func deviceAuthorize() (*deviceAuthResponse, error) {
 		"client_id": {cfg.OIDCClientID},
 		"scope":     {cfg.OIDCScopes},
 	}
-	resp, err := http.PostForm(cfg.AutheliaBaseURL+"/api/oidc/device-authorization", form)
+	resp, err := providerHTTPClient.PostForm(cfg.AutheliaBaseURL+"/api/oidc/device-authorization", form)
 	if err != nil {
 		return nil, err
 	}
@@ -934,7 +934,7 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 		"device_code": {deviceCode},
 		"client_id":   {cfg.OIDCClientID},
 	}
-	resp, err := http.PostForm(cfg.AutheliaBaseURL+"/api/oidc/token", form)
+	resp, err := providerHTTPClient.PostForm(cfg.AutheliaBaseURL+"/api/oidc/token", form)
 	if err != nil {
 		return "", "", outcomeAmbiguous, 0, err
 	}
@@ -978,7 +978,7 @@ func pollToken(deviceCode string) (accessToken string, oauthErr string, outcome 
 func verifyUserinfo(accessToken string) (string, error) {
 	req, _ := http.NewRequest(http.MethodGet, cfg.AutheliaBaseURL+"/api/oidc/userinfo", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := providerHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
