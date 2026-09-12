@@ -1,3 +1,15 @@
+sddm-authelia-passkey (2.4.0-1) unstable; urgency=medium
+
+  * Add capability discovery: a read-only, unauthenticated
+    GET /capabilities broker endpoint reporting oidc_ready (fresh,
+    throttled reachability check), fido2_wired (whether pam_u2f.so is
+    actually present in /etc/pam.d/sddm), and smartcard_ready (always
+    false - not implemented). The native theme polls this
+    independently of any login flow and shows a small informational
+    hint only - never a flow-control or security decision.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 19:05:12 +0200
+
 sddm-authelia-passkey (2.3.0-1) unstable; urgency=medium
 
   * Add sddm-authelia-passkey-admin doctor (alias diagnose): a

@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.4.0] - 2026-09-12
+
+### Added
+- **Capability discovery**: a read-only, unauthenticated
+  `GET /capabilities` broker endpoint reporting `oidc_ready` (fresh,
+  throttled reachability check against the configured identity
+  provider), `fido2_wired` (whether `pam_u2f.so` is actually present in
+  `/etc/pam.d/sddm`), and `smartcard_ready` (always `false` - not
+  implemented). The native theme polls this independently of any login
+  flow and uses it only to show a small informational hint when a
+  hardware key is wired up - never to gate any flow-control or security
+  decision. See `docs/capability-negotiation.md`. The full generic
+  mechanism-selection framework (password/passkey/eIdP/smartcard as
+  standardized, negotiated mechanisms with dedicated UI states) remains
+  design-only, deferred to a later iteration.
+
 ## [2.3.0] - 2026-09-12
 
 ### Added

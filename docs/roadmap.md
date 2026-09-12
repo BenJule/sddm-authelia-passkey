@@ -94,16 +94,19 @@ it; see `docs/doctor.md`. A versioned overall config schema, an
 upgrade/downgrade compatibility matrix, and pre-change lockout
 simulation remain design-only, deferred to a later iteration.
 
-### v2.4.0 - SDDM rich authentication UI (design only)
+### v2.4.0 - SDDM rich authentication UI (capability discovery implemented)
 
-Direction: a generic mechanism-selection presentation (password /
-passkey / eIdP / smartcard) rather than a single-purpose QR patch into
-one theme - conceptually similar to modern SSSD PAM mechanism-selection
-UX. Device-flow presentation (QR, user code, verification URI, timeout,
-status, cancel, retry) and local-passkey presentation (key connected,
-PIN/touch requested, success/failure) are different concerns and should
-stay visibly distinct in the UI rather than being forced into one
-control.
+Shipped a real, narrow subset: a read-only `GET /capabilities` broker
+endpoint (`oidc_ready`, `fido2_wired`, `smartcard_ready` - always
+`false`, honestly not implemented) polled independently of any login
+flow, driving a small informational hint in the native theme only -
+never a flow-control or security decision. See
+`docs/capability-negotiation.md`. The full generic mechanism-selection
+presentation (password / passkey / eIdP / smartcard as standardized,
+negotiated mechanisms, conceptually similar to modern SSSD PAM
+mechanism-selection UX, with dedicated PIN/touch/key-connected and
+smartcard UI states) remains design-only, deferred to a later
+iteration.
 
 ### v2.5.0 - Native SSSD passkey integration (design only)
 
