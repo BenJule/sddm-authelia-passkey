@@ -105,6 +105,27 @@ allowed_groups=linux-login
 # of guessing what was meant.
 require_group_match=true
 
+# The following two settings are only consulted when account_source=nss,
+# and are both off/empty by default (zero behavior change unless opted
+# in). See docs/identity-binding.md for the real-world problem they
+# solve: an ordinary NSS lookup (getpwnam) silently prefers whichever
+# source nsswitch.conf lists first when the same username exists in
+# more than one (e.g. a stale local /etc/passwd entry and a real
+# directory/AD account) - there is no signal from that single lookup
+# about which source actually answered.
+#
+# If true, refuse a username that resolves to different UIDs via the
+# "files" and "sss" NSS services (an actual local/directory identity
+# collision) rather than silently authorizing whichever nsswitch.conf
+# happens to prefer.
+reject_local_shadowing=false
+
+# If set to "sssd", refuse any username that does not resolve via the
+# "sss" NSS service at all - i.e. only genuine directory/AD accounts are
+# eligible, even if a same-named local account exists. Leave empty
+# (default) for no such restriction. No other value is accepted.
+required_identity_source=
+
 # Device-authorization approval marker lifetime, in seconds. A completed
 # approval must be consumed by PAM within this window or it is discarded.
 approval_ttl_seconds=30
