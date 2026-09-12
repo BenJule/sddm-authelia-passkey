@@ -69,15 +69,16 @@ Authentik instance and a live Samba AD domain (see
 remain explicitly not tested (no instance/device available), not
 silently waived.
 
-### v2.2.0 - Identity binding & local-shadowing protection (design only)
+### v2.2.0 - Identity binding & local-shadowing protection (implemented)
 
 See `docs/identity-binding.md`. Closes a real finding from v2.1.0's
 validation: NSS silently prefers a local `/etc/passwd` entry over a
 same-named directory account depending on `nsswitch.conf` order, with
 no reliable signal from an ordinary `getpwnam` call about which source
-actually answered. Design direction: NSS service-scoped queries
-(`getent -s files`/`getent -s sss`) to detect and refuse a genuine
-collision, not a UID-range heuristic.
+actually answered. Shipped `reject_local_shadowing`/
+`required_identity_source` config keys, using NSS service-scoped
+queries (`getent -s files`/`getent -s sss`) to detect and refuse a
+genuine collision, not a UID-range heuristic.
 
 ### v2.3.0 - Debian production packaging & safe deployment (design only)
 

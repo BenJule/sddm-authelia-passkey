@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.2.0] - 2026-09-12
+
+### Added
+- **Security**: new `reject_local_shadowing` and `required_identity_source`
+  config keys (`account_source=nss` only, both off/empty by default -
+  zero behavior change unless opted in). Closes a real gap found during
+  v2.1.0's real-infrastructure validation: an ordinary NSS lookup
+  (`getpwnam`) silently prefers whichever source `/etc/nsswitch.conf`
+  lists first when a username exists in more than one (e.g. a stale
+  local `/etc/passwd` entry and a real directory/AD account), with no
+  signal about which source actually answered. `reject_local_shadowing=true`
+  refuses a username that resolves to disagreeing UIDs via the `files`
+  and `sss` NSS services specifically (a proven collision, not a
+  UID-range heuristic); `required_identity_source=sssd` refuses any
+  username that does not resolve via `sss` at all. See
+  `docs/identity-binding.md`.
+
 ## [2.1.0] - 2026-09-12
 
 ### Fixed

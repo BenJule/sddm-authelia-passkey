@@ -1,10 +1,13 @@
-# Identity binding & local-shadowing protection (v2.2 design)
+# Identity binding & local-shadowing protection (v2.2)
 
-**Status: design only, not yet implemented.** This document analyzes a
-real gap found during v2.1.0's real-infrastructure validation and lays
-out the direction for v2.2, per the project's "no vorzeitige
-Grossmigration" rule: v2.1.0 fixes the `verification_uri` trust model
-only; this document does not change any code.
+**Status: implemented in v2.2.0** (`reject_local_shadowing`,
+`required_identity_source` config keys; `checkIdentityProvenance()` in
+`src/broker/identity_provenance.go`, wired into `authorizeAccount()` for
+`account_source=nss`). This document originally analyzed a real gap
+found during v2.1.0's real-infrastructure validation; the "Candidate
+config surface" section below is now the shipped surface for the first
+two keys. `expected_directory_domain` remains design-only, deferred to
+a later milestone (see "Explicitly out of scope" at the end).
 
 ## The finding
 
@@ -81,37 +84,61 @@ username, the direction for v2.2 is:
    subject to `minimum_uid`/`deny_users`/`allowed_groups` exactly as
    now) - this case does not change.
 
-## Candidate config surface (not yet implemented)
+## Config surface (v2.2.0)
 
-Three complementary knobs, to be designed together rather than in
-isolation, each only consulted when `account_source=nss`:
+Two knobs shipped in v2.2.0, both only consulted when
+`account_source=nss`, both off/empty by default (zero behavior change
+unless opted in):
 
 - `reject_local_shadowing=true` - refuse (fail closed) any username
-  that resolves in *both* `files` and `sss` with disagreeing identity,
+  that resolves in *both* `files` and `sss` with disagreeing UID,
   regardless of which one ordinary `getpwnam` would have preferred.
-  This directly closes the finding above.
+  This directly closes the finding above. Same UID from both sources,
+  directory-only, or local-only are all still allowed - only a genuine
+  disagreement is refused.
 - `required_identity_source=sssd` - a stricter mode: refuse a username
   at all unless it resolves via `sss` specifically, independent of
   whether a `files` entry also exists. Useful for deployments that want
   the directory to be the *only* source of truth for the passwordless
-  path, full stop.
+  path, full stop. The only accepted value; anything else is rejected
+  at config-load time.
+
+Both settings are independent and can be combined. Neither is accepted
+when `account_source=local` (rejected at config-load time, since
+`account_source=local` never consults NSS at all). A lookup failure on
+either NSS service fails closed (an error, never treated as "no
+collision").
+
+Implementation: `checkIdentityProvenance(username)` in
+`src/broker/identity_provenance.go` shells out to `getent -s <service>
+passwd <username>` for `files` and `sss` independently (a `var` func,
+`nssServiceLookup`, stubbed in tests) - not a new identity store, just
+the same authoritative per-service NSS query described above, called
+from Go instead of a shell one-liner.
+
+Deferred to a later milestone, not part of v2.2.0:
+
 - `expected_directory_domain=ad.s3-dev.ovh` - for a future multi-domain
   SSSD configuration (v2.6 Multi-IdP direction), pin eligibility to a
   specific SSSD domain rather than "any domain SSSD happens to serve" -
-  not required for the single-domain case v2.1.0 validated against, but
-  worth designing the config key now rather than retrofitting it later.
+  not required for the single-domain case validated against here.
 
-None of these change `account_source=local`'s behavior, and none
-require a new UID/GID store of this project's own - they only ever
-*ask* NSS/SSSD more precisely than a bare `getpwnam` does, per this
+None of this changes `account_source=local`'s behavior, and none of it
+requires a new UID/GID store of this project's own - it only ever
+*asks* NSS/SSSD more precisely than a bare `getpwnam` does, per this
 project's standing architecture rule that SSSD/NSS stays the
 authoritative Unix identity source (see `docs/architecture.md`).
 
-## Explicitly out of scope for this design
+## Explicitly out of scope for v2.2.0
 
 - Renumbering, renaming, or otherwise mutating any existing local or
-  directory account.
+  directory account (the real `benlue` local/AD collision on VM124 was
+  never touched to build or validate this feature).
 - A new identity cache/store maintained by the broker itself.
 - Implicit fallback: this is about **detecting and refusing** an
   ambiguous match, never about silently picking one of two candidates
   by some new rule.
+- Case/domain/realm normalization, `expected_directory_domain`,
+  explain-output for identity binding decisions, and a dedicated
+  privacy boundary for provenance logging - all remain open items for a
+  later milestone.
