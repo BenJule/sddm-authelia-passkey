@@ -17,7 +17,8 @@ Item {
 
     property bool panelOpen:
         !["idle", "password", "invalid_branding_asset",
-          "long_branding", "no_avatar"].includes(stateName)
+          "long_branding", "no_avatar", "smartphone_unreachable",
+          "fido2_available"].includes(stateName)
 
     ListModel {
         id: users
@@ -99,6 +100,16 @@ Item {
         property int retryAfterSeconds: 0
         property int retryCooldownRemaining:
             stateName === "rate_limited" ? 7 : 0
+
+        // v2.9.0 capability-driven mechanism offering (see
+        // docs/mechanism-selection.md) - mirrored here only for the two
+        // dedicated states below; every other state keeps the same
+        // oidcReady=true/fido2Wired=false defaults it always rendered
+        // with, so none of the 16 pre-existing baselines change.
+        property bool oidcReady:
+            stateName !== "smartphone_unreachable"
+        property bool fido2Wired:
+            stateName === "fido2_available"
     }
 
     Rectangle {
@@ -232,6 +243,27 @@ Item {
                 Layout.fillWidth: true
                 primary: true
                 text: "Mit Smartphone anmelden"
+                enabled: controller.oidcReady
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+                visible: !controller.oidcReady
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: "Smartphone-Anmeldung derzeit nicht erreichbar"
+                color: "#a2aebb"
+                font.pixelSize: 9
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+                visible: controller.fido2Wired
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: "Hardware-Sicherheitsschlüssel verfügbar - einfach berühren"
+                color: "#5fb88a"
+                font.pixelSize: 9
             }
 
             QQC2.Label {

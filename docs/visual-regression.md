@@ -16,7 +16,7 @@ The suite uses `sddm-greeter-qt6 --test-mode` under Xvfb with:
 
 ## Coverage
 
-All 16 required visual states are baseline-tested at `1280x720 @ 1.00`:
+All 18 required visual states are baseline-tested at `1280x720 @ 1.00`:
 
 - idle
 - password
@@ -34,6 +34,8 @@ All 16 required visual states are baseline-tested at `1280x720 @ 1.00`:
 - long branding
 - no avatar
 - directory account
+- smartphone unreachable (v2.9.0 - `oidc_ready=false`, button disabled with visible reason)
+- FIDO2 available (v2.9.0 - `fido2_wired=true`, hint shown on the main screen)
 
 Representative matrix states `idle`, `waiting`, `offline` and
 `long_branding` are additionally tested at:
@@ -41,7 +43,7 @@ Representative matrix states `idle`, `waiting`, `offline` and
 - `1920x1080 @ 1.00`
 - `1920x1080 @ 1.25`
 
-Total automated visual cases: 24.
+Total automated visual cases: 26.
 
 ## Determinism
 
