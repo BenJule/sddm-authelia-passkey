@@ -108,7 +108,7 @@ mechanism-selection UX, with dedicated PIN/touch/key-connected and
 smartcard UI states) remains design-only, deferred to a later
 iteration.
 
-### v2.5.0 - Native SSSD passkey integration (design only)
+### v2.5.0 - Native SSSD passkey integration (investigated, blocked)
 
 Direction: hardware FIDO2 via `SDDM -> PAM -> SSSD -> libfido2`, kept
 architecturally separate from the OIDC broker (`docs/fido2.md`'s
@@ -116,6 +116,16 @@ existing `pam_u2f.so` stack is the current, shipped, simpler
 alternative). Trust boundary: the OIDC broker is remote/web
 authentication; SSSD passkey support is local hardware authentication -
 these must not be blurred into one code path.
+
+Real investigation on VM124 (see `docs/sssd-native-passkey.md`) found a
+harder blocker than the already-known absence of physical FIDO2
+hardware: Debian 13's own SSSD package (`2.10.1-2+b1`) does not appear
+to include compiled passkey support at all - `pam_sss.so` has no
+libfido2 linkage and no `passkey_child` helper binary exists, despite
+`libfido2` itself being installed and `sssd.conf`'s man page
+documenting the relevant config directives. No code implemented in
+this milestone; the existing `pam_u2f.so` path remains the recommended,
+real, shipped hardware-key mechanism.
 
 ### v2.6.0 - Multi-IdP / provider hardening (design only)
 
