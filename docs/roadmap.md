@@ -200,6 +200,20 @@ baselines were generated in a real `debian:13` container matching CI
 exactly, with all 24 pre-existing baselines confirmed byte-identical
 against the harness change first, proving zero regression.
 
+### v2.11.0 - Generic mechanism data model, first real interface (implemented)
+
+Introduced `theme/native/components/MechanismModel.qml`: a single,
+shared, documented `Mechanism` data model (`password`/`eidp`/`passkey`/
+`smartcard`, each with `kind`/`available`/`ready`/`statusHint`) that now
+backs the v2.9.0 smartphone button/hint-label bindings, replacing two
+separate raw property reads with one named lookup. A pure,
+byte-identical refactor: proven with the existing 26-case visual
+regression suite (mirrored into the test harness, re-run in a real
+`debian:13` container) showing `CHANGED=0` across every case. See
+`docs/generic-mechanism-model.md` for the full interface and what
+remains genuinely unwired (`password`/`smartcard` are represented in
+the model but not yet UI-driven by it).
+
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Direction: this project's OIDC integration becomes one provider within
@@ -213,9 +227,11 @@ and implementation work (not itself blocked, just not yet done), and
 three external blockers only resolvable outside this project's own
 code - no real Keycloak instance for provider-conformance testing, no
 physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
-compiled passkey/libfido2 support. See the private roadmap for the
-full, honest gap assessment; this milestone will not be marked closed
-until it actually is.
+compiled passkey/libfido2 support. As of v2.11.0, the mechanism data
+model itself is real (see above) - what remains is wiring
+`password`/`smartcard` through it and the three external blockers. See
+the private roadmap for the full, honest gap assessment; this
+milestone will not be marked closed until it actually is.
 
 ## Security invariants (apply across every milestone above)
 
