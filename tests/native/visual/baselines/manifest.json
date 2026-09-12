@@ -4,8 +4,8 @@
   "backend": "xcb+xvfb+software",
   "font": "Noto Sans",
   "dpi": 96,
-  "state_count": 16,
-  "case_count": 24,
+  "state_count": 18,
+  "case_count": 26,
   "cases": [
     {
       "state": "alternate_code",
@@ -46,6 +46,14 @@
       "height": 720,
       "scale": 1.0,
       "sha256": "de1b281d5b9fd4860eae93a5285ca153e4db3ba132181395e1456ac1b5e937ec"
+    },
+    {
+      "state": "fido2_available",
+      "file": "1280x720@1.00/fido2_available.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "44bb30ef9dde9e0f134dd436436599b0343e1990b4ac81babef8797f7badd0f5"
     },
     {
       "state": "idle",
@@ -118,6 +126,14 @@
       "height": 720,
       "scale": 1.0,
       "sha256": "adce030d2e6c43222895c56553b041068671ed2ea5c1754b93f1c01ad07fb85c"
+    },
+    {
+      "state": "smartphone_unreachable",
+      "file": "1280x720@1.00/smartphone_unreachable.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "2748a01466f5fbdfcef71f7a5c71890497b27a0cc808ced1981f0de17a6741f5"
     },
     {
       "state": "starting",

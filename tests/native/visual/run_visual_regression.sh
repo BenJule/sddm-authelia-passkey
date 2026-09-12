@@ -20,7 +20,7 @@ ALL_STATES=(
     waiting alternate_code approved logging_in
     rate_limited offline denied expired
     invalid_branding_asset long_branding no_avatar
-    directory_account
+    directory_account smartphone_unreachable fido2_available
 )
 
 MATRIX_STATES=(
@@ -185,9 +185,9 @@ echo
 echo "VISUAL_PASS=$PASS"
 
 if [ "$STOP" -eq 0 ] &&
-   [ "$PASS" -eq 24 ]; then
-    echo "VISUAL_REGRESSION=24_OF_24_GREEN"
-    echo "VISUAL_STATES=16"
+   [ "$PASS" -eq 26 ]; then
+    echo "VISUAL_REGRESSION=26_OF_26_GREEN"
+    echo "VISUAL_STATES=18"
     echo "MATRIX_CASES=8"
     echo "FUZZ=6_PERCENT"
     echo "MAX_CHANGED_RATIO=1_PERCENT"

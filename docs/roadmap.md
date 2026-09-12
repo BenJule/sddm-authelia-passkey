@@ -190,6 +190,16 @@ so there is no "start passkey login" action a button could trigger).
 Not the full generic mechanism-selection framework v3.0.0 envisions -
 see that milestone for what remains.
 
+### v2.10.0 - Visual regression coverage for mechanism offering (implemented)
+
+Extended the v1.15.0 Native Theme visual regression framework with two
+new deterministic baseline states covering v2.9.0's capability-driven
+mechanism offering (`smartphone_unreachable`, `fido2_available`) - now
+18 states / 26 cases total. No functional/shipped theme code changed;
+baselines were generated in a real `debian:13` container matching CI
+exactly, with all 24 pre-existing baselines confirmed byte-identical
+against the harness change first, proving zero regression.
+
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Direction: this project's OIDC integration becomes one provider within
