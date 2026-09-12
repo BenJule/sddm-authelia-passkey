@@ -62,7 +62,11 @@ or implies smartcard support.
   - see above).
 - Hotplug-driven mechanism re-evaluation beyond the existing 20-second
   poll.
-- A visual regression suite for a mechanism/capability matrix.
+- ~~A visual regression suite for a mechanism/capability matrix~~ -
+  **closed as a follow-up**: two new deterministic baseline states
+  (`smartphone_unreachable`, `fido2_available`) were added to the
+  existing v1.15.0 visual regression framework, bringing it to 18
+  states / 26 cases. See `docs/visual-regression.md`.
 
 These, along with the three external blockers the private roadmap
 tracks (no real Keycloak instance, no physical FIDO2 key, and Debian

@@ -10,16 +10,16 @@ manifest = json.loads(
     (VISUAL / "baselines/manifest.json").read_text(encoding="utf-8")
 )
 
-if manifest["state_count"] != 16:
-    raise SystemExit("visual state count != 16")
+if manifest["state_count"] != 18:
+    raise SystemExit("visual state count != 18")
 
-if manifest["case_count"] != 24:
-    raise SystemExit("visual case count != 24")
+if manifest["case_count"] != 26:
+    raise SystemExit("visual case count != 26")
 
 pngs = list((VISUAL / "baselines").rglob("*.png"))
 
-if len(pngs) != 24:
-    raise SystemExit(f"baseline PNG count != 24: {len(pngs)}")
+if len(pngs) != 26:
+    raise SystemExit(f"baseline PNG count != 26: {len(pngs)}")
 
 for case in manifest["cases"]:
     path = VISUAL / "baselines" / case["file"]
@@ -60,6 +60,6 @@ for token in (
         raise SystemExit(f"workflow contract missing: {token}")
 
 print("VISUAL_REGRESSION_CONTRACT=GREEN")
-print("VISUAL_STATES=16")
-print("VISUAL_CASES=24")
+print("VISUAL_STATES=18")
+print("VISUAL_CASES=26")
 print("AUTHORITY_IN_HARNESS=NO")
