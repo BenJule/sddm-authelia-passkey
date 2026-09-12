@@ -19,6 +19,96 @@ func resetOIDCDiscoveryCache(t *testing.T) {
 	})
 }
 
+// --- issuer validation: the discovery document's own issuer claim must
+// match the configured discovery URL, not be trusted merely because it
+// arrived over the network (v2.1.0, following real Authentik validation
+// on VM124/lab infrastructure) -------------------------------------------
+
+func TestOIDCDiscover_MatchingIssuerAccepted(t *testing.T) {
+	resetOIDCDiscoveryCache(t)
+	cfg.ProviderKind = "oidc"
+	cfg.OIDCDiscoveryURL = "https://idp.example.invalid/.well-known/openid-configuration"
+	prev := fetchOIDCDiscovery
+	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
+		return &oidcDiscoveryDoc{
+			Issuer:                      "https://idp.example.invalid",
+			DeviceAuthorizationEndpoint: "https://idp.example.invalid/device",
+			TokenEndpoint:               "https://idp.example.invalid/token",
+			UserinfoEndpoint:            "https://idp.example.invalid/userinfo",
+		}, nil
+	}
+	t.Cleanup(func() { fetchOIDCDiscovery = prev })
+
+	if _, err := oidcDiscover(); err != nil {
+		t.Fatalf("matching issuer must be accepted: %v", err)
+	}
+}
+
+// Real-world quirk observed against Authentik in the v2.1.0 lab
+// validation: its discovery document reports a path-based issuer WITH a
+// trailing slash even though OpenID Connect Discovery 1.0 SS4.1 removes
+// that slash before appending the well-known suffix. A single optional
+// trailing slash must be tolerated on either side without relaxing
+// anything else about the comparison.
+func TestOIDCDiscover_IssuerTrailingSlashTolerated(t *testing.T) {
+	resetOIDCDiscoveryCache(t)
+	cfg.ProviderKind = "oidc"
+	cfg.OIDCDiscoveryURL = "https://idp.example.invalid/application/o/lab/.well-known/openid-configuration"
+	prev := fetchOIDCDiscovery
+	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
+		return &oidcDiscoveryDoc{
+			Issuer:                      "https://idp.example.invalid/application/o/lab/",
+			DeviceAuthorizationEndpoint: "https://idp.example.invalid/device",
+			TokenEndpoint:               "https://idp.example.invalid/token",
+			UserinfoEndpoint:            "https://idp.example.invalid/userinfo",
+		}, nil
+	}
+	t.Cleanup(func() { fetchOIDCDiscovery = prev })
+
+	if _, err := oidcDiscover(); err != nil {
+		t.Fatalf("issuer with a single extra trailing slash must be tolerated: %v", err)
+	}
+}
+
+func TestOIDCDiscover_MismatchedIssuerRejected(t *testing.T) {
+	resetOIDCDiscoveryCache(t)
+	cfg.ProviderKind = "oidc"
+	cfg.OIDCDiscoveryURL = "https://idp.example.invalid/.well-known/openid-configuration"
+	prev := fetchOIDCDiscovery
+	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
+		return &oidcDiscoveryDoc{
+			Issuer:                      "https://attacker.example.invalid",
+			DeviceAuthorizationEndpoint: "https://idp.example.invalid/device",
+			TokenEndpoint:               "https://idp.example.invalid/token",
+			UserinfoEndpoint:            "https://idp.example.invalid/userinfo",
+		}, nil
+	}
+	t.Cleanup(func() { fetchOIDCDiscovery = prev })
+
+	if _, err := oidcDiscover(); err == nil {
+		t.Fatal("a discovery document whose issuer does not match the configured discovery URL must be rejected")
+	}
+}
+
+func TestOIDCDiscover_MissingIssuerRejected(t *testing.T) {
+	resetOIDCDiscoveryCache(t)
+	cfg.ProviderKind = "oidc"
+	cfg.OIDCDiscoveryURL = "https://idp.example.invalid/.well-known/openid-configuration"
+	prev := fetchOIDCDiscovery
+	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
+		return &oidcDiscoveryDoc{
+			DeviceAuthorizationEndpoint: "https://idp.example.invalid/device",
+			TokenEndpoint:               "https://idp.example.invalid/token",
+			UserinfoEndpoint:            "https://idp.example.invalid/userinfo",
+		}, nil
+	}
+	t.Cleanup(func() { fetchOIDCDiscovery = prev })
+
+	if _, err := oidcDiscover(); err == nil {
+		t.Fatal("a discovery document with no issuer at all must be rejected, not silently trusted")
+	}
+}
+
 // --- dispatch: provider_kind=authelia (default) must never touch the
 // generic OIDC path at all -------------------------------------------------
 
@@ -106,6 +196,8 @@ func TestOIDCDiscover_CachedAfterFirstFetch(t *testing.T) {
 	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
 		calls++
 		return &oidcDiscoveryDoc{
+			Issuer:                      "https://idp.example.invalid",
+			AuthorizationEndpoint:       "https://idp.example.invalid/authorize",
 			DeviceAuthorizationEndpoint: "https://idp.example.invalid/device",
 			TokenEndpoint:               "https://idp.example.invalid/token",
 			UserinfoEndpoint:            "https://idp.example.invalid/userinfo",
@@ -147,6 +239,8 @@ func withMockOIDCProvider(t *testing.T, deviceAuthHandler, tokenHandler, userinf
 	prevFetch := fetchOIDCDiscovery
 	fetchOIDCDiscovery = func(string) (*oidcDiscoveryDoc, error) {
 		return &oidcDiscoveryDoc{
+			Issuer:                      srv.URL,
+			AuthorizationEndpoint:       srv.URL + "/protocol/openid-connect/auth",
 			DeviceAuthorizationEndpoint: srv.URL + "/protocol/openid-connect/auth/device",
 			TokenEndpoint:               srv.URL + "/protocol/openid-connect/token",
 			UserinfoEndpoint:            srv.URL + "/protocol/openid-connect/userinfo",

@@ -5,76 +5,8 @@ import (
 	"time"
 )
 
-const testHost = "idp.example.com"
-
-// --- URI validation ----------------------------------------------------
-
-func TestValidateVerificationURI_Valid(t *testing.T) {
-	got, err := validateVerificationURI(
-		"https://idp.example.com/consent/openid/device-authorization?user_code=ABCDEFGH",
-		testHost, false)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == "" {
-		t.Fatal("expected non-empty result")
-	}
-}
-
-func TestValidateVerificationURI_WrongScheme(t *testing.T) {
-	if _, err := validateVerificationURI("http://idp.example.com/consent/openid/device-authorization?user_code=ABCDEFGH", testHost, false); err == nil {
-		t.Fatal("expected rejection of http scheme")
-	}
-}
-
-func TestValidateVerificationURI_DevInsecureHTTPAllowsHTTP(t *testing.T) {
-	if _, err := validateVerificationURI("http://idp.example.com/consent/openid/device-authorization?user_code=ABCDEFGH", testHost, true); err != nil {
-		t.Fatalf("dev mode should accept http: %v", err)
-	}
-	if _, err := validateVerificationURI("https://idp.example.com/consent/openid/device-authorization?user_code=ABCDEFGH", testHost, true); err == nil {
-		t.Fatal("dev mode should reject https (scheme must match configured mode exactly)")
-	}
-}
-
-func TestValidateVerificationURI_WrongHost(t *testing.T) {
-	if _, err := validateVerificationURI("https://evil.example.com/consent/openid/device-authorization?user_code=ABCDEFGH", testHost, false); err == nil {
-		t.Fatal("expected rejection of unexpected host")
-	}
-}
-
-func TestValidateVerificationURI_WrongPath(t *testing.T) {
-	if _, err := validateVerificationURI("https://idp.example.com/api/oidc/token?user_code=ABCDEFGH", testHost, false); err == nil {
-		t.Fatal("expected rejection of unexpected path")
-	}
-}
-
-func TestValidateVerificationURI_ExtraParam(t *testing.T) {
-	if _, err := validateVerificationURI("https://idp.example.com/consent/openid/device-authorization?user_code=ABCDEFGH&evil=1", testHost, false); err == nil {
-		t.Fatal("expected rejection of unexpected extra query parameter")
-	}
-}
-
-func TestValidateVerificationURI_Newline(t *testing.T) {
-	if _, err := validateVerificationURI("https://idp.example.com/consent/openid/device-authorization?user_code=AB\nCD", testHost, false); err == nil {
-		t.Fatal("expected rejection of embedded newline")
-	}
-}
-
-func TestValidateVerificationURI_Oversized(t *testing.T) {
-	long := "https://idp.example.com/consent/openid/device-authorization?user_code="
-	for len(long) < 600 {
-		long += "A"
-	}
-	if _, err := validateVerificationURI(long, testHost, false); err == nil {
-		t.Fatal("expected rejection of oversized URI")
-	}
-}
-
-func TestValidateVerificationURI_MissingUserCode(t *testing.T) {
-	if _, err := validateVerificationURI("https://idp.example.com/consent/openid/device-authorization", testHost, false); err == nil {
-		t.Fatal("expected rejection of missing user_code")
-	}
-}
+// URI validation tests moved to verification_uri_test.go (v2.1.0 origin-
+// based redesign - see that file's doc comment for why).
 
 // --- username sanitization (path traversal / injection defense) --------
 
