@@ -1,3 +1,14 @@
+sddm-authelia-passkey (2.5.0-1) unstable; urgency=medium
+
+  * Investigate native SSSD passkey integration (no functional
+    change): real investigation on lab VM124 found that Debian 13's
+    SSSD package does not appear to include compiled passkey/libfido2
+    support, independent of the already-known absence of physical
+    FIDO2 hardware. See docs/sssd-native-passkey.md. The existing
+    pam_u2f.so hardware-key path remains the real, shipped mechanism.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 19:25:54 +0200
+
 sddm-authelia-passkey (2.4.0-1) unstable; urgency=medium
 
   * Add capability discovery: a read-only, unauthenticated
