@@ -3,6 +3,28 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+- **Security/interop**: `provider_kind=oidc`'s `verification_uri`
+  validation no longer hardcodes Authelia's exact URL shape
+  (`/consent/openid/device-authorization?user_code=...`). It now
+  validates the returned URI's network **origin** against a set derived
+  only from the already-validated discovery document (`issuer`,
+  `device_authorization_endpoint`, `authorization_endpoint`) - never
+  from the device-authorization response itself - while allowing any
+  provider-specific path/query shape. `token_endpoint`/`jwks_uri` are
+  deliberately excluded from the trusted set. Found via real validation
+  against a live Authentik instance (v2.1.0); every prior test exercised
+  this only through mocks that happened to be Authelia-shaped, so the
+  gap was never caught before. `provider_kind=authelia`'s trust model
+  (a single explicitly-configured `allowed_verification_host` origin)
+  is unchanged.
+- Discovery documents are now checked for a matching `issuer` before
+  being trusted at all (OpenID Connect Discovery 1.0 SS4.3), tolerating
+  the single optional trailing slash some real providers (Authentik)
+  include on a path-based issuer.
+
 ## [2.0.0] - 2026-09-12
 
 ### Changed
