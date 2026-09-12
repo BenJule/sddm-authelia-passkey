@@ -3,7 +3,7 @@
 sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
 .SH SYNOPSIS
 .B sddm-authelia-passkey-admin
-.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status | branding-status | doctor | diagnose }
+.RI { status | health | test-config | provider-test | list-users | audit-log | mode-status | migrate-status | branding-status | doctor | diagnose }
 .RI [ \-\-explain | \-\-json ]
 .br
 .B sddm-authelia-passkey-admin apply-mode
@@ -38,6 +38,20 @@ and exit, without starting the broker or touching PAM/systemd.
 Delegates to the broker binary's own
 .B \-\-check\-config
 flag. Does not require root.
+.TP
+.B provider-test
+.RI [ \-\-json ]
+Real, live conformance check against the currently configured identity
+provider: discovery, issuer binding, device endpoint, verification_uri
+trust origin, JWKS reachability, and RFC 8628
+.B authorization_pending
+behavior - using the exact same production code every real login flow
+uses. Creates one real, short-lived, unapproved device-authorization
+session (it simply expires) but never requires human interaction.
+Delegates to the broker binary's own
+.B \-\-provider\-test
+flag. Does not require root. See
+.IR /usr/share/doc/sddm-authelia-passkey/provider-conformance.md .
 .TP
 .B list-users
 Show which accounts are currently eligible for the passwordless path
@@ -129,4 +143,5 @@ PAM. Requires root.
 .IR /usr/share/doc/sddm-authelia-passkey/rollback.md ,
 .IR /usr/share/doc/sddm-authelia-passkey/theme-migration.md ,
 .IR /usr/share/doc/sddm-authelia-passkey/native-theme-hardening.md ,
-.IR /usr/share/doc/sddm-authelia-passkey/doctor.md
+.IR /usr/share/doc/sddm-authelia-passkey/doctor.md ,
+.IR /usr/share/doc/sddm-authelia-passkey/provider-conformance.md

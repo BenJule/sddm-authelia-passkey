@@ -247,6 +247,8 @@ func markPendingFlowCancelled(fs *flowState) bool {
 
 func main() {
 	checkConfig := flag.Bool("check-config", false, "validate "+configPath+" and exit - no root required, no server started, no PAM/systemd touched. Used by the admin CLI's test-config subcommand.")
+	providerTest := flag.Bool("provider-test", false, "run a real, live conformance check against the currently configured identity provider and exit - no root required, no server started, no PAM/systemd touched. See docs/provider-conformance.md. Combine with --json for machine-readable output.")
+	jsonOutput := flag.Bool("json", false, "with --provider-test, emit a single JSON array instead of plain text")
 	flag.Parse()
 
 	if *checkConfig {
@@ -262,6 +264,44 @@ func main() {
 		fmt.Printf("CONFIG_VALID account_source=%s provider_kind=%s account_count=%d\n",
 			c.AccountSource, providerKind, len(c.AllowedUsers))
 		os.Exit(0)
+	}
+
+	if *providerTest {
+		c, err := LoadConfig(configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "CONFIG_INVALID: %v\n", err)
+			os.Exit(1)
+		}
+		cfg = c
+		checks := runProviderConformanceTest()
+		allGreen := true
+		if *jsonOutput {
+			fmt.Print("[")
+			for i, c := range checks {
+				if i > 0 {
+					fmt.Print(",")
+				}
+				fmt.Printf("{\"name\":%q,\"status\":%q,\"detail\":%q}", c.Name, c.Status, c.Detail)
+				if c.Status == "RED" {
+					allGreen = false
+				}
+			}
+			fmt.Println("]")
+		} else {
+			for _, c := range checks {
+				fmt.Printf("%s=%s\n", c.Name, c.Status)
+				if c.Detail != "" {
+					fmt.Printf("  -> %s\n", c.Detail)
+				}
+				if c.Status == "RED" {
+					allGreen = false
+				}
+			}
+		}
+		if allGreen {
+			os.Exit(0)
+		}
+		os.Exit(1)
 	}
 
 	if os.Geteuid() != 0 {
