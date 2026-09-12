@@ -72,3 +72,13 @@ These, along with the three external blockers the private roadmap
 tracks (no real Keycloak instance, no physical FIDO2 key, and Debian
 13's SSSD package lacking compiled passkey support), are why v3.0.0
 itself remains a gate rather than something this increment closes.
+
+## Update (v2.11.0)
+
+The button/hint-label bindings this document describes are now backed
+by a real, shared `Mechanism` data model rather than the two raw
+property reads described above - see
+`docs/generic-mechanism-model.md` for the full interface and what is
+still genuinely unwired (`password`/`smartcard` are represented in the
+model but not yet UI-driven by it). This was a pure refactor: nothing
+in this document's behavioral description changed.

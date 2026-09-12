@@ -3,6 +3,30 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.11.0] - 2026-09-13
+
+### Added
+- Introduced `theme/native/components/MechanismModel.qml`: a single,
+  documented `Mechanism` data model (`password`/`eidp`/`passkey`/
+  `smartcard`, each with `kind`/`available`/`ready`/`statusHint`
+  fields) that now backs the v2.9.0 smartphone button/hint-label
+  bindings in `theme/native/Main.qml`, replacing two separate raw
+  property reads (`smartphoneFlow.oidcReady`/`fido2Wired`) with one
+  named lookup. A real first step of v3.0.0's generic
+  mechanism-selection framework (see `docs/generic-mechanism-model.md`
+  for the full interface and what remains unwired -
+  `password`/`smartcard` are represented in the model but not yet
+  UI-driven by it).
+- New `tests/native/tst_MechanismModel.qml` unit test suite for the
+  model.
+
+### Changed
+- This was implemented and verified as a pure, byte-identical UI
+  refactor: the existing 26-case visual regression suite was mirrored
+  onto the test harness and re-run in a real `debian:13` container,
+  showing `CHANGED=0` across every case. No rendered/functional
+  behavior changed.
+
 ## [2.10.0] - 2026-09-12
 
 ### Added

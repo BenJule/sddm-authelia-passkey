@@ -75,6 +75,17 @@ Item {
             }
     }
 
+    // v2.11.0: the first real increment of a stable, documented
+    // mechanism-selection interface (docs/generic-mechanism-model.md) -
+    // a single source of truth for every mechanism's availability/
+    // readiness, read below instead of each UI element wiring its own
+    // ad-hoc property. Never gates an authentication decision itself.
+    MechanismModel {
+        id: mechanismModel
+
+        smartphoneFlow: smartphoneFlow
+    }
+
     Connections {
         target: sddm
 
@@ -699,10 +710,10 @@ Item {
                 // either way.
                 enabled:
                     userChooser.selectedUsername.length > 0
-                    && smartphoneFlow.oidcReady
+                    && mechanismModel.mechanism("eidp").ready
 
                 Accessible.description:
-                    smartphoneFlow.oidcReady
+                    mechanismModel.mechanism("eidp").ready
                         ? ""
                         : qsTr(
                             "Derzeit nicht erreichbar"
@@ -716,7 +727,7 @@ Item {
                 Layout.fillWidth: true
 
                 visible:
-                    !smartphoneFlow.oidcReady
+                    !mechanismModel.mechanism("eidp").ready
 
                 horizontalAlignment:
                     Text.AlignHCenter
@@ -724,9 +735,7 @@ Item {
                 wrapMode: Text.WordWrap
 
                 text:
-                    qsTr(
-                        "Smartphone-Anmeldung derzeit nicht erreichbar"
-                    )
+                    mechanismModel.mechanism("eidp").statusHint
 
                 color: "#a2aebb"
 
@@ -739,7 +748,7 @@ Item {
                 Layout.fillWidth: true
 
                 visible:
-                    smartphoneFlow.fido2Wired
+                    mechanismModel.mechanism("passkey").ready
 
                 horizontalAlignment:
                     Text.AlignHCenter
@@ -747,9 +756,7 @@ Item {
                 wrapMode: Text.WordWrap
 
                 text:
-                    qsTr(
-                        "Hardware-Sicherheitsschlüssel verfügbar - einfach berühren"
-                    )
+                    mechanismModel.mechanism("passkey").statusHint
 
                 color: "#5fb88a"
 
