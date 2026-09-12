@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.9.0] - 2026-09-12
+
+### Added
+- **Capability-driven mechanism offering** (first real increment of
+  the generic mechanism-selection framework): the "Mit Smartphone
+  anmelden" button is now disabled, with a visible reason, whenever
+  `oidc_ready` is `false` (previously only an informational hint was
+  shown, the button stayed clickable regardless). The FIDO2-available
+  hint moved to the main login screen so it is visible without
+  opening the smartphone panel. See `docs/mechanism-selection.md` for
+  scope, including why hardware-key login has no selectable UI action
+  to bind at all (`pam_u2f.so` tries silently ahead of both other
+  paths in PAM). Not the full generic mechanism-selection framework;
+  no security decision is affected - capability data continues to
+  drive UX offering only, never authorization.
+
 ## [2.8.0] - 2026-09-12
 
 ### Fixed

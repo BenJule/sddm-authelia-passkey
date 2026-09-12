@@ -69,11 +69,13 @@ preflight decision.** Concretely here:
 
 - A generic `PASSWORD`/`PASSKEY`/`EIDP`/`SMARTCARD` mechanism
   abstraction layer.
-- Capability-driven *offering* of mechanisms (i.e. actually hiding/
-  showing entire login paths based on capability state) - today's
-  `fido2_wired`/`oidc_ready` only drive a small text hint, never
-  whether the smartphone panel or password field themselves appear.
-- Dedicated Passkey PIN/Touch/Key-connected UI states.
+- ~~Capability-driven *offering* of mechanisms~~ - **closed in v2.9.0**:
+  the smartphone/EIdP button is now disabled (with a visible reason)
+  when `oidc_ready` is false, rather than only showing a text hint. See
+  `docs/mechanism-selection.md`.
+- Dedicated Passkey PIN/Touch/Key-connected UI states - still not
+  applicable; see `docs/mechanism-selection.md`'s explanation of why
+  hardware-key login has no selectable UI action at all.
 - Any smartcard/PKCS#11 implementation whatsoever.
 - Hotplug/dynamic capability re-negotiation beyond the existing 20s
   poll.
