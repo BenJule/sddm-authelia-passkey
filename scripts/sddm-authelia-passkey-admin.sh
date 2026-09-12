@@ -27,6 +27,12 @@
 #                  ownership/symlink/writability and neutralizes it if
 #                  found (delegates to validate-branding-overrides.sh;
 #                  also runs automatically on every install/upgrade)
+#   doctor, diagnose - comprehensive read-only production-readiness
+#                  check (SDDM/PAM/broker/OIDC discovery/JWKS/NSS/SSSD/
+#                  identity provenance/user collisions/break-glass,
+#                  aggregated into a single LOGIN_ENABLEMENT verdict);
+#                  optional --explain (adds a reason line per check) or
+#                  --json (machine-readable) - delegates to doctor.sh
 set -euo pipefail
 
 CONFIG=/etc/sddm-authelia-passkey/config.conf
@@ -43,7 +49,7 @@ else
 fi
 
 usage() {
-    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status|branding-status}" >&2
+    echo "usage: $0 {status|health|test-config|list-users|audit-log|mode-status|apply-mode|migrate-preflight|migrate|rollback-migration|migrate-resume|migrate-status|branding-status|doctor|diagnose} [--explain|--json]" >&2
     exit 1
 }
 
@@ -241,6 +247,17 @@ audit-log)
     # prefix (e.g. "2026/09/10 02:41:53 SECURITY: ..."), so the pattern
     # must not anchor at the start of the line.
     exec journalctl -u sddm-authelia-passkey-broker --no-pager -o cat -g 'SECURITY:'
+    ;;
+
+doctor|diagnose)
+    [ "$(id -u)" -eq 0 ] || { echo "must run as root"; exit 1; }
+    [ -f "$SHARE_DIR/doctor.sh" ] || { echo "[FAIL] $SHARE_DIR/doctor.sh not found" >&2; exit 1; }
+    flag="${2:-}"
+    case "$flag" in
+        ""|--explain|--json) ;;
+        *) usage ;;
+    esac
+    exec bash "$SHARE_DIR/doctor.sh" "$flag"
     ;;
 
 *)

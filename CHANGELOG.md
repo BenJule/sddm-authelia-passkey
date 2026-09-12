@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.3.0] - 2026-09-12
+
+### Added
+- **`sddm-authelia-passkey-admin doctor`** (alias `diagnose`): a
+  read-only production-readiness diagnostic aggregating SDDM/PAM/broker
+  state with new checks - OIDC discovery/JWKS reachability, NSS/SSSD
+  state, identity-provenance config consistency, and a systematic
+  `files`-vs-`sss` UID-collision scan across every local account with
+  UID >= 1000 (the same real gap class `docs/identity-binding.md`
+  documents, found proactively rather than by accident) - into a single
+  `LOGIN_ENABLEMENT` verdict. Supports `--explain` (adds a reason line
+  per failing check) and `--json` (machine-readable) output. Never
+  writes anything, never restarts/enables/disables any service, never
+  touches PAM. See `docs/doctor.md`.
+
 ## [2.2.0] - 2026-09-12
 
 ### Added

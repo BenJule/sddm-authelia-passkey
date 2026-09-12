@@ -3,7 +3,8 @@
 sddm-authelia-passkey-admin \- read-only admin CLI for sddm-authelia-passkey
 .SH SYNOPSIS
 .B sddm-authelia-passkey-admin
-.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status | branding-status }
+.RI { status | health | test-config | list-users | audit-log | mode-status | migrate-status | branding-status | doctor | diagnose }
+.RI [ \-\-explain | \-\-json ]
 .br
 .B sddm-authelia-passkey-admin apply-mode
 .RI { native | compatibility | backend-only }
@@ -107,9 +108,25 @@ neutralize (move aside, never delete) anything found unsafe so the
 greeter always falls back to safe zero-config branding instead of
 trusting it. Runs automatically on every install/upgrade; safe to
 re-run at any time. Requires root.
+.TP
+.B doctor\fR, \fBdiagnose
+.RI [ \-\-explain | \-\-json ]
+Read-only production-readiness diagnostic: SDDM, PAM, broker config and
+liveness, OIDC discovery/JWKS reachability, NSS/SSSD state, identity
+provenance config consistency, and a systematic scan for local/directory
+username UID collisions, aggregated into a single
+.B LOGIN_ENABLEMENT
+verdict.
+.B \-\-explain
+adds a one-line reason under any check that is not GREEN;
+.B \-\-json
+emits a single machine-readable JSON object instead. Never writes
+anything, never restarts/enables/disables any service, never touches
+PAM. Requires root.
 .SH FILES
 .I /etc/sddm-authelia-passkey/config.conf
 .SH SEE ALSO
 .IR /usr/share/doc/sddm-authelia-passkey/rollback.md ,
 .IR /usr/share/doc/sddm-authelia-passkey/theme-migration.md ,
-.IR /usr/share/doc/sddm-authelia-passkey/native-theme-hardening.md
+.IR /usr/share/doc/sddm-authelia-passkey/native-theme-hardening.md ,
+.IR /usr/share/doc/sddm-authelia-passkey/doctor.md
