@@ -63,11 +63,26 @@ fi
 systemctl disable --now sddm-authelia-passkey-kwallet-secretd.service 2>/dev/null || true
 systemctl disable --now sddm-authelia-passkey-broker.service 2>/dev/null || true
 
-replace_sddm_theme_current /etc/sddm.conf debian-breeze-authelia-passkey debian-breeze
-for f in /etc/sddm.conf.d/*.conf; do
-    [ -e "$f" ] || continue
-    replace_sddm_theme_current "$f" debian-breeze-authelia-passkey debian-breeze
-done
+THEME_MODE_STATE=/var/lib/sddm-authelia-passkey/theme-mode/state.conf
+
+if [ -f "$THEME_MODE_STATE" ]; then
+    [ -f "$SCRIPT_DIR/theme-mode.sh" ] || {
+        echo "theme-mode state exists but theme-mode.sh is unavailable" >&2
+        false
+    }
+
+    bash "$SCRIPT_DIR/theme-mode.sh" apply backend-only
+    echo "THEME_ROLLBACK=MANAGED"
+else
+    replace_sddm_theme_current /etc/sddm.conf debian-breeze-authelia-passkey debian-breeze
+
+    for f in /etc/sddm.conf.d/*.conf; do
+        [ -e "$f" ] || continue
+        replace_sddm_theme_current "$f" debian-breeze-authelia-passkey debian-breeze
+    done
+
+    echo "THEME_ROLLBACK=LEGACY"
+fi
 
 rm -rf /usr/share/sddm/themes/debian-breeze-authelia-passkey
 

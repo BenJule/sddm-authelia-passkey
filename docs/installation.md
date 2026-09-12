@@ -69,8 +69,11 @@ SHA256SUMS.asc SHA256SUMS`, `sha256sum -c SHA256SUMS`).
    (and `sddm-authelia-passkey-kwallet-secretd.service` too, if you plan
    to use KWallet auto-unlock).
 6. `sudo /usr/share/sddm-authelia-passkey/postflight.sh`
-7. Select `debian-breeze-authelia-passkey` as the SDDM theme if not already selected.
-   The package never restarts SDDM automatically.
+7. Choose an explicit theme mode:
+   `sudo sddm-authelia-passkey-admin apply-mode compatibility`
+   or opt in to Native Theme with `apply-mode native`.
+   Use `apply-mode backend-only` to restore the previous SDDM theme selection.
+   See `docs/theme-installation-modes.md`.
 8. (Optional) KWallet auto-unlock - see `docs/kwallet.md`.
 9. Log out, test a normal password login FIRST, then test smartphone/passkey login.
    If anything is wrong: `sudo /usr/share/sddm-authelia-passkey/rollback.sh`.

@@ -1,3 +1,18 @@
+sddm-authelia-passkey (1.16.0-1) unstable; urgency=medium
+
+  * Add explicit native, compatibility and backend-only theme
+    installation modes.
+  * Preserve and exactly restore the previous SDDM theme selection.
+  * Add idempotent fail-closed mode state, target validation and drift
+    detection.
+  * Add machine-readable mode status and fixed-dispatch admin integration.
+  * Keep package upgrades from silently selecting or changing
+    installation mode.
+  * Preserve authentication boundaries and avoid SDDM restarts or
+    session termination.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sat, 12 Sep 2026 12:15:12 +0200
+
 sddm-authelia-passkey (1.15.0-1) unstable; urgency=medium
 
   * Add deterministic Native Theme visual regression testing.
