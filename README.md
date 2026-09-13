@@ -9,11 +9,12 @@
 [![Native Theme](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/native-theme.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/native-theme.yml)
 [![CodeQL](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/codeql.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/codeql.yml)
 [![Security](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml)
+[![Scorecard](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/scorecard.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/scorecard.yml)
 [![Release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey)](https://github.com/BenJule/sddm-authelia-passkey/releases/latest)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT%20%2F%20GPL--3.0--or--later-blue.svg)](docs/licensing.md)
 ![Platform](https://img.shields.io/badge/platform-Debian%2013%20%7C%20KDE%20Plasma%206%20%7C%20SDDM%200.21-informational)
 
-[Website](https://benjule.github.io/sddm-authelia-passkey/) · [Installation](#-installation) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](https://github.com/users/BenJule/projects/2) · [Security](#-security) · [Documentation](#-documentation) · [Contributing](#-contributing)
+[Website](https://benjule.github.io/sddm-authelia-passkey/) · [Installation](#-installation) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](https://github.com/users/BenJule/projects/2) · [Discussions](https://github.com/BenJule/sddm-authelia-passkey/discussions) · [Security](#-security) · [Documentation](#-documentation) · [Contributing](#-contributing)
 
 <br>
 
@@ -39,8 +40,8 @@ Approve an SDDM login on your phone with a passkey instead of typing your Linux 
 | **KWallet integration** | Optional auto-unlock using a dedicated root-only secret service and `systemd-creds` |
 | **Three theme modes** | Native Qt6 theme, compatibility theme, or backend/PAM-only mode |
 | **Recovery tooling** | Read-only preflight/admin checks, postflight validation, rollback and independent break-glass recovery |
-| **Supply-chain controls** | Signed `.deb` releases, SBOMs, CodeQL, dependency review and a signed Debian APT mirror |
-| **Visual regression** | Deterministic Native Theme screenshot coverage across 26 visual cases |
+| **Supply-chain controls** | Signed `.deb` releases, SBOMs, CodeQL, dependency review, OpenSSF Scorecard and a signed Debian APT mirror |
+| **Visual regression** | Deterministic Native Theme screenshot coverage across 30 visual cases |
 
 ## 📦 Installation
 
@@ -116,7 +117,7 @@ Nothing in the installer restarts SDDM automatically. See the full [Installation
 - Idempotent enable/disable and migration tooling
 - Independent rollback and break-glass paths
 - Signed Debian packages, checksums and SBOM release assets
-- Automated build, test, package, theme, CodeQL and security workflows
+- Automated build, test, package, theme, CodeQL, Scorecard and security workflows
 
 ## 🧩 Architecture
 
@@ -176,6 +177,7 @@ feature/fix branch ──PR──▶ main ──tag/release──▶ signed .deb
 
 - Changes are developed on focused branches and reviewed through pull requests.
 - Build, test, native-theme, package and security workflows validate the repository continuously.
+- `main` is protected by the aggregate `CI Gate` check and uses squash-only merges.
 - Tagged releases publish the Debian package and verification assets on GitHub Releases.
 - The APT deployment workflow independently verifies release state, package metadata, checksum and maintainer signature before publishing.
 
@@ -193,9 +195,9 @@ Security is part of the design rather than an optional layer:
 - KWallet hand-off uses a separate root-only AF_UNIX channel and short-lived marker.
 - The broker's local API is loopback-only; the approval marker remains the PAM trust boundary.
 - Unknown PAM layouts are refused instead of modified heuristically.
-- CodeQL, dependency review, hardened compiler/linker flags and release verification are part of CI/release handling.
+- CodeQL, dependency review, OpenSSF Scorecard, hardened compiler/linker flags and release verification are part of CI/release handling.
 
-Please report vulnerabilities privately through [GitHub Security Advisories](https://github.com/BenJule/sddm-authelia-passkey/security/advisories/new). Do **not** open a public security issue. See [SECURITY.md](SECURITY.md), [Security Design](docs/security.md) and the [Threat Model](docs/threat-model.md).
+Please report vulnerabilities through the private process described in [SECURITY.md](SECURITY.md). Do **not** open a public security issue. See [Security Design](docs/security.md) and the [Threat Model](docs/threat-model.md).
 
 ## 📚 Documentation
 
@@ -214,19 +216,22 @@ Please report vulnerabilities privately through [GitHub Security Advisories](htt
 | Rollback and recovery | [docs/rollback.md](docs/rollback.md) |
 | Release signing | [docs/release-signing.md](docs/release-signing.md) |
 | Supply chain | [docs/supply-chain.md](docs/supply-chain.md) |
+| Licensing | [docs/licensing.md](docs/licensing.md) |
 | Validated environment | [docs/validated-environment.md](docs/validated-environment.md) |
 | Live development roadmap | [GitHub Project](https://github.com/users/BenJule/projects/2) |
 | Technical roadmap | [docs/roadmap.md](docs/roadmap.md) |
 
 ## 🤝 Contributing
 
-Contributions are welcome. Keep each pull request focused, include tests for new behavior and document any security-boundary change. Changes touching PAM must preserve the invariant that a missing or failed passkey approval falls through to the existing password path.
+Questions and early design ideas are welcome in [GitHub Discussions](https://github.com/BenJule/sddm-authelia-passkey/discussions). Code contributions should keep each pull request focused, include tests for new behaviour and document any security-boundary change. Changes touching PAM must preserve the invariant that a missing or failed passkey approval falls through to the existing password path.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) before opening a change.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) before opening a change.
 
 ## 📄 License
 
-The project's own code is licensed under the **MIT License**. Optional compatibility-theme integration is shipped as small patches against Debian Breeze rather than as a vendored copy. See [LICENSE](LICENSE) and the theme [provenance notes](theme/native/PROVENANCE.md).
+The repository default is the **MIT License**, while Native Theme files carrying `SPDX-License-Identifier: GPL-3.0-or-later` use that explicit licence. Optional Debian Breeze compatibility integration is shipped as project-authored patches rather than a vendored theme copy.
+
+See [LICENSE](LICENSE), [docs/licensing.md](docs/licensing.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the Native Theme [provenance notes](theme/native/PROVENANCE.md).
 
 ## 🙏 Acknowledgements
 

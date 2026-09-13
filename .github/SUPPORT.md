@@ -2,7 +2,7 @@
 
 Thanks for using `sddm-authelia-passkey`.
 
-## Before opening an issue
+## Start with documentation
 
 Please check the relevant documentation first:
 
@@ -15,28 +15,32 @@ Please check the relevant documentation first:
 
 The project is intentionally conservative around PAM. Unsupported or unrecognised login-stack layouts are refused rather than modified speculatively.
 
+## Questions and installation help
+
+Use the repository's **Discussions → Q&A** category for configuration questions, installation guidance and design discussions that are not confirmed bugs. Include relevant versions and deployment mode, but remove credentials and private infrastructure details.
+
 ## Bugs
 
-Use the repository's bug report template and include:
+Use the bug report template and include:
 
-- exact OS, SDDM, KDE/desktop and provider versions
-- whether the issue affects password login, passkey login, theme UX or packaging
-- output from the read-only preflight/admin status commands where relevant
-- the smallest reproducible configuration with secrets removed
+- exact OS, SDDM, KDE/desktop and provider versions;
+- whether the issue affects password login, passkey login, theme UX or packaging;
+- output from the read-only preflight/admin status commands where relevant;
+- the smallest reproducible configuration with sensitive values removed.
 
 Do not post access tokens, client secrets, private keys, KWallet credentials or other sensitive material.
 
-## Installation problems
+## Feature ideas
 
-Use the dedicated installation-problem issue template. If PAM was modified and login behaviour is unexpected, use the documented rollback path before further experimentation.
-
-## Feature requests
-
-Use the feature-request template and explain the user problem, expected behaviour and whether the proposal changes an authentication or identity trust boundary.
+Early ideas belong in **Discussions → Ideas**. Once the scope is concrete, use the feature-request issue form and explain the user problem, expected behaviour and any authentication or identity-boundary impact.
 
 ## Security vulnerabilities
 
-Do **not** open a public issue. Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/BenJule/sddm-authelia-passkey/security/advisories/new) and follow [SECURITY.md](../SECURITY.md).
+Do **not** open a public issue. Report vulnerabilities through the private process described in [SECURITY.md](../SECURITY.md).
+
+## Community standards
+
+Repository participation is covered by [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md).
 
 ## Scope
 

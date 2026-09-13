@@ -1,0 +1,109 @@
+name: 'Automation: Triage labels'
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    name: Apply area and risk labels
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.event_name == 'issues' || github.event_name == 'pull_request_target'
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411
+        with:
+          egress-policy: block
+          allowed-endpoints: |
+            api.github.com:443
+
+      - name: Ensure labels and classify item
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const palette = {
+              'needs-triage': ['d4c5f9', 'Needs maintainer classification'],
+              'area:pam': ['b60205', 'PAM and login-stack integration'],
+              'area:broker': ['0e8a16', 'OIDC broker and provider integration'],
+              'area:theme': ['1d76db', 'Native/compatibility theme and UX'],
+              'area:kwallet': ['5319e7', 'KWallet secret hand-off'],
+              'area:packaging': ['fbca04', 'Debian packaging, systemd and installation'],
+              'area:ci': ['0052cc', 'GitHub Actions, release and repository automation'],
+              'area:docs': ['0075ca', 'Documentation'],
+              'security': ['b60205', 'Security-sensitive change or report'],
+              'dependencies': ['0366d6', 'Dependency update'],
+            };
+
+            const existing = await github.paginate(
+              github.rest.issues.listLabelsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+            const have = new Set(existing.map(l => l.name));
+
+            for (const [name, [color, description]] of Object.entries(palette)) {
+              if (!have.has(name)) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name,
+                  color,
+                  description,
+                });
+              }
+            }
+
+            const number = context.payload.pull_request
+              ? context.payload.pull_request.number
+              : context.payload.issue.number;
+            const labels = new Set();
+
+            const addForPath = path => {
+              if (/^src\/pam\//.test(path) || /^scripts\/(enable-pam|disable-pam|break-glass)/.test(path)) labels.add('area:pam');
+              if (/^src\/broker\//.test(path) || /^config\//.test(path)) labels.add('area:broker');
+              if (/^theme\//.test(path) || /^tests\/native\//.test(path)) labels.add('area:theme');
+              if (/^src\/kwallet-secretd\//.test(path) || /kwallet/i.test(path)) labels.add('area:kwallet');
+              if (/^debian\//.test(path) || /^systemd\//.test(path) || /installation|upgrade|rollback/.test(path)) labels.add('area:packaging');
+              if (/^\.github\//.test(path)) labels.add('area:ci');
+              if (/^(docs\/|README\.md$|CONTRIBUTING\.md$|SECURITY\.md$|CODE_OF_CONDUCT\.md$|THIRD_PARTY_NOTICES\.md$|LICENSE$)/.test(path)) labels.add('area:docs');
+              if (/security|threat-model|src\/pam|release-signing|supply-chain/.test(path)) labels.add('security');
+              if (/(^|\/)(go\.mod|go\.sum)$/.test(path) || /^\.github\/dependabot\.yml$/.test(path)) labels.add('dependencies');
+            };
+
+            if (context.payload.pull_request) {
+              const files = await github.paginate(
+                github.rest.pulls.listFiles,
+                { owner: context.repo.owner, repo: context.repo.repo, pull_number: number, per_page: 100 }
+              );
+              for (const file of files) addForPath(file.filename);
+              const pr = context.payload.pull_request;
+              if ((pr.user?.login || '').startsWith('dependabot') || (pr.head?.ref || '').startsWith('dependabot/')) labels.add('dependencies');
+            } else {
+              labels.add('needs-triage');
+              const text = `${context.payload.issue.title}\n${context.payload.issue.body || ''}`.toLowerCase();
+              if (/\bpam\b|password fallback|login stack/.test(text)) labels.add('area:pam');
+              if (/oidc|authelia|authentik|keycloak|broker|device authorization/.test(text)) labels.add('area:broker');
+              if (/theme|qml|sddm|visual|accessibility|smartphone login/.test(text)) labels.add('area:theme');
+              if (/kwallet/.test(text)) labels.add('area:kwallet');
+              if (/debian|package|apt|install|upgrade|systemd/.test(text)) labels.add('area:packaging');
+              if (/documentation|docs|readme/.test(text)) labels.add('area:docs');
+              if (/security|vulnerability|threat|replay|privilege|secret/.test(text)) labels.add('security');
+            }
+
+            if (labels.size > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: [...labels],
+              });
+              core.info(`Applied labels: ${[...labels].join(', ')}`);
+            }

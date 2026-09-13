@@ -19,12 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-theme/debian-breeze-authelia-passkey-patch/ contains unified diffs against
-sddm-theme-debian-breeze (KDE plasma-desktop, GPL-2.0-or-later/LGPL, mixed
-per-file). No theme source is vendored here; the patch files themselves are
-MIT per above, but applying them to your own installed theme produces a
-GPL-covered combined file, which remains subject to that license. See
-theme/debian-breeze-authelia-passkey-patch/README.md.
