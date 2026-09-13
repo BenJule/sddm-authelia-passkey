@@ -960,3 +960,19 @@ broker/PAM stack remains sole authority regardless. As of v2.12.0,
 deliberately is not (no capability signal, no backend action to bind).
 See `docs/generic-mechanism-model.md` for the full interface and what
 remains unwired.
+
+## First visible mechanism-selection UI (v2.13.0)
+
+The native theme now shows a small selector row letting the user
+explicitly pick `password` or `eidp` before either mechanism's own
+controls are shown - the first genuinely visible (not pixel-identical)
+step toward the Rich UI. The selection/fallback state machine
+(including safely cancelling a live smartphone flow when switching
+away from it, reusing `SmartphoneFlowController.cancelCurrent()`
+rather than a new mechanism) lives in a new, separately unit-tested
+`theme/native/components/MechanismSelector.qml` - `Main.qml` itself
+cannot be instantiated in `qmltestrunner` (it depends on SDDM's own
+global context properties), so this logic had to live in its own
+component to be testable at all. See
+`docs/generic-mechanism-model.md` for the full design and how this was
+verified.

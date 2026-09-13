@@ -227,6 +227,22 @@ onto the test harness, re-run in a real `debian:13` container,
 wiring - see `docs/generic-mechanism-model.md` for why (no capability
 signal, no backend action, nothing real to bind a button to).
 
+### v2.13.0 - First visible mechanism-selection UI (implemented)
+
+The native theme now shows a small, always-visible "Anmeldemethode"
+selector row (data-driven from `MechanismModel.selectableMechanisms`
+via a `Repeater` - never a second, hardcoded id list), letting the
+user explicitly pick between `password` and `eidp` before either
+mechanism's own controls are shown. Unlike v2.9.0-v2.12.0, this is
+**not** a pixel-identical change - it is the first genuinely visible
+step of the Rich UI, reviewed diff-by-diff rather than proven as a
+no-op (`docs/generic-mechanism-model.md` has the full before/after
+review). The actual selection/fallback state machine lives in a new,
+separately unit-tested `MechanismSelector.qml` (`Main.qml` itself
+cannot be unit-tested - it depends on SDDM's own global context). Still
+no smartcard entry and no manually-triggered passkey button - both for
+the same structural reasons as before (see `docs/mechanism-selection.md`).
+
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Direction: this project's OIDC integration becomes one provider within
@@ -242,12 +258,13 @@ code - no real Keycloak instance for provider-conformance testing, no
 physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
 compiled passkey/libfido2 support. As of v2.11.0, the mechanism data
 model itself is real (see above); as of v2.12.0, `password` is also
-wired through it (`eidp`/`passkey`/`password` all real; `smartcard`
+wired through it; as of v2.13.0, a real, visible selector UI exists
+letting the user choose between `password`/`eidp` (`smartcard`
 deliberately not, since nothing real exists to wire). What remains is
-the larger generic SDDM Rich UI/mechanism-selection surface and the
-three external blockers. See the private roadmap for the full, honest
-gap assessment; this milestone will not be marked closed until it
-actually is.
+the rest of the generic SDDM Rich UI surface (this was the first step,
+not the whole thing) and the three external blockers. See the private
+roadmap for the full, honest gap assessment; this milestone will not
+be marked closed until it actually is.
 
 ## Security invariants (apply across every milestone above)
 

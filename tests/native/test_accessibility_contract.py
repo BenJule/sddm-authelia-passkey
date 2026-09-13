@@ -27,6 +27,10 @@ require(
     'Accessible.name: qsTr("Sitzung")',
     'Accessible.name: qsTr("Tastaturlayout")',
     "modalLayout: responsiveMetrics.overlayLayout",
+    # v2.13.0 mechanism selector - selection state is never conveyed
+    # by color alone (see docs/generic-mechanism-model.md).
+    "Accessible.role:\n                            Accessible.RadioButton",
+    "Accessible.name:\n                            modelData.displayName",
 )
 
 require(

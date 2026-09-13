@@ -158,3 +158,149 @@ when not ready); `passkey` is `kind: "ambient"` and tracks
 `smartphoneFlow.fido2Wired` reactively for both `available`/`ready`;
 the model degrades safely (no crash, `password` still ready) when no
 `smartphoneFlow` is bound at all.
+
+## v2.13.0: the first visible mechanism-selection UI
+
+**Status: not the full v3.0.0 Rich UI. Not smartcard support. Not a
+manually-triggered passkey UI.** This is deliberately the smallest real
+*visible* step: a selector row ("Anmeldemethode") with one button per
+selectable mechanism, letting the user explicitly switch between the
+password and smartphone/EIdP content areas that already existed.
+Everything before this point (v2.11.0/v2.12.0) was a pixel-identical
+refactor; this one is not, and was never intended to be.
+
+### The selectable-mechanisms list
+
+`MechanismModel.selectableMechanisms` is a new computed property:
+`mechanisms.filter(m => m.kind === "actionable" && m.available)`. Today
+that is exactly `password` and `eidp` - `passkey` is excluded because
+it is `kind: "ambient"` (no start action a selector entry could ever
+trigger), and `smartcard` is excluded because `available` is always
+`false` (nothing real exists to select). This is derived purely from
+the existing `kind`/`available` fields - not a second, competing
+definition of what those fields mean.
+
+### MechanismSelector.qml: a small, separately unit-tested state machine
+
+The actual "which mechanism's controls are shown, and what happens
+when you switch" logic lives in a new
+`theme/native/components/MechanismSelector.qml`, not inline in
+`Main.qml` - the same reason `SmartphoneFlowController.qml` is its own
+component: `Main.qml` cannot be instantiated in `qmltestrunner` at all
+(it depends on SDDM's own global context properties - `sddm`, `config`,
+`userModel`, `sessionModel`, `keyboard` - which don't exist outside a
+real greeter process), so any logic worth unit-testing has to live
+somewhere else. `MechanismSelector` never makes or gates an
+authentication decision; it exposes:
+
+- `selectedMechanism` (`"password"` by default)
+- `selectMechanism(id)` - user-driven selection; refuses an unready
+  mechanism (mirrors the selector's own disabled-button state)
+- `returnToPassword()` - the one safe path back to password, used both
+  automatically and by explicit "leave the smartphone area" actions
+  (Escape, closing the panel, a real account change)
+- `reconsiderCurrentMechanism()` - call whenever a mechanism's live
+  readiness may have changed; fails closed to password if the
+  currently selected mechanism is no longer ready
+
+Switching away from a *live* smartphone flow always calls the existing
+`SmartphoneFlowController.cancelCurrent(false)` - the exact same
+call `attemptPasswordLogin()` already used before this increment
+existed. No second/parallel cancellation mechanism was invented.
+`Main.qml` wires `MechanismModel.onEidpReadyChanged` to
+`reconsiderCurrentMechanism()`, since `eidp` is the only selectable
+mechanism whose readiness can ever change while selected (`password`
+is always ready).
+
+### What actually changed visibly
+
+- A "Anmeldemethode" label + two-button selector row, always shown.
+- The password label/field/failure-label/login-button are now only
+  shown while `password` is selected (previously always shown).
+- The "Mit Smartphone anmelden" button and its unreachable-hint label
+  are now only shown while `eidp` is selected (previously always
+  shown). The ambient passkey hint is unaffected by selection - it
+  remains visible whenever `passkey.ready`, regardless of which tab is
+  active, since it is not something the user selects.
+- Selection state is never conveyed by color alone: the selected tab
+  also gets a bolder font weight and a distinct border (the existing
+  `PolishedButton.primary` styling), plus an explicit
+  `Accessible.role: Accessible.RadioButton` and a description stating
+  "Ausgewählt" for screen readers.
+
+### What did not change
+
+- `password`/`smartcard` still are not both "backed" the same way -
+  `smartcard` still has zero UI, by design (see below).
+- No new capability signal, no new backend call, no new PAM/broker
+  behavior. Every login still goes through exactly the same
+  `sddm.login()`/broker code paths as before.
+- The three external blockers (Keycloak instance, FIDO2 hardware,
+  SSSD passkey-capable build) are unaffected.
+
+### Why smartcard still gets no selector entry
+
+Unlike `passkey` (a real, if silent, PAM path) or `eidp` (a real
+capability signal with a real backend), `smartcard` has neither a
+capability signal that could ever turn `true` nor any backend action a
+button could trigger - there is no PKCS#11/smartcard implementation
+anywhere in this project. `MechanismModel.selectableMechanisms`
+structurally excludes it (`available` is a hardcoded `false`), so it is
+not merely hidden - there was nothing to wire in the first place. If
+smartcard support is ever implemented, giving it a selector entry is
+expected to be a small, mechanical addition, exactly like `password`
+becoming selectable was.
+
+### How this was verified
+
+This increment is explicitly **not** a pixel-identical change - the
+selector row is new, visible UI. The verification goal was therefore
+to identify and review every actual diff, not to force `CHANGED=0`:
+
+1. The unmodified visual regression suite was run first (real
+   `debian:13` container) to capture a true pre-change baseline:
+   `26_OF_26_GREEN`.
+2. After implementing the change (mirrored into the test harness, a
+   hand-maintained visual mirror, not an import of the real theme),
+   the suite was re-run: all 26 pre-existing cases showed a real diff
+   (the new selector row + one button/labels hidden), reviewed
+   visually case-by-case across every distinct scenario (default
+   idle/password states, every "eidp active" flow state, both existing
+   capability-variance states, three brand-new dedicated selector
+   states) - all matched the intended design, nothing unexpected.
+3. Three new dedicated baseline states were added:
+   `mechanism_selector_password`, `mechanism_selector_eidp` (tab
+   selected, flow not yet started - a state that didn't exist before),
+   `mechanism_selector_eidp_unavailable` (disabled tab rendering).
+4. All 29 cases (26 existing + 3 new) were regenerated via
+   `--update-baselines` and the suite was re-run once more in normal
+   comparison mode: `29_OF_29_GREEN`, `CHANGED=0` for every case.
+
+`EXPECTED_VISUAL_CHANGES=29` (all cases - the selector is genuinely new
+UI shown everywhere). `UNEXPECTED_VISUAL_CHANGES=0`.
+
+### New unit tests
+
+`theme/native/components/MechanismSelector.qml` is covered by
+`tests/native/tst_MechanismSelector.qml`: initial state is `password`;
+selecting a ready mechanism works; selecting an unready or unknown
+mechanism is refused; reselecting the current mechanism is a no-op;
+switching away from a *live* `eidp` flow cancels it
+(`cancelCurrent(false)`, exactly once); switching away from an *idle*
+`eidp` flow cancels nothing; `reconsiderCurrentMechanism()` falls back
+to `password` (cancelling a live flow if needed) when the selected
+mechanism becomes unready, and is a no-op while it stays ready;
+`returnToPassword()` is a no-op when already on `password` and
+otherwise cancels a live flow.
+
+`tests/native/tst_MechanismModel.qml` gained coverage for
+`selectableMechanisms`: exactly `password` + `eidp` when both are
+ready; `eidp` stays present-but-disabled (not removed) when unready;
+`passkey` is never selectable even when ready; `smartcard` is never
+selectable.
+
+`tests/native/test_feature_parity.py` gained a static check that
+`Main.qml`'s selector actually reads `mechanismModel.selectableMechanisms`
+(not a second, hardcoded `["password", "eidp"]` list), and that
+`MechanismSelector.qml` never calls `sddm.login` directly (a static
+proof that selection stays presentation-only).

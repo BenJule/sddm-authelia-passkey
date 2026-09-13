@@ -82,3 +82,25 @@ property reads described above - see
 still genuinely unwired (`password`/`smartcard` are represented in the
 model but not yet UI-driven by it). This was a pure refactor: nothing
 in this document's behavioral description changed.
+
+## Update (v2.12.0)
+
+`password` is now also wired through the same model
+(`mechanismModel.mechanism("password").ready`), alongside `eidp`/
+`passkey`. Also a pure refactor - `password.ready` is always `true`.
+
+## Update (v2.13.0): a real, visible selector now exists
+
+Unlike the two updates above, this one is a genuine behavioral/visible
+change: the native theme now shows a small "Anmeldemethode" selector
+row (Passwort / Smartphone), and the user must explicitly pick a
+mechanism to see its controls - previously both the password field and
+the "Mit Smartphone anmelden" button were always shown together. See
+`docs/generic-mechanism-model.md`'s "v2.13.0: the first visible
+mechanism-selection UI" section for the full design, the new
+`MechanismSelector.qml` state machine, and how this was verified (not
+a pixel-identical change - reviewed diff-by-diff instead).
+
+This still is not the full v3.0.0 Rich UI, still has no smartcard
+entry, and still has no manually-triggered passkey button - the
+architectural reasons given above for both remain unchanged.
