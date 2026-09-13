@@ -1,0 +1,23 @@
+# Global owner: all repository changes are reviewed by the maintainer.
+* @BenJule
+
+# Security-sensitive authentication paths
+/src/pam/ @BenJule
+/src/broker/ @BenJule
+/src/kwallet-secretd/ @BenJule
+/scripts/enable-pam.sh @BenJule
+/scripts/disable-pam.sh @BenJule
+/scripts/rollback.sh @BenJule
+/scripts/break-glass.sh @BenJule
+
+# Packaging, CI/CD and release infrastructure
+/.github/ @BenJule
+/debian/ @BenJule
+/systemd/ @BenJule
+
+# Security and trust-boundary documentation
+SECURITY.md @BenJule
+/docs/security.md @BenJule
+/docs/threat-model.md @BenJule
+/docs/architecture.md @BenJule
+/docs/identity-binding.md @BenJule
