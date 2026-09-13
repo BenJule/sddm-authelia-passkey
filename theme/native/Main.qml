@@ -621,8 +621,14 @@ Item {
 
                 Accessible.passwordEdit: true
 
+                // v2.12.0: wired through the same shared Mechanism
+                // model as the smartphone/EIdP button (see
+                // docs/generic-mechanism-model.md). password.ready is
+                // always true today - this establishes the single
+                // source of truth without changing any rendered state.
                 enabled:
                     userChooser.selectedUsername.length > 0
+                        && mechanismModel.mechanism("password").ready
 
                 onAccepted:
                     root.attemptPasswordLogin()
@@ -672,8 +678,10 @@ Item {
 
                 Accessible.defaultButton: true
 
+                // v2.12.0: same rationale as passwordField above.
                 enabled:
                     userChooser.selectedUsername.length > 0
+                        && mechanismModel.mechanism("password").ready
 
                 onClicked:
                     root.attemptPasswordLogin()

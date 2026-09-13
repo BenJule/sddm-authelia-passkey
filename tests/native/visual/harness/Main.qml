@@ -231,6 +231,7 @@ Item {
                 Layout.fillWidth: true
                 placeholderText: "Passwort eingeben"
                 echoMode: TextInput.Password
+                enabled: mechanismModel.mechanism("password").ready
             }
 
             QQC2.Label {
@@ -242,6 +243,7 @@ Item {
             PolishedButton {
                 Layout.fillWidth: true
                 text: "Mit Passwort anmelden"
+                enabled: mechanismModel.mechanism("password").ready
             }
 
             PolishedButton {

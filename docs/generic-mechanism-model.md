@@ -92,16 +92,33 @@ of this interface.
   represented in the model, so the interface itself is complete even
   though not every mechanism is UI-driven by it yet.
 
-**Explicitly unchanged / not yet real:**
-- `password` and `smartcard` are represented in the model's data (both
-  correctly: always ready/never available respectively) but **nothing
-  in the UI reads the model for them yet** - the password field/button
-  and the (nonexistent) smartcard UI behave exactly as before,
-  independent of this model. Wiring them through the model is future
-  work, not part of this increment.
-- No new capability signal was added; the model is a pure
-  restructuring of the two signals that already existed since v2.4.0/
-  v2.9.0.
+**Real and new in v2.12.0:**
+- `password`'s login button and password field are now also gated on
+  `mechanismModel.mechanism("password").ready`, alongside the existing
+  username-selected check. `password.ready` is always `true` today, so
+  this changes no rendered/functional behavior (proven via the same
+  26-case visual regression suite, `CHANGED=0` for all cases) - but it
+  means all *actionable* mechanisms (`password`, `eidp`) now go through
+  the same single source of truth, rather than password being the one
+  exception left on an ad-hoc check.
+- `smartcard` was deliberately **not** given any UI wiring. Unlike
+  `passkey` (an ambient mechanism with a real, if silent, PAM path) or
+  `eidp` (a real capability signal with a real backend), `smartcard`
+  has neither a capability signal that could ever turn `true` nor any
+  backend action a button could trigger - there is no PKCS#11/
+  smartcard implementation anywhere in this project. Adding a
+  permanently-invisible "Smartcard" button today would only be UI
+  scaffolding for a feature that doesn't exist, which conflicts with
+  this project's own "no UI offers or implies smartcard support"
+  invariant (`docs/capability-negotiation.md`) even if the button
+  itself would never render. When smartcard support is ever actually
+  implemented, wiring its UI through this model is expected to be a
+  small, mechanical change - exactly like `eidp`/`passkey` were - not
+  a redesign.
+
+**Explicitly still unchanged / not yet real:**
+- No new capability signal was added; the model itself is unchanged
+  since v2.11.0 - only which UI elements read from it grew.
 - The three external blockers tracked by the private roadmap (no real
   Keycloak instance, no physical FIDO2 key, Debian 13's SSSD package
   lacking compiled passkey support) are unaffected by this change and
@@ -127,7 +144,8 @@ assert it:
    this same refactor into the test harness's own `Main.qml` (which is
    a hand-maintained visual mirror of the real theme, not an import of
    it). Result: `CHANGED=0` for all 26 cases, `26_OF_26_GREEN` -
-   real, reproducible proof this is visually a no-op.
+   real, reproducible proof this is visually a no-op. Repeated
+   identically for v2.12.0's password-wiring change.
 
 ## New unit tests
 
