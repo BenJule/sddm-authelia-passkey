@@ -98,4 +98,18 @@ QtObject {
         }
         return null
     }
+
+    // v2.13.0: the mechanisms a selector UI may offer the user to
+    // explicitly pick between - "actionable" mechanisms the platform
+    // could ever support (available), regardless of their current
+    // live readiness (a not-ready-but-available mechanism is still
+    // offered, just disabled - see docs/generic-mechanism-model.md).
+    // "ambient" mechanisms (passkey) and never-available ones
+    // (smartcard) are excluded: neither has a start action a selector
+    // entry could trigger. Derived only from the existing kind/
+    // available fields above - not a second, competing definition.
+    readonly property var selectableMechanisms:
+        mechanisms.filter(function(m) {
+            return m.kind === "actionable" && m.available
+        })
 }

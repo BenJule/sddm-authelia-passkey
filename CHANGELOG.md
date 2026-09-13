@@ -3,6 +3,41 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.13.0] - 2026-09-13
+
+### Added
+- The native theme now shows a small "Anmeldemethode" selector row
+  (Passwort / Smartphone), letting the user explicitly pick which
+  mechanism's controls are shown - the first genuinely **visible** step
+  of the generic mechanism-selection UI (not a pixel-identical
+  refactor like v2.11.0/v2.12.0). Data-driven from the existing
+  `MechanismModel` via a `Repeater` - never a second, hardcoded id
+  list. `smartcard` still has no selector entry (no capability signal,
+  no backend action); `passkey` still has no manual selector entry (an
+  ambient, silent PAM path with no start action).
+- New `theme/native/components/MechanismSelector.qml`: a small,
+  separately unit-tested state machine for the actual selection/
+  fallback logic (`Main.qml` cannot be unit-tested directly - it
+  depends on SDDM's own global context properties). Reuses
+  `SmartphoneFlowController.cancelCurrent()` when switching away from
+  a live smartphone flow, rather than inventing a second cancellation
+  path. Automatically falls back to `password` if the selected
+  mechanism's readiness drops out from under the user.
+- New `tests/native/tst_MechanismSelector.qml` (13 tests) and expanded
+  `tests/native/tst_MechanismModel.qml` (4 new tests for
+  `selectableMechanisms`).
+- Three new visual regression baseline states:
+  `mechanism_selector_password`, `mechanism_selector_eidp`,
+  `mechanism_selector_eidp_unavailable` (18 → 21 states, 26 → 29
+  cases).
+
+### Changed
+- All 26 pre-existing visual regression baselines were regenerated:
+  the new selector row is real, reviewed, intentional UI - not a
+  regression. Every diff was reviewed case-by-case in a real
+  `debian:13` container before any baseline was updated; the full
+  29-case suite is `CHANGED=0`/green afterward.
+
 ## [2.12.0] - 2026-09-13
 
 ### Changed

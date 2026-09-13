@@ -81,4 +81,47 @@ TestCase {
         compare(lonelyModel.mechanism("passkey").ready, false)
         compare(lonelyModel.mechanism("password").ready, true)
     }
+
+    function selectableIds() {
+        return model.selectableMechanisms.map(function(m) {
+            return m.id
+        })
+    }
+
+    // v2.13.0: exactly password + eidp are ever offered by a selector
+    // UI - passkey (ambient, no start action) and smartcard (never
+    // available) are structurally excluded, not merely hidden.
+    function test_selectable_mechanisms_are_exactly_password_and_eidp() {
+        flow.oidcReady = true
+        flow.fido2Wired = true
+
+        var ids = selectableIds()
+        compare(ids.length, 2)
+        verify(ids.indexOf("password") !== -1)
+        verify(ids.indexOf("eidp") !== -1)
+    }
+
+    // eidp remains a real selector entry (just not ready/disabled)
+    // when unreachable - "available" (a selector offering fact) is
+    // unaffected by "ready" (a live readiness fact). password stays
+    // selectable regardless.
+    function test_eidp_not_ready_stays_selectable_but_not_ready() {
+        flow.oidcReady = false
+
+        var ids = selectableIds()
+        compare(ids.length, 2)
+        verify(ids.indexOf("eidp") !== -1)
+        compare(model.mechanism("eidp").ready, false)
+        compare(model.mechanism("password").ready, true)
+    }
+
+    function test_passkey_never_selectable_even_when_ready() {
+        flow.fido2Wired = true
+        compare(model.mechanism("passkey").ready, true)
+        verify(selectableIds().indexOf("passkey") === -1)
+    }
+
+    function test_smartcard_never_selectable() {
+        verify(selectableIds().indexOf("smartcard") === -1)
+    }
 }

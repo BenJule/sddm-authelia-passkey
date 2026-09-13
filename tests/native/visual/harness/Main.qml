@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls.Basic as QQC2
@@ -18,7 +19,22 @@ Item {
     property bool panelOpen:
         !["idle", "password", "invalid_branding_asset",
           "long_branding", "no_avatar", "smartphone_unreachable",
-          "fido2_available"].includes(stateName)
+          "fido2_available", "mechanism_selector_password",
+          "mechanism_selector_eidp",
+          "mechanism_selector_eidp_unavailable"].includes(stateName)
+
+    // v2.13.0: which mechanism's own content area is shown - mirrors
+    // Main.qml's MechanismSelector-driven selectedMechanism. Normally
+    // derived from panelOpen (a live smartphone flow implies eidp was
+    // selected to reach it), except mechanism_selector_eidp, which
+    // exists specifically to show eidp selected/active *before* the
+    // panel has been opened.
+    property string selectedMechanism:
+        stateName === "mechanism_selector_eidp"
+            ? "eidp"
+            : panelOpen
+                ? "eidp"
+                : "password"
 
     ListModel {
         id: users
@@ -108,6 +124,7 @@ Item {
         // with, so none of the 16 pre-existing baselines change.
         property bool oidcReady:
             stateName !== "smartphone_unreachable"
+            && stateName !== "mechanism_selector_eidp_unavailable"
         property bool fido2Wired:
             stateName === "fido2_available"
     }
@@ -223,25 +240,54 @@ Item {
             }
 
             QQC2.Label {
+                text: "Anmeldemethode"
+                color: "#7d8fa2"
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Repeater {
+                    model: mechanismModel.selectableMechanisms
+
+                    delegate: PolishedButton {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        compact: true
+                        text: modelData.displayName
+                        primary: root.selectedMechanism === modelData.id
+                        enabled: modelData.ready
+                    }
+                }
+            }
+
+            QQC2.Label {
+                visible: root.selectedMechanism === "password"
                 text: "Passwort"
                 color: "#7d8fa2"
             }
 
             PolishedTextField {
                 Layout.fillWidth: true
+                visible: root.selectedMechanism === "password"
                 placeholderText: "Passwort eingeben"
                 echoMode: TextInput.Password
                 enabled: mechanismModel.mechanism("password").ready
             }
 
             QQC2.Label {
-                visible: stateName === "password"
+                visible:
+                    stateName === "password"
+                    && root.selectedMechanism === "password"
                 text: "Anmeldung fehlgeschlagen. Bitte Eingabe prüfen."
                 color: "#ff8585"
             }
 
             PolishedButton {
                 Layout.fillWidth: true
+                visible: root.selectedMechanism === "password"
                 text: "Mit Passwort anmelden"
                 enabled: mechanismModel.mechanism("password").ready
             }
@@ -249,13 +295,16 @@ Item {
             PolishedButton {
                 Layout.fillWidth: true
                 primary: true
+                visible: root.selectedMechanism === "eidp"
                 text: "Mit Smartphone anmelden"
                 enabled: mechanismModel.mechanism("eidp").ready
             }
 
             QQC2.Label {
                 Layout.fillWidth: true
-                visible: !mechanismModel.mechanism("eidp").ready
+                visible:
+                    root.selectedMechanism === "eidp"
+                    && !mechanismModel.mechanism("eidp").ready
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 text: mechanismModel.mechanism("eidp").statusHint

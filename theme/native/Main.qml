@@ -4,6 +4,7 @@
 //
 // Presentation is original project work.
 // Authentication remains exclusively with SDDM/PAM.
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic as QQC2
 import QtQuick.Layouts
@@ -86,6 +87,40 @@ Item {
         smartphoneFlow: smartphoneFlow
     }
 
+    // v2.13.0: the first visible generic mechanism-selection UI
+    // (docs/generic-mechanism-model.md) - which mechanism's own
+    // controls (password field/button vs. the smartphone flow) are
+    // currently shown. Presentation state only: it decides what the
+    // UI *offers* to show next, never an authentication decision -
+    // the exact same real password/sddm.login()/broker paths run
+    // regardless of this value. The actual switching/fallback state
+    // machine lives in the separately unit-tested MechanismSelector.
+    MechanismSelector {
+        id: mechanismSelector
+
+        mechanismModel: mechanismModel
+        smartphoneFlow: smartphoneFlow
+    }
+
+    // eidp is the only selectable mechanism whose readiness can
+    // change while selected (password is always ready; smartcard/
+    // passkey are never selectable at all - see MechanismModel.qml).
+    // If it drops while the user has it selected, MechanismSelector
+    // fails closed back to password - never left silently on a
+    // mechanism that can no longer start.
+    Connections {
+        target: mechanismModel
+
+        function onEidpReadyChanged() {
+            var before = mechanismSelector.selectedMechanism
+
+            mechanismSelector.reconsiderCurrentMechanism()
+
+            if (mechanismSelector.selectedMechanism !== before)
+                root.smartphonePanelOpen = false
+        }
+    }
+
     Connections {
         target: sddm
 
@@ -133,6 +168,28 @@ Item {
         )
     }
 
+    // v2.13.0: the selector only ever decides which existing,
+    // already-authorized content area is shown - it never makes or
+    // gates an authentication decision itself. The actual selection/
+    // cancel-on-leave state machine lives in the separately
+    // unit-tested MechanismSelector; this wrapper only adds the two
+    // pieces of Main.qml-local UI state MechanismSelector correctly
+    // knows nothing about (the smartphone side panel, the password
+    // failure label).
+    function selectMechanism(mechanismId) {
+        var before = mechanismSelector.selectedMechanism
+
+        mechanismSelector.selectMechanism(mechanismId)
+
+        if (mechanismSelector.selectedMechanism === before)
+            return
+
+        if (mechanismId !== "eidp")
+            root.smartphonePanelOpen = false
+
+        root.loginFailedVisible = false
+    }
+
     function openSmartphoneLogin() {
         if (
             userChooser.selectedUsername.length === 0
@@ -159,8 +216,10 @@ Item {
             root.smartphonePanelOpen
             && !root.loginTransitioning
         ) {
-            if (smartphoneFlow.live)
-                smartphoneFlow.cancelCurrent(false)
+            // returnToPassword() itself cancels the live flow above
+            // (selectedMechanism is guaranteed "eidp" here - the panel
+            // only ever opens via the eidp-only-visible start button).
+            mechanismSelector.returnToPassword()
 
             root.smartphonePanelOpen = false
 
@@ -565,6 +624,14 @@ Item {
                     ) {
                         root.smartphonePanelOpen =
                             false
+
+                        // v2.13.0: a real account change already
+                        // cancels/resets the smartphone flow above
+                        // (retarget() itself does that) - return the
+                        // selector to password too, rather than
+                        // leaving it pointed at a flow that no longer
+                        // exists for the new account.
+                        mechanismSelector.returnToPassword()
                     }
 
                     passwordField.text = ""
@@ -572,13 +639,83 @@ Item {
                     root.loginFailedVisible =
                         false
 
-                    if (!manualMode)
+                    if (
+                        !manualMode
+                        && mechanismSelector.selectedMechanism
+                            === "password"
+                    )
                         passwordField.forceActiveFocus()
                 }
             }
 
             QQC2.Label {
                 Layout.fillWidth: true
+
+                text: qsTr("Anmeldemethode")
+
+                color: "#7d8fa2"
+
+                font.pixelSize: 10
+                font.weight: Font.Medium
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+
+                spacing: 8
+
+                Repeater {
+                    model:
+                        mechanismModel.selectableMechanisms
+
+                    delegate: PolishedButton {
+                        id: mechanismTab
+
+                        required property var modelData
+
+                        Layout.fillWidth: true
+
+                        compact: true
+
+                        useCustomAccent:
+                            branding.useCustomAccent
+
+                        accentColor:
+                            branding.accentColor
+
+                        text: modelData.displayName
+
+                        // Selected state is never conveyed by color
+                        // alone: "primary" also changes font weight
+                        // and border, and the accessible description
+                        // states it explicitly for screen readers.
+                        primary:
+                            mechanismSelector.selectedMechanism === modelData.id
+
+                        enabled: modelData.ready
+
+                        Accessible.role:
+                            Accessible.RadioButton
+
+                        Accessible.name:
+                            modelData.displayName
+
+                        Accessible.description:
+                            mechanismSelector.selectedMechanism === modelData.id
+                                ? qsTr("Ausgewählt")
+                                : modelData.statusHint
+
+                        onClicked:
+                            root.selectMechanism(modelData.id)
+                    }
+                }
+            }
+
+            QQC2.Label {
+                Layout.fillWidth: true
+
+                visible:
+                    mechanismSelector.selectedMechanism === "password"
 
                 text: qsTr("Passwort")
 
@@ -592,6 +729,9 @@ Item {
                 id: passwordField
 
                 Layout.fillWidth: true
+
+                visible:
+                    mechanismSelector.selectedMechanism === "password"
 
                 useCustomAccent:
                     branding.useCustomAccent
@@ -641,6 +781,7 @@ Item {
 
                 visible:
                     root.loginFailedVisible
+                    && mechanismSelector.selectedMechanism === "password"
 
                 horizontalAlignment:
                     Text.AlignHCenter
@@ -678,6 +819,9 @@ Item {
 
                 Accessible.defaultButton: true
 
+                visible:
+                    mechanismSelector.selectedMechanism === "password"
+
                 // v2.12.0: same rationale as passwordField above.
                 enabled:
                     userChooser.selectedUsername.length > 0
@@ -699,6 +843,9 @@ Item {
                     branding.accentColor
 
                 primary: true
+
+                visible:
+                    mechanismSelector.selectedMechanism === "eidp"
 
                 text:
                     qsTr(
@@ -735,7 +882,8 @@ Item {
                 Layout.fillWidth: true
 
                 visible:
-                    !mechanismModel.mechanism("eidp").ready
+                    mechanismSelector.selectedMechanism === "eidp"
+                    && !mechanismModel.mechanism("eidp").ready
 
                 horizontalAlignment:
                     Text.AlignHCenter
@@ -963,9 +1111,11 @@ Item {
         open:
             root.smartphonePanelOpen
 
+        // returnToPassword() itself cancels the live flow -
+        // selectedMechanism is guaranteed "eidp" here (this panel
+        // only ever opens via the eidp-only-visible start button).
         onCloseRequested: {
-            if (smartphoneFlow.live)
-                smartphoneFlow.cancelCurrent(false)
+            mechanismSelector.returnToPassword()
 
             root.smartphonePanelOpen = false
 
@@ -979,8 +1129,7 @@ Item {
             smartphoneFlow.retryFlow()
 
         onPasswordRequested: {
-            if (smartphoneFlow.live)
-                smartphoneFlow.cancelCurrent(false)
+            mechanismSelector.returnToPassword()
 
             root.smartphonePanelOpen = false
 

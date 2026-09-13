@@ -17,6 +17,8 @@ required = [
     COMPONENTS / "CountdownView.qml",
     COMPONENTS / "UserAvatar.qml",
     COMPONENTS / "PowerActionsRow.qml",
+    COMPONENTS / "MechanismModel.qml",
+    COMPONENTS / "MechanismSelector.qml",
 ]
 
 for path in required:
@@ -36,6 +38,7 @@ controller = sources[COMPONENTS / "SmartphoneFlowController.qml"]
 main = sources[NATIVE / "Main.qml"]
 chooser = sources[COMPONENTS / "UserChooser.qml"]
 panel = sources[COMPONENTS / "SmartphoneLoginPanel.qml"]
+mechanism_selector = sources[COMPONENTS / "MechanismSelector.qml"]
 
 for endpoint in (
     "/start?username=",
@@ -128,7 +131,21 @@ checks = {
         "ConnectionStatus" in panel,
     "countdown view":
         "CountdownView" in panel,
+    "mechanism selector reads the selector UI from MechanismModel":
+        "mechanismModel.selectableMechanisms" in main,
+    "mechanism selector never gates authentication":
+        "sddm.login" not in mechanism_selector
+        and "cancelCurrent" in mechanism_selector,
 }
+
+# v2.13.0 spec point 7: the selector's Repeater must be driven by
+# MechanismModel, never a second, competing hardcoded id list.
+if re.search(r'\[\s*"password"\s*,\s*"eidp"\s*\]', main):
+    raise SystemExit(
+        "native feature parity contract failed: "
+        "Main.qml hardcodes a parallel [\"password\", \"eidp\"] "
+        "mechanism id list instead of reading MechanismModel"
+    )
 
 failed = [name for name, ok in checks.items() if not ok]
 
