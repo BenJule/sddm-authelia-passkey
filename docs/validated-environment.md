@@ -93,6 +93,17 @@ single-allowed-user configuration (see above).
     identity: an invented user remained rejected and the real identity
     was correctly authorized. This was a validation exercise, not a new
     permanent lab baseline.
+  - **Debian SSSD native-passkey package**: **PACKAGE CAPABILITY TESTED**
+    on 2026-09-13. VM124 already had `sssd-passkey 2.10.1-2+b1`
+    installed. `/usr/libexec/sssd/passkey_child` exists, is owned by
+    that package and links to `libfido2.so.1`; the packaged Kerberos
+    passkey plugin also exists, `libfido2-1` is installed, and
+    `dpkg -V sssd-passkey` was clean. SSSD remained active and
+    `/etc/pam.d/sddm` was SHA-256 identical before/after. This corrects
+    the earlier mistaken conclusion that Debian's SSSD build lacked
+    compiled passkey support. It is **not** an end-to-end passkey login
+    claim; physical hardware/enrollment remains untested. See
+    `docs/sssd-native-passkey.md`.
   - **Authentik**: real - an isolated lab OAuth2/OIDC application
     (Device Code grant, public client, explicit signing key, minimal
     scopes) on a real, live Authentik instance. This surfaced the
@@ -114,8 +125,8 @@ single-allowed-user configuration (see above).
     provider-side `expired_token`. See `docs/keycloak-validation.md`.
   - **FIDO2 hardware**: not tested - no physical FIDO2/U2F security key
     is available in this environment. PAM-stacking behavior (v0.6.0/
-    v0.8.0 above) is real; a live authentication with actual hardware is
-    not.
+    v0.8.0 above) and SSSD package capability are real; a live
+    authentication with actual hardware is not.
 
 ## Theme deployment modes (as of v2.0.0)
 
@@ -157,9 +168,10 @@ this recommendation.
   Authentik and Authelia now all have real-provider evidence, but other
   generic OIDC providers and other versions/configurations of those
   products remain unverified unless explicitly listed as TESTED.
-- Debian 13's packaged SSSD native-passkey path remains blocked as
-  documented in `docs/sssd-native-passkey.md`; this is distinct from the
-  shipped `pam_u2f.so` hardware-key path.
+- Debian 13's `sssd-passkey` package capability is verified, but a real
+  native SSSD passkey enrollment/login has not yet been exercised. This
+  is distinct from the shipped `pam_u2f.so` hardware-key path and is
+  documented in `docs/sssd-native-passkey.md`.
 - Fresh, from-scratch installation by someone without prior knowledge of
   this project's development history has not been independently
   observed - `docs/installation.md` is audited for completeness (see
