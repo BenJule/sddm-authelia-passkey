@@ -21,7 +21,16 @@ Item {
           "long_branding", "no_avatar", "smartphone_unreachable",
           "fido2_available", "mechanism_selector_password",
           "mechanism_selector_eidp",
-          "mechanism_selector_eidp_unavailable"].includes(stateName)
+          "mechanism_selector_eidp_unavailable",
+          "selector_narrow_layout"].includes(stateName)
+
+    // v2.14.0: mirrors ResponsiveMetrics.selectorStacked - forced true
+    // only for the dedicated narrow-layout state, exactly like the
+    // existing oidcReady/fido2Wired state-driven overrides above/below
+    // (the harness never replicates the real card-width computation,
+    // just the resulting boolean it would produce).
+    property bool selectorStacked:
+        stateName === "selector_narrow_layout"
 
     // v2.13.0: which mechanism's own content area is shown - mirrors
     // Main.qml's MechanismSelector-driven selectedMechanism. Normally
@@ -244,17 +253,22 @@ Item {
                 color: "#7d8fa2"
             }
 
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                spacing: 8
+                columns: root.selectorStacked ? 1 : 2
+                columnSpacing: 8
+                rowSpacing: 8
 
                 Repeater {
                     model: mechanismModel.selectableMechanisms
 
                     delegate: PolishedButton {
                         required property var modelData
+                        required property int index
 
                         Layout.fillWidth: true
+                        Layout.column: root.selectorStacked ? 0 : index
+                        Layout.row: root.selectorStacked ? index : 0
                         compact: true
                         text: modelData.displayName
                         primary: root.selectedMechanism === modelData.id
@@ -335,8 +349,10 @@ Item {
     }
 
     SmartphoneLoginPanel {
+        // v2.14.0: content-sized like the real theme now does (see
+        // theme/native/Main.qml) - no longer stretched to fill the
+        // whole available height via anchors.bottom.
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.margins: 34
 

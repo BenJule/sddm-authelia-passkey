@@ -304,3 +304,202 @@ selectable.
 (not a second, hardcoded `["password", "eidp"]` list), and that
 `MechanismSelector.qml` never calls `sddm.login` directly (a static
 proof that selection stays presentation-only).
+
+## v2.14.0: interaction and responsive UX hardening
+
+**Status: hardens the v2.13.0 selector - keyboard navigation, focus
+recovery, and responsive stacking. No new authentication mechanism, no
+smartcard/FIDO2/Keycloak work.** v2.13.0 shipped the selector visible
+and pointer-clickable; v2.14.0 makes it behave like a real login
+control end to end.
+
+### Keyboard
+
+`Left`/`Right` on a selector tab moves focus to *and selects* the
+neighboring selectable mechanism (radio-group semantics, matching the
+existing `Accessible.role: Accessible.RadioButton`) - implemented via
+each delegate's own `Keys.onLeftPressed`/`Keys.onRightPressed`, looking
+up the neighbor through the `Repeater`'s own `itemAt()` rather than a
+second navigation data structure. A disabled (not-ready) neighbor is
+skipped entirely - never focused, never selected. `Tab`/`Shift+Tab`
+(moving into and out of the selector row) and `Enter`/`Space`
+(activating whichever tab already has focus) needed no new code at
+all: both are `QQC2.Button`'s own standard behavior, inherited for
+free since `PolishedButton` is a plain `QQC2.Button` subclass.
+
+### Focus recovery
+
+When `eidp` becomes unready while selected, `Main.qml`'s
+`mechanismModel.onEidpReadyChanged` handler (which already called
+`MechanismSelector.reconsiderCurrentMechanism()` since v2.13.0) now
+also calls `passwordField.forceActiveFocus()` once the fallback
+actually happens - previously the selection silently changed back to
+`password` but focus could be left on whatever had it before,
+including a now-hidden control.
+
+### Responsive layout
+
+`ResponsiveMetrics.qml` gained one new derived property,
+`selectorStacked`, computed from the same `loginCardWidth`/
+`cardContentMargin` this file already exposes (not a second, unrelated
+pixel threshold invented in `Main.qml`): `true` once the login card's
+inner content area drops below 240 logical pixels - the real minimum
+two compact buttons plus their spacing need. The selector's `RowLayout`
+became a `GridLayout` with `columns: responsiveMetrics.selectorStacked
+? 1 : 2` (and matching per-delegate `Layout.row`/`Layout.column`),
+which lays the two buttons out identically to before at every
+currently-supported/validated viewport size (1024x600 through
+2560x1080 - see `docs/validated-environment.md`) and only stacks them
+vertically below that. This is real, tested code, not a defended
+future feature: a dedicated visual baseline (`selector_narrow_layout`)
+proves the stacked path renders correctly, even though today's
+supported environment range never actually reaches that breakpoint.
+
+### What was already correct and needed no change
+
+`eidp` recovering from unready to ready again does not auto-reselect
+it - only an explicit user action (click or keyboard) does. This was
+already true by construction in v2.13.0 (there is no code path that
+selects a mechanism other than in direct response to a user action or
+a *loss* of readiness), and is now covered by an explicit regression
+test rather than left as an implicit property.
+
+### How this was verified
+
+Same discipline as v2.13.0: the 29 existing visual regression cases
+were captured as a true baseline first (unmodified working tree,
+stashed changes), then re-run after the `GridLayout` change - all 29
+came back `CHANGED=0` (the two-column `GridLayout` rendering is
+byte-identical to the old two-item `RowLayout` at every tested
+viewport). Only the one genuinely new `selector_narrow_layout` state
+needed a baseline, generated via a narrowed temporary copy of the
+runner script that touched no existing baseline file. Full suite
+afterward: `30_OF_30_GREEN`.
+
+Real VM124 verification (isolated `sddm-greeter-qt6 --test-mode`
+instance on a separate display, actual broker/PAM stack, live `:0`
+greeter session untouched throughout) confirmed: `Tab`/`Shift+Tab`
+reaches the selector in the expected position; `Left`/`Right` moves
+between tabs and changes the active mechanism; a disabled `eidp` tab
+is skipped by `Right`, not focused; `Enter`/`Space` activates the
+focused tab; the automatic `eidp`-unready fallback leaves focus on the
+now-visible password field; the two-signal selected-state indication
+(bold/bordered `primary` styling plus the `Accessible.description`
+text) is present for both tabs.
+
+### New unit tests
+
+`tests/native/tst_MechanismSelector.qml` gained
+`test_eidp_recovery_does_not_auto_switch_back`. `tests/native/
+tst_ResponsiveMetrics.qml` gained `test_wide_viewport_does_not_stack_
+selector` and `test_narrow_viewport_stacks_selector`. The literal
+keyboard interaction (`Left`/`Right`/`Tab`/`Enter`/`Space` on the real
+selector buttons) is not unit-tested - `Main.qml` cannot be
+instantiated in `qmltestrunner` at all, and building a new windowed/
+keyboard-event QML test harness pattern this project has never used
+before was judged higher-risk than the real VM124 keyboard
+verification above, which exercises the actual shipped code end to
+end rather than a synthetic stand-in. This is a deliberate, documented
+choice, not a gap being hidden.
+
+## v2.14.0 addendum: SmartphoneLoginPanel visual/UX polish
+
+**Added to this milestone at the maintainer's explicit request, before
+the PR was opened - not originally scoped.** The selector work above
+hardened the new v2.13.0 UI; this addendum brings
+`SmartphoneLoginPanel.qml` (the existing smartphone/EIdP flow's own
+presentation, unrelated to the selector itself) up to the same visual
+bar as the login card on the left. No new authentication mechanism, no
+PAM/broker change - presentation only.
+
+### What changed
+
+- **Content-driven sizing**: the panel now sets its own `implicitHeight`
+  from real content (like the login card's `cardColumn.implicitHeight`
+  pattern) instead of being force-stretched to the caller's full
+  available height via a fixed `height`/`anchors.bottom` binding. This
+  is what actually removes the large blank area that used to appear
+  below the content whenever the QR/confirmation area was hidden
+  (denied/expired/error/rate_limited/offline states). `Main.qml` and
+  the visual harness both now clamp it:
+  `height: Math.min(panel.implicitHeight, <available>)`.
+- **Grouped confirmation area**: the QR code, device code, and
+  countdown are now inside one bordered container
+  (`confirmationGroup`), matching the account-row's own visual
+  language, instead of floating loosely in the column.
+- **`showQrArea` narrowed, new `showConfirmedArea`**: previously one
+  combined flag covered `starting`/`waiting`/`approved`/`logging_in`,
+  which meant the still-scannable QR code and device code kept
+  rendering at the same time as "Bestätigt."/"Anmeldung läuft…" text -
+  visually contradicting itself. These are now two mutually exclusive
+  sub-views of the same grouped container: the real QR/code view only
+  for `starting`/`waiting`, and a compact "confirmed" view (a small
+  vector checkmark, drawn via `Canvas` - not a Unicode glyph, since the
+  deterministic visual-regression pipeline's restricted Noto Sans
+  subset doesn't include one) only for `approved`/`logging_in`. Proven
+  mutually exclusive for every real controller state by
+  `tests/native/tst_SmartphoneLoginPanelStates.qml`.
+- **"Bereit" de-emphasized**: the `ConnectionStatus` header badge is
+  now hidden entirely when `connectionState === "ready"` - the boring
+  default doesn't need to clutter the header; it still shows for
+  `waiting`/`rate_limited`/`offline`/`error`/`connecting`.
+- **Divider + tighter footer**: a hairline divider now sits directly
+  above the button row, and the large flexible spacers that used to
+  separate content from the footer were removed (redundant once the
+  panel is content-sized rather than stretched).
+
+### Security/UX correction: close/cancel must never claim what it can't do
+
+An initial pass made "Schliessen" unconditionally enabled, reasoning
+that `cancelCurrent()` is always safe to call. That reasoning was
+incomplete and was corrected before release: the real controller flow
+is `approved` → (`approvedTimer`) → `emitApprovedLogin()` → `state =
+"logging_in"` → `loginApproved()` signal → `Main.qml` calls
+`sddm.login()`. Once `state` is `logging_in`, the real SDDM/PAM login
+is already in flight - `cancelCurrent()` cannot recall it. Offering
+"Schliessen" as if it could cancel a login that has already been
+handed off would be a false affordance.
+
+The real, correct semantics (matching the controller's own actual
+behavior, not invented):
+
+- `starting`/`waiting`: cancel is always safe (the flow hasn't been
+  approved yet).
+- `approved`: cancel is **still safe** - `approvedTimer` has not fired
+  yet, so `cancelCurrent()` genuinely stops the timer before it ever
+  calls `emitApprovedLogin()`/`sddm.login()`. This was already true of
+  the existing, unmodified `SmartphoneFlowController.cancelCurrent()`
+  - no controller change was needed, only recognizing that this
+    window is real and safe to keep offering.
+- `logging_in`: cancel is **not safe** - `sddm.login()` has already
+  been called. `closeButton` is disabled here specifically (not during
+  `approved`), and `Keys.onEscapePressed` uses the exact same
+  `closeIsSafeToOffer` property, so the keyboard shortcut and the
+  button can never drift apart into inconsistent behavior.
+
+New tests: `tst_SmartphoneFlowController.qml`'s
+`test_cancel_during_approved_prevents_login_handoff` (cancelling during
+`approved` really does stop the timer and prevents `loginApproved` from
+ever firing - the existing `test_approved_login_emitted_once` and
+`test_login_failure_invalidates_approved_flow` already cover the rest
+of the real state-machine behavior: login emitted exactly once, and
+`onLoginFailed`'s recovery path works correctly once `logging_in` is
+reached). `tst_SmartphoneLoginPanelStates.qml`'s
+`test_close_is_safe_to_offer_except_during_logging_in` (exhaustive over
+every real state). `test_feature_parity.py` gained a static check that
+`closeIsSafeToOffer` itself never blocks the safe `approved` window,
+and that both `closeButton` and `Keys.onEscapePressed` derive from that
+single property rather than two conditions that could disagree.
+
+### How this was verified
+
+Same discipline as the selector work above: the full 30-case suite was
+re-run after these changes (a much larger, genuinely expected diff set
+this time - 15 of the 30 cases show the panel, all 15 changed; the
+other 15 non-panel cases stayed `CHANGED=0`). Each of the 15 changed
+renders was inspected before any baseline was regenerated - confirmed
+compact sizing, the grouped confirmation container, the correct
+checkmark (verified it actually renders after switching away from the
+Unicode glyph), and the disabled `logging_in` close button rendering
+visibly differently from the enabled `approved` one. All 30 baselines
+regenerated and re-verified: `30_OF_30_GREEN`.

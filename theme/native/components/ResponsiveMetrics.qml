@@ -86,6 +86,18 @@ QtObject {
                 : viewportHeight - 2 * safeMargin
         )
 
+    // v2.14.0: whether the mechanism-selection selector row (see
+    // MechanismSelector.qml/Main.qml) has enough width inside the
+    // login card to lay its buttons out side by side. Derived from
+    // the same loginCardWidth/cardContentMargin this file already
+    // computes - not a new, unrelated pixel value invented in
+    // Main.qml. 240 is the real minimum: two compact buttons
+    // (PolishedButton's own 94px compact minimum width each) plus
+    // their 8px spacing need at least 196px, and the longer real
+    // label ("Smartphone") needs a little more room to avoid eliding.
+    readonly property bool selectorStacked:
+        (loginCardWidth - 2 * cardContentMargin) < 240
+
     readonly property real qrSide:
         compactHeight
             ? Math.max(

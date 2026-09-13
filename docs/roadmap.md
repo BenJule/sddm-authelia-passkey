@@ -245,6 +245,27 @@ cannot be unit-tested - it depends on SDDM's own global context). Still
 no smartcard entry and no manually-triggered passkey button - both for
 the same structural reasons as before (see `docs/mechanism-selection.md`).
 
+### v2.14.0 - Mechanism selector interaction & responsive UX (implemented)
+
+Hardens the v2.13.0 selector into a real, fully operable login control
+(see [#85](https://github.com/BenJule/sddm-authelia-passkey/issues/85)):
+`Left`/`Right` moves focus to and selects the neighboring selectable
+mechanism (a disabled one is skipped, never focused); `Tab`/`Shift+Tab`
+and `Enter`/`Space` needed no new code (`QQC2.Button`'s own standard
+behavior); the automatic `eidp`-unready fallback now also returns
+keyboard focus to the password field; `ResponsiveMetrics.qml` gained a
+`selectorStacked` property (derived from its own existing
+`loginCardWidth`/`cardContentMargin`, not a new unrelated pixel value)
+so the two selector buttons stack vertically once the login card is
+too narrow for them side by side - a real, tested code path (new
+`selector_narrow_layout` visual baseline) even though today's
+supported/validated viewport range never actually reaches that
+breakpoint. No new authentication mechanism, no smartcard/FIDO2/
+Keycloak work. See `docs/generic-mechanism-model.md` for the full
+detail and verification, including the real VM124 keyboard-interaction
+check and why the literal key-press behavior is verified there rather
+than via a new synthetic unit-test harness pattern.
+
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Operational tracking: [#85 mechanism-selection UI](https://github.com/BenJule/sddm-authelia-passkey/issues/85), [#86 real Keycloak validation](https://github.com/BenJule/sddm-authelia-passkey/issues/86), [#87 physical FIDO2/U2F validation](https://github.com/BenJule/sddm-authelia-passkey/issues/87), [#88 SSSD native-passkey blocker](https://github.com/BenJule/sddm-authelia-passkey/issues/88), and [#89 final closure gate](https://github.com/BenJule/sddm-authelia-passkey/issues/89).
@@ -263,10 +284,11 @@ physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
 compiled passkey/libfido2 support. As of v2.11.0, the mechanism data
 model itself is real (see above); as of v2.12.0, `password` is also
 wired through it; as of v2.13.0, a real, visible selector UI exists
-letting the user choose between `password`/`eidp` (`smartcard`
-deliberately not, since nothing real exists to wire). What remains is
-the rest of the generic SDDM Rich UI surface (this was the first step,
-not the whole thing) and the three external blockers. See the private
+letting the user choose between `password`/`eidp`; as of v2.14.0, that
+selector is keyboard-operable and responsively laid out, not just
+pointer-clickable (`smartcard` deliberately still not wired, since
+nothing real exists to wire). What remains is the rest of the generic
+SDDM Rich UI surface and the three external blockers. See the private
 roadmap for the full, honest gap assessment; this milestone will not
 be marked closed until it actually is.
 

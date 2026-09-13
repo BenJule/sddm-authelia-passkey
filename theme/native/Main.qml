@@ -116,8 +116,15 @@ Item {
 
             mechanismSelector.reconsiderCurrentMechanism()
 
-            if (mechanismSelector.selectedMechanism !== before)
+            if (mechanismSelector.selectedMechanism !== before) {
                 root.smartphonePanelOpen = false
+
+                // v2.14.0: leave a sensible, visible focus target
+                // behind rather than a stale/invisible one - this
+                // fallback only ever lands on password (see
+                // MechanismSelector.reconsiderCurrentMechanism()).
+                passwordField.forceActiveFocus()
+            }
         }
     }
 
@@ -659,12 +666,25 @@ Item {
                 font.weight: Font.Medium
             }
 
-            RowLayout {
+            GridLayout {
+                id: mechanismSelectorGrid
+
                 Layout.fillWidth: true
 
-                spacing: 8
+                // v2.14.0: reuses ResponsiveMetrics' own established
+                // breakpoint model (docs/generic-mechanism-model.md)
+                // rather than a second, unrelated pixel threshold -
+                // one column (stacked) once the login card is too
+                // narrow for two side-by-side buttons to stay legible.
+                columns:
+                    responsiveMetrics.selectorStacked ? 1 : 2
+
+                columnSpacing: 8
+                rowSpacing: 8
 
                 Repeater {
+                    id: mechanismSelectorRepeater
+
                     model:
                         mechanismModel.selectableMechanisms
 
@@ -672,8 +692,17 @@ Item {
                         id: mechanismTab
 
                         required property var modelData
+                        required property int index
 
                         Layout.fillWidth: true
+                        Layout.column:
+                            responsiveMetrics.selectorStacked
+                                ? 0
+                                : index
+                        Layout.row:
+                            responsiveMetrics.selectorStacked
+                                ? index
+                                : 0
 
                         compact: true
 
@@ -707,6 +736,47 @@ Item {
 
                         onClicked:
                             root.selectMechanism(modelData.id)
+
+                        // v2.14.0: Left/Right moves focus to and
+                        // selects the neighboring selectable mechanism
+                        // (matching native radio-group semantics, and
+                        // consistent with this button's own
+                        // Accessible.role: RadioButton above) - a
+                        // disabled/not-ready neighbor is skipped
+                        // entirely rather than focused. Tab/Shift+Tab
+                        // and Enter/Space need no extra code: they are
+                        // QQC2.Button's own standard behavior.
+                        Keys.onLeftPressed: {
+                            var prev =
+                                mechanismSelectorRepeater.itemAt(
+                                    index - 1
+                                )
+
+                            if (prev && prev.enabled) {
+                                prev.forceActiveFocus()
+                                root.selectMechanism(
+                                    mechanismModel
+                                        .selectableMechanisms[index - 1]
+                                        .id
+                                )
+                            }
+                        }
+
+                        Keys.onRightPressed: {
+                            var next =
+                                mechanismSelectorRepeater.itemAt(
+                                    index + 1
+                                )
+
+                            if (next && next.enabled) {
+                                next.forceActiveFocus()
+                                root.selectMechanism(
+                                    mechanismModel
+                                        .selectableMechanisms[index + 1]
+                                        .id
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1084,8 +1154,16 @@ Item {
         width:
             responsiveMetrics.smartphoneCardWidth
 
+        // v2.14.0: sized from its own real content (see
+        // SmartphoneLoginPanel.qml), capped by the available space -
+        // no longer force-stretched to fill it, which used to leave a
+        // large blank area below whenever the QR/confirmation group
+        // was hidden (e.g. denied/expired/error states).
         height:
-            responsiveMetrics.smartphoneCardHeight
+            Math.min(
+                smartphonePanel.implicitHeight,
+                responsiveMetrics.smartphoneCardHeight
+            )
 
         compactLayout:
             responsiveMetrics.compactHeight

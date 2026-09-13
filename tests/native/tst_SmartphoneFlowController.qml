@@ -242,6 +242,39 @@ TestCase {
         compare(flow.targetUsername, "alice")
     }
 
+    // v2.14.0: "approved" is a real, safe cancel window - the login
+    // handoff (loginApproved/sddm.login()) does not happen immediately,
+    // it waits for approvedTimer. Cancelling before that timer fires
+    // must stop it from ever firing at all, never handing off a login
+    // the user just cancelled.
+    function test_cancel_during_approved_prevents_login_handoff() {
+        prepareWaiting("alice", "session-a", 10)
+
+        flow.applyStatus(
+            {
+                status: "approved",
+                username: "alice"
+            },
+            10,
+            "session-a"
+        )
+
+        compare(flow.state, "approved")
+        compare(loginSpy.count, 0)
+
+        flow.cancelCurrent(false)
+
+        compare(flow.state, "idle")
+        compare(loginSpy.count, 0)
+
+        // Give the (now-stopped) approvedTimer every chance to fire
+        // anyway if cancellation had failed to stop it.
+        wait(50)
+
+        compare(loginSpy.count, 0)
+        compare(flow.state, "idle")
+    }
+
     function test_cancel_invalidates_generation() {
         prepareWaiting("alice", "", 10)
 

@@ -104,3 +104,14 @@ a pixel-identical change - reviewed diff-by-diff instead).
 This still is not the full v3.0.0 Rich UI, still has no smartcard
 entry, and still has no manually-triggered passkey button - the
 architectural reasons given above for both remain unchanged.
+
+## Update (v2.14.0): the selector is now fully keyboard-operable
+
+`Left`/`Right` moves between selector tabs and selects the target
+(skipping a disabled one), `Tab`/`Enter`/`Space` already worked via
+standard `QQC2.Button` behavior, and losing/regaining `eidp` readiness
+now also correctly restores/leaves keyboard focus. The selector also
+stacks vertically instead of side by side once the login card is too
+narrow for both buttons. See `docs/generic-mechanism-model.md`'s
+"v2.14.0: interaction and responsive UX hardening" section for the
+full design and verification.
