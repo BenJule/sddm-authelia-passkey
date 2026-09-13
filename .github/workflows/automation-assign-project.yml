@@ -1,0 +1,79 @@
+name: 'Automation: Assign roadmap metadata'
+run-name: "Roadmap metadata for #${{ github.event.issue.number || github.event.pull_request.number }}"
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  assign:
+    name: Assign maintainer and active milestone
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    if: github.event_name == 'issues' || github.event_name == 'pull_request_target'
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411
+        with:
+          egress-policy: block
+          allowed-endpoints: |
+            api.github.com:443
+
+      - name: Assign BenJule and nearest open milestone
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const number = context.payload.pull_request
+              ? context.payload.pull_request.number
+              : context.payload.issue.number;
+
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              assignees: ['BenJule'],
+            });
+
+            const current = context.payload.pull_request
+              ? context.payload.pull_request.milestone
+              : context.payload.issue.milestone;
+
+            if (!current) {
+              const { data: milestones } = await github.rest.issues.listMilestones({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                sort: 'due_on',
+                direction: 'asc',
+                per_page: 100,
+              });
+
+              const candidates = milestones
+                .filter(m => !m.due_on || new Date(m.due_on).getTime() >= Date.now())
+                .sort((a, b) => {
+                  if (!a.due_on && !b.due_on) return a.number - b.number;
+                  if (!a.due_on) return 1;
+                  if (!b.due_on) return -1;
+                  return new Date(a.due_on) - new Date(b.due_on);
+                });
+
+              if (candidates.length > 0) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  milestone: candidates[0].number,
+                });
+                core.info(`Set milestone: ${candidates[0].title}`);
+              } else {
+                core.info('No open milestone available; leaving milestone unset.');
+              }
+            }
