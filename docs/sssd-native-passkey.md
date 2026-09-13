@@ -1,106 +1,57 @@
-# Native SSSD passkey integration (v2.5.0 - investigation, not implemented)
+# Native SSSD passkey integration (v2.5.0 investigation, corrected 2026-09-13)
 
-**Status: investigation only. No code shipped in this milestone.** Per
-the roadmap's own standing rule against fabricating hardware testing,
-and the explicit constraint that no physical FIDO2/U2F device is
-available in this environment, this document records a real,
-VM124-verified investigation into what SSSD's native passkey support
-would actually require - and a concrete, harder blocker found along the
-way that goes beyond "no hardware to test with."
-
-## Target architecture (unchanged direction)
+**Status: package capability verified; end-to-end native SSSD passkey authentication not yet validated.** No broker-owned FIDO2 implementation is introduced here. The architectural direction remains:
 
 ```
 SDDM -> PAM -> SSSD -> libfido2 -> hardware security key
 ```
 
-Kept architecturally separate from this project's OIDC broker
-(`docs/architecture.md`'s "Central architecture rule": SSSD/NSS is the
-authoritative Unix identity, never duplicated). `docs/fido2.md`'s
-existing `pam_u2f.so` stack addition is the current, shipped,
-real-tested hardware-key path - this document is about a longer-term,
-*different* mechanism (SSSD's own native passkey support), not a
-replacement for it.
+This path is deliberately separate from the OIDC broker. `docs/fido2.md` documents the project's currently shipped `pam_u2f.so` hardware-key path; native SSSD passkey support is a different, longer-term mechanism.
 
-## What was actually verified on VM124 (lab, real Samba AD backend)
+## Original investigation
 
-- **SSSD version**: `2.10.1-2+b1` (Debian 13/trixie). `sssd.conf`'s own
-  man page (shipped by this exact package) documents real passkey
-  config directives: `pam_passkey_auth`, `passkey_verification`,
-  `passkey_debug_libfido2`, `passkey_child_timeout`, and
-  `local_auth_policy` (with `match`/`only`/`enable:passkey` modes).
-- **`local_auth_policy`'s own documented default-enablement table**:
-  with the default `match` policy, Passkey is `disabled` for the `AD`
-  backend by default (`enabled` only for `IPA`), while Smartcard is
-  `enabled` for `AD`. VM124's actual domain config uses
-  `id_provider = ldap` (schema=ad) against the real Samba AD DC, not
-  SSSD's native `ad` provider - a nuance worth noting, since the
-  documented table is written in terms of `id_provider` names.
-- **Real test performed**: added `local_auth_policy = enable:passkey`
-  to VM124's `/etc/sssd/sssd.conf` (backed up first), validated with
-  `sssctl config-check` (0 issues both before and after), restarted
-  `sssd`, and confirmed the existing real AD account resolution
-  (`benlue`/`julia`/`sam` via `getent -s sss passwd`) was completely
-  unaffected - a clean, reversible experiment with no regression.
-  Reverted to the exact pre-change baseline afterward (diffed byte-
-  identical) once the config-level finding below made further live
-  testing pointless without upstream packaging changes.
+The first VM124 investigation correctly identified SSSD's passkey configuration surface (`pam_passkey_auth`, `passkey_verification`, `passkey_debug_libfido2`, `passkey_child_timeout`, and `local_auth_policy`) and proved that temporarily adding `local_auth_policy = enable:passkey` did not break the existing Samba AD / SSSD identity resolution. That configuration experiment was reverted to the pre-test baseline.
 
-## The actual blocker found (harder than "no hardware")
+However, the original packaging conclusion was wrong. The investigation checked `pam_sss.so` for direct `libfido2` linkage and searched for `passkey_child`, then concluded that Debian 13's SSSD build lacked passkey support. Debian actually ships native passkey support as a **split package**, `sssd-passkey`. `pam_sss.so` is therefore not expected to link to `libfido2` directly; the FIDO2 work is delegated to the helper from that split package.
 
-Beyond the well-known absence of a physical FIDO2 key in this
-environment, real investigation on VM124 found that **Debian 13's SSSD
-package build does not appear to include compiled passkey/FIDO2
-support at all**, independent of hardware availability:
+## Corrected package validation on VM124
 
-- `libfido2-1` (`1.15.0-1+b1`) *is* installed as a library, but
-- `ldd /usr/lib/x86_64-linux-gnu/security/pam_sss.so` shows **no
-  libfido2 linkage whatsoever** (only `libpam`, `libc`, `libaudit`,
-  `libcap-ng`).
-- No `passkey_child` helper binary exists anywhere on the system (the
-  architecture SSSD uses for other privileged child-process work, and
-  what `passkey_child_timeout`'s own documentation implies should
-  exist).
-- `sssd-tools` (`2.10.1-2+b1`, installed on VM124 for this
-  investigation) ships no `sss_passkey_register` or any other
-  passkey-enrollment tool.
+A follow-up validation on the real Debian 13 (Trixie) lab VM established:
 
-This strongly suggests Debian's SSSD build disables the optional
-libfido2 build-time dependency, even though the bundled man page
-documents the full upstream config surface regardless of what a given
-distribution actually compiled in - a common packaging situation, not
-a bug in this project's own code or configuration.
+- Debian repository candidate: `sssd-passkey 2.10.1-2+b1`.
+- `sssd-passkey 2.10.1-2+b1` was **already installed** on VM124.
+- `/usr/libexec/sssd/passkey_child` exists and is executable.
+- `/usr/lib/x86_64-linux-gnu/sssd/modules/sssd_krb5_passkey_plugin.so` exists.
+- `dpkg -L sssd-passkey` confirms that the package owns `passkey_child`.
+- `ldd /usr/libexec/sssd/passkey_child` shows real linkage to `libfido2.so.1` as well as the expected crypto/JSON runtime libraries.
+- `libfido2-1` is installed.
+- `dpkg -V sssd-passkey` returned cleanly.
+- the SSSD service remained active throughout the read-only package verification.
+- `/etc/pam.d/sddm` was SHA-256 identical before and after the run.
 
-## What this means for v2.5.0
+The attempted SHA-256 comparison of `/etc/sssd/sssd.conf` in that specific follow-up run was **inconclusive**, because the unprivileged hash operation was denied both before and after. It must therefore not be cited as byte-for-byte evidence. The run did not edit `sssd.conf`, and because `sssd-passkey` was already installed it also performed no package installation or SSSD configuration migration.
 
-Native SSSD passkey integration in this environment is blocked by two
-independent factors, not one:
+## What is now resolved
 
-1. No physical FIDO2/U2F hardware available (the already-known,
-   explicit constraint).
-2. Debian 13's own SSSD package appears to lack compiled passkey
-   support, so even a hypothetical hardware key could not be tested
-   against this distribution's SSSD build without first either
-   building SSSD from source with libfido2 support enabled, or waiting
-   for an upstream Debian package change - neither of which is this
-   project's own code to fix.
-
-Closure status, honestly:
+The earlier package-level blocker is resolved:
 
 ```
-SSSD_PASSKEY_CONFIG_UNDERSTOOD=GREEN  (real investigation complete)
-SSSD_PASSKEY_HARDWARE_TESTED=BLOCKED  (no device)
-SSSD_PASSKEY_BUILD_AVAILABLE=NOT_AVAILABLE  (Debian 13 SSSD lacks libfido2 linkage)
-SSSD_PASSKEY_IMPLEMENTED=NOT_IMPLEMENTED
+DEBIAN_SSSD_PASSKEY_PACKAGE=GREEN
+PASSKEY_CHILD=GREEN
+PASSKEY_CHILD_LIBFIDO2=GREEN
+SSSD_SERVICE_ACTIVE=GREEN
+PACKAGE_INTEGRITY=GREEN
+SSDM_PAM_UNCHANGED=GREEN
 ```
+
+The previous statement that Debian 13 lacked compiled SSSD passkey/libfido2 support is superseded by this correction.
+
+## What remains unvalidated
+
+This correction does **not** claim an end-to-end native SSSD passkey login. That requires real passkey/FIDO2 hardware and a real enrollment/authentication exercise through the target SSSD identity path. The separate physical-hardware closure gate is tracked by GitHub issue #87.
+
+There is also an identity-provider nuance: the validated Samba AD lab configuration historically used `id_provider = ldap` with AD schema rather than SSSD's native `ad` provider. SSSD's documented `local_auth_policy` defaults differ by provider, so any future native-passkey production design must validate the exact provider/domain configuration instead of assuming IPA/AD defaults apply unchanged.
 
 ## Recommendation
 
-Continue recommending this project's existing, real, shipped
-`pam_u2f.so` hardware-key path (`docs/fido2.md`) as the supported
-mechanism for hardware security keys on Debian. Revisit native SSSD
-passkey integration if/when either real FIDO2 hardware becomes
-available *and* a passkey-capable SSSD build becomes available on the
-target distribution - re-run the same `ldd`/`passkey_child` check
-above first, since that fact could change with a future Debian point
-release.
+Continue to treat the shipped `pam_u2f.so` integration as the project's currently supported hardware-key mechanism until issue #87 is completed with physical hardware. Native SSSD passkey support on Debian 13 is no longer blocked by package availability, but it remains a separate path that needs real enrollment and login evidence before it can be called end-to-end validated.
