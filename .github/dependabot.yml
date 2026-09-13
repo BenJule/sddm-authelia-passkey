@@ -4,13 +4,28 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/src/broker"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      broker-modules:
+        patterns:
+          - "*"
 
   - package-ecosystem: "gomod"
     directory: "/src/kwallet-secretd"
     schedule:
       interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      kwallet-modules:
+        patterns:
+          - "*"
