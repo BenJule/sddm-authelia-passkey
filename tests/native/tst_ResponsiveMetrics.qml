@@ -88,4 +88,21 @@ TestCase {
         setViewport(1280, 720)
         compare(metrics.overlayLayout, false)
     }
+
+    // v2.14.0: the mechanism selector (Main.qml) stacks its buttons
+    // vertically once the login card can no longer fit two side by
+    // side - derived from this file's own loginCardWidth/
+    // cardContentMargin, not a second unrelated pixel value.
+    function test_wide_viewport_does_not_stack_selector() {
+        setViewport(1024, 600)
+        compare(metrics.selectorStacked, false)
+
+        setViewport(1920, 1080)
+        compare(metrics.selectorStacked, false)
+    }
+
+    function test_narrow_viewport_stacks_selector() {
+        setViewport(300, 600)
+        compare(metrics.selectorStacked, true)
+    }
 }

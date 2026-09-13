@@ -1,3 +1,27 @@
+sddm-authelia-passkey (2.14.0-1) unstable; urgency=medium
+
+  * Harden the v2.13.0 mechanism selector into a fully operable login
+    control: Left/Right keyboard navigation (skips disabled tabs),
+    focus recovery on automatic eidp-unready fallback, and a new
+    ResponsiveMetrics.selectorStacked property for narrow-viewport
+    vertical stacking. No new authentication mechanism.
+  * Polish SmartphoneLoginPanel.qml: content-driven compact sizing (no
+    more blank space in terminal states), QR/device-code/countdown
+    grouped into one bordered confirmation area, mutually exclusive
+    showQrArea/showConfirmedArea sub-views (previously the QR/code kept
+    showing alongside "Bestätigt."/"Anmeldung läuft…" text), "Bereit"
+    badge hidden in the default state, divider above the footer.
+  * Security/UX correction: closeButton is disabled only during
+    logging_in (sddm.login() already called, cannot be recalled) but
+    stays enabled during approved (a real, safe cancel window before
+    the handoff) - both closeButton and Escape now derive from one
+    closeIsSafeToOffer property. No PAM/broker change.
+  * All non-panel visual baselines confirmed byte-identical; all 15
+    panel-affected baselines reviewed and regenerated after real diff
+    inspection (30 cases total, 30/30 green).
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sun, 13 Sep 2026 15:30:38 +0200
+
 sddm-authelia-passkey (2.13.0-1) unstable; urgency=medium
 
   * Add a visible "Anmeldemethode" mechanism selector (Passwort /

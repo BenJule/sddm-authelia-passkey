@@ -136,7 +136,41 @@ checks = {
     "mechanism selector never gates authentication":
         "sddm.login" not in mechanism_selector
         and "cancelCurrent" in mechanism_selector,
+    "smartphone panel and confirmed views never overlap":
+        "showConfirmedArea" in panel,
 }
+
+# v2.14.0: the close button may look secondary, and stays enabled
+# through "approved" (a real, safe cancel window - cancelCurrent()
+# there genuinely stops the pending login handoff before it happens).
+# It must be disabled during "logging_in" specifically: sddm.login()
+# has already been called and cannot be recalled by then, so offering
+# to "cancel" it there would be a false affordance, not a real one.
+# Both the button and Keys.onEscapePressed must derive this from the
+# same single closeIsSafeToOffer property - never two competing
+# conditions that could drift apart.
+if "closeIsSafeToOffer" not in panel:
+    raise SystemExit(
+        "native feature parity contract failed: "
+        "SmartphoneLoginPanel is missing closeIsSafeToOffer"
+    )
+
+if panel.count("closeIsSafeToOffer") < 3:
+    raise SystemExit(
+        "native feature parity contract failed: "
+        "closeButton and Keys.onEscapePressed must both derive from "
+        "the single closeIsSafeToOffer property"
+    )
+
+_close_is_safe = re.search(
+    r'readonly property bool closeIsSafeToOffer:.*?\n\n', panel, re.S
+)
+if not _close_is_safe or '"approved"' in _close_is_safe.group(0):
+    raise SystemExit(
+        "native feature parity contract failed: "
+        "closeIsSafeToOffer must not block the safe 'approved' cancel "
+        "window - only 'logging_in'"
+    )
 
 # v2.13.0 spec point 7: the selector's Repeater must be driven by
 # MechanismModel, never a second, competing hardcoded id list.

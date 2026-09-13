@@ -4,8 +4,8 @@
   "backend": "xcb+xvfb+software",
   "font": "Noto Sans",
   "dpi": 96,
-  "state_count": 21,
-  "case_count": 29,
+  "state_count": 22,
+  "case_count": 30,
   "cases": [
     {
       "state": "alternate_code",
@@ -13,7 +13,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "db06c68544cc5ed0feb8d81c5347160527b45e83c0e2ebf70ba5ab5a53c113bf"
+      "sha256": "471fc5471b27e52d548b935bfb5aa268646681b28e4cc70174b0b6c2d7799521"
     },
     {
       "state": "approved",
@@ -21,7 +21,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "9dc0c6af7fb3fa43441c057d24a13f2a0eedb43bc4286a9819e62a8332269203"
+      "sha256": "d61c5a631414693333e0a79399b0309e211fde741a44581fe0afc669f7d837bc"
     },
     {
       "state": "denied",
@@ -29,7 +29,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "5e529aed34a01719c3d3b6fe4af97a895c201fb034ffc63983e703e94cc69a68"
+      "sha256": "66db97daf532e256f63a391ce6acd218e5e8358307d62149a66a87050e16a11c"
     },
     {
       "state": "directory_account",
@@ -37,7 +37,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "1f843a88b881a762390d8ee1bb9a2afd52792577417eac738600e9e74efd9d89"
+      "sha256": "b625e64aa7b9ad380c8ddfbc23f664642221d2b6439907895fc0ed6003eaf869"
     },
     {
       "state": "expired",
@@ -45,7 +45,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "f114acf73242a2e42ce038db5de7bb8dd1443433d828dc964f47cd35635bdf36"
+      "sha256": "8600caee00fa2f9720f7035a9c6614ec8a11e71bb9fd25c356ef429b88542cf8"
     },
     {
       "state": "fido2_available",
@@ -77,7 +77,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "4497ccd9f683c39f575e03cdff541c2bdee75600f80ff038eb7e683e27204e54"
+      "sha256": "84d27e7c1ea926ecad7b755023116e0e81c85cf4d67a8bfa8cfd82a738feca60"
     },
     {
       "state": "long_branding",
@@ -125,7 +125,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "a91c341e2d91c9a00600625c9d44b62482a67a859584a632fbadd9d46f8d8f03"
+      "sha256": "e04c537c7558512ffd88fb1c148e62e87d83563c7162f7a4a86d7edd32631fcf"
     },
     {
       "state": "password",
@@ -141,7 +141,15 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "143cf8c2857c106e07a259bd6af3fedf704fbf4fbefc89155f05568b7e770958"
+      "sha256": "81f846d3ecf067c0aef71a514a9aba73ec8894a199aa7affbd9aadff2cc76a12"
+    },
+    {
+      "state": "selector_narrow_layout",
+      "file": "1280x720@1.00/selector_narrow_layout.png",
+      "width": 1280,
+      "height": 720,
+      "scale": 1.0,
+      "sha256": "c3a315f52157c6728a0393a6edc72dcc71caf20a4bb02c272ce1b651490d167f"
     },
     {
       "state": "smartphone_panel_idle",
@@ -149,7 +157,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "264cc2a43db4fded7ff67d3f72c4855a05868d3ee94bb0a912a8eb6a8ee51082"
+      "sha256": "3ebb86a3e0666358ee4a2184a1f2a6885539c3d9f69cb98ffea51ef08dfc1cae"
     },
     {
       "state": "smartphone_unreachable",
@@ -165,7 +173,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "c3d0d9410b10c8f0473e36b786dcf5a2b311bf90f83202981f0ffa854d06ece3"
+      "sha256": "4f8ce1b7bc5fda264fa88ea9a6ec4e973fa3cf34e8a0eff869f273700fd9065f"
     },
     {
       "state": "waiting",
@@ -173,7 +181,7 @@
       "width": 1280,
       "height": 720,
       "scale": 1.0,
-      "sha256": "93145e05bcc0557881570ce9ede8e0c1f372c3be842bb89f7775e25b46af9cbf"
+      "sha256": "747fafc4a2dbef7fd97e270adaa214ce5171a7660f4678c01e2958ae0f7f942b"
     },
     {
       "state": "idle",
@@ -197,7 +205,7 @@
       "width": 1920,
       "height": 1080,
       "scale": 1.0,
-      "sha256": "c212159cec82d015ae5242c0fe86dccce12b173a2c1ee12037b079cec9218fa8"
+      "sha256": "91baf92b4c8a7d33fcca60708354e06e01fa6fe61b63f3b25cac895a71a24ea9"
     },
     {
       "state": "waiting",
@@ -205,7 +213,7 @@
       "width": 1920,
       "height": 1080,
       "scale": 1.0,
-      "sha256": "5c15303b7b0b48b65009e809aaa5d903f4a4dfcc588b5174ff3367125130175b"
+      "sha256": "52eb393228ad0820b26d673192c3b0273af6fd71bf6c9e30be4f4b7470e3d298"
     },
     {
       "state": "idle",
@@ -229,7 +237,7 @@
       "width": 1920,
       "height": 1080,
       "scale": 1.25,
-      "sha256": "47f93091adb385c5ecf5d01a897506c29fef0d3baeef93d410dc7bc9cd74631a"
+      "sha256": "5f465e92b06e044fe3f8c31999dcf1a190646b09981fcfd5e5ebf4771ea23628"
     },
     {
       "state": "waiting",
@@ -237,7 +245,7 @@
       "width": 1920,
       "height": 1080,
       "scale": 1.25,
-      "sha256": "8e97d02c26009db2e844966ea3fc0da81b89f3501803fcc74e1382ef33784afb"
+      "sha256": "c4c94c0f483f163c39f2278fb017151e2eb5cab9bc492726979a5ac95aaf59c9"
     }
   ]
 }

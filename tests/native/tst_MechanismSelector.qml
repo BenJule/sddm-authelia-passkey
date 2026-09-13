@@ -147,4 +147,21 @@ TestCase {
         compare(fakeFlow.cancelCallCount, 1)
         compare(fakeFlow.lastCancelArg, false)
     }
+
+    // v2.14.0: eidp recovering from unready must never pull the user
+    // back to it automatically - only a real, explicit selectMechanism()
+    // call (a user action) may select eidp again. Losing eidp already
+    // falls back to password (tested above); this guards the opposite
+    // direction never auto-switches.
+    function test_eidp_recovery_does_not_auto_switch_back() {
+        selector.selectMechanism("eidp")
+        fakeFlow.oidcReady = false
+        selector.reconsiderCurrentMechanism()
+        compare(selector.selectedMechanism, "password")
+
+        fakeFlow.oidcReady = true
+        selector.reconsiderCurrentMechanism()
+
+        compare(selector.selectedMechanism, "password")
+    }
 }

@@ -3,6 +3,53 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.14.0] - 2026-09-13
+
+### Added
+- The mechanism selector (v2.13.0) is now keyboard-operable: `Left`/
+  `Right` moves focus to and selects the neighboring selectable
+  mechanism, skipping a disabled one entirely. `Tab`/`Shift+Tab` and
+  `Enter`/`Space` needed no new code (`QQC2.Button`'s own standard
+  behavior).
+- `ResponsiveMetrics.qml` gained `selectorStacked`, derived from its
+  own existing `loginCardWidth`/`cardContentMargin`: the selector's two
+  buttons now stack vertically instead of side by side once the login
+  card is too narrow for both. New `selector_narrow_layout` visual
+  baseline proves the code path renders correctly.
+- New `tests/native/tst_MechanismSelector.qml` test
+  (`test_eidp_recovery_does_not_auto_switch_back`) and two new
+  `tests/native/tst_ResponsiveMetrics.qml` tests for the new property.
+
+### Changed
+- The automatic `eidp`-unready fallback to `password` now also
+  restores keyboard focus to the password field, rather than
+  potentially leaving it on a now-hidden control.
+
+### Added (SmartphoneLoginPanel visual/UX polish)
+- The smartphone/EIdP flow panel (`SmartphoneLoginPanel.qml`) is now
+  content-sized (`implicitHeight` from real content) instead of
+  force-stretched, removing the large blank area that used to appear
+  below the content in denied/expired/error/rate_limited/offline
+  states. QR code, device code, and countdown are now grouped into one
+  bordered "confirmation area" container. The "Bereit" connection badge
+  is hidden in the default/ready state instead of cluttering the
+  header. A divider now sits above the footer button row.
+- `showQrArea` (now `starting`/`waiting` only) and a new
+  `showConfirmedArea` (`approved`/`logging_in`, a small vector
+  checkmark) are mutually exclusive sub-views of the same grouped area
+  - previously the still-scannable QR/device code kept showing at the
+    same time as "Bestätigt."/"Anmeldung läuft…" text, visually
+    contradicting itself.
+
+### Fixed (security/UX correction to the panel polish above)
+- `closeButton`'s enabled state now correctly distinguishes `approved`
+  (a real, safe cancel window - `cancelCurrent()` there genuinely stops
+  the pending login handoff before `sddm.login()` is ever called) from
+  `logging_in` (`sddm.login()` has already been called and cannot be
+  recalled - offering "Schliessen" there would be a false affordance).
+  Both `closeButton` and `Keys.onEscapePressed` now derive from a
+  single `closeIsSafeToOffer` property so they can never disagree.
+
 ## [2.13.0] - 2026-09-13
 
 ### Added

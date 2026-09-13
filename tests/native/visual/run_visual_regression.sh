@@ -22,7 +22,7 @@ ALL_STATES=(
     invalid_branding_asset long_branding no_avatar
     directory_account smartphone_unreachable fido2_available
     mechanism_selector_password mechanism_selector_eidp
-    mechanism_selector_eidp_unavailable
+    mechanism_selector_eidp_unavailable selector_narrow_layout
 )
 
 MATRIX_STATES=(
@@ -187,9 +187,9 @@ echo
 echo "VISUAL_PASS=$PASS"
 
 if [ "$STOP" -eq 0 ] &&
-   [ "$PASS" -eq 29 ]; then
-    echo "VISUAL_REGRESSION=29_OF_29_GREEN"
-    echo "VISUAL_STATES=21"
+   [ "$PASS" -eq 30 ]; then
+    echo "VISUAL_REGRESSION=30_OF_30_GREEN"
+    echo "VISUAL_STATES=22"
     echo "MATRIX_CASES=8"
     echo "FUZZ=6_PERCENT"
     echo "MAX_CHANGED_RATIO=1_PERCENT"

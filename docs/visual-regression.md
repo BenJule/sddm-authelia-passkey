@@ -16,7 +16,7 @@ The suite uses `sddm-greeter-qt6 --test-mode` under Xvfb with:
 
 ## Coverage
 
-All 21 required visual states are baseline-tested at `1280x720 @ 1.00`:
+All 22 required visual states are baseline-tested at `1280x720 @ 1.00`:
 
 - idle
 - password
@@ -39,6 +39,7 @@ All 21 required visual states are baseline-tested at `1280x720 @ 1.00`:
 - mechanism selector: password selected (v2.13.0)
 - mechanism selector: eidp selected, flow not yet started (v2.13.0)
 - mechanism selector: eidp tab disabled/unavailable (v2.13.0)
+- mechanism selector: narrow/stacked layout (v2.14.0)
 
 Representative matrix states `idle`, `waiting`, `offline` and
 `long_branding` are additionally tested at:
@@ -46,7 +47,7 @@ Representative matrix states `idle`, `waiting`, `offline` and
 - `1920x1080 @ 1.00`
 - `1920x1080 @ 1.25`
 
-Total automated visual cases: 29.
+Total automated visual cases: 30.
 
 ## Determinism
 

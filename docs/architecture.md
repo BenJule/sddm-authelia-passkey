@@ -976,3 +976,17 @@ global context properties), so this logic had to live in its own
 component to be testable at all. See
 `docs/generic-mechanism-model.md` for the full design and how this was
 verified.
+
+## Selector interaction & responsive UX (v2.14.0)
+
+Hardens the v2.13.0 selector rather than adding new authentication
+surface: `Left`/`Right` moves focus to and selects the neighboring
+selectable mechanism (skipping a disabled one), the automatic
+`eidp`-unready fallback now also restores keyboard focus to the
+password field, and `ResponsiveMetrics.qml`'s new `selectorStacked`
+property (derived from its own `loginCardWidth`/`cardContentMargin`)
+makes the selector's two buttons stack vertically once the login card
+is too narrow for them side by side. See
+`docs/generic-mechanism-model.md` for the full design, real VM124
+keyboard verification, and why the literal key-press behavior is
+checked there rather than via a new synthetic unit-test pattern.
