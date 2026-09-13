@@ -1,0 +1,19 @@
+title: "[Show and tell] "
+body:
+  - type: textarea
+    id: setup
+    attributes:
+      label: What did you build?
+      description: Share your deployment, integration, theme adaptation or provider setup.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Distribution, SDDM version, identity provider and deployment mode.
+  - type: textarea
+    id: lessons
+    attributes:
+      label: What did you learn?
+      description: Mention useful compatibility notes, pitfalls or improvements for other users.
