@@ -104,7 +104,7 @@ never a flow-control or security decision. See
 presentation was intentionally deferred and subsequently implemented in
 increments through v2.14.0.
 
-### v2.5.0 - Native SSSD passkey integration (investigated, blocked)
+### v2.5.0 - Native SSSD passkey integration (investigated; package blocker corrected)
 
 Direction: hardware FIDO2 via `SDDM -> PAM -> SSSD -> libfido2`, kept
 architecturally separate from the OIDC broker (`docs/fido2.md`'s
@@ -113,15 +113,22 @@ alternative). Trust boundary: the OIDC broker is remote/web
 authentication; SSSD passkey support is local hardware authentication -
 these must not be blurred into one code path.
 
-Real investigation on VM124 (see `docs/sssd-native-passkey.md`) found a
-harder blocker than the already-known absence of physical FIDO2
-hardware: Debian 13's own SSSD package (`2.10.1-2+b1`) does not appear
-to include compiled passkey support at all - `pam_sss.so` has no
-libfido2 linkage and no `passkey_child` helper binary exists, despite
-`libfido2` itself being installed and `sssd.conf`'s man page
-documenting the relevant config directives. No code implemented in
-this milestone; the existing `pam_u2f.so` path remains the recommended,
-real, shipped hardware-key mechanism.
+The original VM124 investigation incorrectly concluded that Debian 13's
+SSSD build lacked compiled passkey support because `pam_sss.so` had no
+direct `libfido2` linkage and `passkey_child` was not found during that
+check. A follow-up on 2026-09-13 resolved this packaging misunderstanding:
+Debian ships native passkey support separately as `sssd-passkey`.
+VM124 already had `sssd-passkey 2.10.1-2+b1` installed,
+`/usr/libexec/sssd/passkey_child` exists and is package-owned, the
+Kerberos passkey plugin exists, and `passkey_child` links to
+`libfido2.so.1`. See `docs/sssd-native-passkey.md` for the corrected
+verification record.
+
+Therefore **package availability is no longer a v3 blocker**. What is
+still missing is a real end-to-end native SSSD passkey enrollment/login
+with physical FIDO2 hardware and the exact target identity-provider
+configuration. That hardware validation remains tracked by #87; no
+broker-owned FIDO2 implementation is introduced.
 
 ### v2.6.0 - Multi-IdP / provider hardening (conformance test implemented)
 
@@ -232,7 +239,7 @@ each other. No authentication authority moved into QML.
 
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
-Operational tracking: [#85 mechanism-selection UI](https://github.com/BenJule/sddm-authelia-passkey/issues/85), [#86 real Keycloak validation](https://github.com/BenJule/sddm-authelia-passkey/issues/86), [#87 physical FIDO2/U2F validation](https://github.com/BenJule/sddm-authelia-passkey/issues/87), [#88 SSSD native-passkey blocker](https://github.com/BenJule/sddm-authelia-passkey/issues/88), and [#89 final closure gate](https://github.com/BenJule/sddm-authelia-passkey/issues/89).
+Operational tracking: [#85 mechanism-selection UI](https://github.com/BenJule/sddm-authelia-passkey/issues/85), [#86 real Keycloak validation](https://github.com/BenJule/sddm-authelia-passkey/issues/86), [#87 physical FIDO2/U2F validation](https://github.com/BenJule/sddm-authelia-passkey/issues/87), [#88 SSSD native-passkey package tracking](https://github.com/BenJule/sddm-authelia-passkey/issues/88), and [#89 final closure gate](https://github.com/BenJule/sddm-authelia-passkey/issues/89).
 
 Direction: this project's OIDC integration is one provider within a more
 general SDDM/PAM authentication-mechanism model (password / passkey /
@@ -244,13 +251,20 @@ validated on 2026-09-13 through production broker code, including the
 real approval path and live RFC 8628 negative/edge responses. See
 `docs/keycloak-validation.md` and issue #86.
 
+The **Debian SSSD package blocker is also resolved**: VM124 has the real
+`sssd-passkey 2.10.1-2+b1` split package, an executable package-owned
+`passkey_child`, the passkey plugin, and real `libfido2` linkage. The
+previous contrary conclusion was a packaging-detection error and is
+corrected in `docs/sssd-native-passkey.md` and issue #88.
+
 v3.0.0 still cannot honestly close while its remaining explicit gates
 are unresolved. In particular, physical FIDO2/U2F hardware validation
-(#87) has not occurred, Debian 13's packaged SSSD native-passkey support
-remains blocked/requires re-evaluation (#88), #85 retains its explicit
-post-v2.14 full-login regression closure criterion until that evidence is
-recorded, and #89 is the final release/regression gate. No unavailable
-external dependency is silently counted as green.
+(#87) has not occurred, #85 retains its explicit post-v2.14 full-login
+regression closure criterion until that evidence is recorded, and #89
+is the final release/regression gate. Native SSSD passkey support is no
+longer blocked by package availability, but end-to-end native SSSD
+passkey authentication still requires the same real-hardware evidence
+rather than being silently counted as validated.
 
 ## Security invariants (apply across every milestone above)
 
