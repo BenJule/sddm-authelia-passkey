@@ -953,6 +953,10 @@ documented `Mechanism` data shape (`id`/`displayName`/`kind`/
 knows about (`password`/`eidp`/`passkey`/`smartcard`), backing the
 v2.9.0 button/hint-label bindings above via one named lookup instead of
 two raw property reads. Never gates an authentication decision - the
-broker/PAM stack remains sole authority regardless. See
-`docs/generic-mechanism-model.md` for the full interface and what
+broker/PAM stack remains sole authority regardless. As of v2.12.0,
+`password`'s login button/field are also gated on
+`mechanismModel.mechanism("password").ready` - `eidp`/`passkey`/
+`password` are now all wired through the same model; `smartcard`
+deliberately is not (no capability signal, no backend action to bind).
+See `docs/generic-mechanism-model.md` for the full interface and what
 remains unwired.
