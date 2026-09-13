@@ -15,10 +15,12 @@ permissions:
 
 jobs:
   assign:
-    name: Assign maintainer and active milestone
+    name: Assign project, maintainer and active milestone
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     if: github.event_name == 'issues' || github.event_name == 'pull_request_target'
+    env:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411
@@ -26,6 +28,17 @@ jobs:
           egress-policy: block
           allowed-endpoints: |
             api.github.com:443
+
+      - name: Add to development project
+        if: ${{ env.PROJECT_TOKEN != '' && vars.ROADMAP_PROJECT_URL != '' }}
+        uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd
+        with:
+          project-url: ${{ vars.ROADMAP_PROJECT_URL }}
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+
+      - name: Project automation not configured
+        if: ${{ env.PROJECT_TOKEN == '' || vars.ROADMAP_PROJECT_URL == '' }}
+        run: echo 'Project auto-assignment skipped; configure PROJECT_TOKEN and ROADMAP_PROJECT_URL to enable it.'
 
       - name: Assign BenJule and nearest open milestone
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
