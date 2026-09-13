@@ -1,0 +1,168 @@
+name: ci-gate
+
+run-name: "CI Gate · PR #${{ github.event.pull_request.number }}"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ci-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: CI Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Wait for required repository workflows
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          script: |
+            const required = new Set([
+              'build',
+              'test',
+              'security',
+              'codeql',
+              'branding',
+              'theme',
+              'native-theme',
+              'package',
+              'dependency-review',
+            ]);
+
+            const accepted = new Set([
+              'success',
+              'neutral',
+              'skipped',
+            ]);
+
+            const sha =
+              context.payload.pull_request.head.sha;
+
+            const sleep = ms =>
+              new Promise(resolve =>
+                setTimeout(resolve, ms)
+              );
+
+            const deadline =
+              Date.now() + 85 * 60 * 1000;
+
+            while (Date.now() < deadline) {
+
+              const { data } =
+                await github.rest.actions
+                  .listWorkflowRunsForRepo({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    head_sha: sha,
+                    event: 'pull_request',
+                    per_page: 100,
+                  });
+
+              const latest = new Map();
+
+              for (const run of data.workflow_runs) {
+
+                if (!required.has(run.name))
+                  continue;
+
+                const previous =
+                  latest.get(run.name);
+
+                if (
+                  !previous
+                  || run.run_attempt > previous.run_attempt
+                  || (
+                    run.run_attempt
+                      === previous.run_attempt
+                    && run.id > previous.id
+                  )
+                ) {
+                  latest.set(
+                    run.name,
+                    run
+                  );
+                }
+              }
+
+              const missing =
+                [...required].filter(
+                  name => !latest.has(name)
+                );
+
+              const failed =
+                [...latest.entries()].filter(
+                  ([, run]) =>
+                    run.status === 'completed'
+                    && !accepted.has(
+                      run.conclusion
+                    )
+                );
+
+              for (const [name, run]
+                   of latest.entries()) {
+                core.info(
+                  `${name}: ${run.status}`
+                  + ` / ${run.conclusion || 'pending'}`
+                );
+              }
+
+              if (failed.length > 0) {
+
+                core.setFailed(
+                  'Required workflow failed: '
+                  + failed.map(
+                      ([name, run]) =>
+                        `${name}=${run.conclusion}`
+                    ).join(', ')
+                );
+
+                return;
+              }
+
+              const complete =
+                missing.length === 0
+                && [...latest.values()]
+                    .every(
+                      run =>
+                        run.status === 'completed'
+                        && accepted.has(
+                          run.conclusion
+                        )
+                    );
+
+              if (complete) {
+
+                core.notice(
+                  'All required repository '
+                  + 'workflows are green.'
+                );
+
+                return;
+              }
+
+              if (missing.length > 0) {
+                core.info(
+                  'Waiting for workflows: '
+                  + missing.join(', ')
+                );
+              }
+
+              await sleep(15000);
+            }
+
+            core.setFailed(
+              'Timed out waiting for all '
+              + 'required repository workflows.'
+            );
