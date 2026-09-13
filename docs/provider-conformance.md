@@ -36,26 +36,75 @@ granted by running this command.
 
 ## Scope
 
-This is deliberately **not** the full "Provider Conformance Lab" the
-private roadmap's long-term vision describes (a reproducible
-multi-provider test matrix with negative/malformed-response fixtures,
-`slow_down`/`access_denied`/`expired_token` coverage, and a
-machine-derived public support matrix). Those require either
-driving a live provider through a genuinely denied/expired flow
-(which needs a human to actually deny/ignore a real device code - out
-of scope for an unattended command) or synthetic fixtures against a
-mock provider (already covered by this project's existing Go test
-suite, e.g. `src/broker/conformance_test.go`,
-`src/broker/provider_test.go`). This command's job is narrower and
-real: prove that *this specific, currently-configured* provider
-behaves conformantly right now, using production code.
+`provider-test` remains deliberately narrower than a complete provider
+conformance laboratory. It proves that the configured provider's live
+discovery/device/JWKS/origin/pending path works through production code;
+it does not itself automate human approval/denial or rewrite the
+provider's behaviour into synthetic fixtures.
+
+The existing Go suite covers deterministic malformed/error responses.
+Real-provider validation may additionally exercise RFC 8628 outcomes
+outside `provider-test` when practical. The Keycloak closure run below
+therefore included real `authorization_pending`, `slow_down`,
+`expired_token`, invalid-device-code and invalid-client responses plus a
+human-approved end-to-end flow. `access_denied` was not artificially
+manufactured and remains covered by the broker regression suite and
+`docs/failure-policy.md`.
 
 ## Real validation
 
-Validated on lab VM124 against the real, already-provisioned
-infrastructure from v2.1.0: real Authelia (`authelia.s3-dev.ovh`) and
-real Authentik (`auth.s3-lan.ovh`, dedicated
-`sddm-authelia-passkey-lab` application). Keycloak remains
-`NOT_TESTED` - no real instance is available in this environment,
-matching this project's standing rule against fabricating provider
-validation.
+### Authelia
+
+Real and continuously exercised in the project's lab/production path.
+The `provider_kind=authelia` compatibility path retains its explicit
+Authelia endpoint handling and configured verification-host trust model.
+
+### Authentik
+
+Real validation was completed against a dedicated Authentik OIDC lab
+application using Device Code grant, a public client and minimal scopes.
+That run originally exposed the provider-neutral `verification_uri`
+origin-validation gap fixed during the v2.1/v2.6 hardening work.
+
+### Keycloak 26.7.3
+
+**TESTED on 2026-09-13 against a real Keycloak 26.7.3 instance.**
+
+The disposable lab used the official
+`quay.io/keycloak/keycloak:26.7.3` image, an isolated realm, a public OIDC
+client with Device Authorization Grant enabled, `openid profile`, and
+`preferred_username` as the identity claim. Standard/implicit/direct
+access/service-account grants were disabled for the test client.
+
+The production broker's `--provider-test --json` returned GREEN for:
+
+- discovery
+- exact issuer binding
+- advertised device-authorization endpoint
+- JWKS reachability/shape
+- trusted verification-origin derivation
+- real `verification_uri_complete` origin validation
+- immediate RFC 8628 `authorization_pending`
+
+A separate real end-to-end device flow was approved interactively and
+reached the broker's `approved` state. The returned
+`preferred_username` matched the requested local username exactly; only
+then was a root-owned `0600` approval marker created with the expected
+local/NSS UID.
+
+Real negative/edge observations from the same Keycloak version:
+
+- invalid device code -> HTTP 400 / `invalid_grant`
+- nonexistent client -> HTTP 401, no device code
+- rapid token polling -> `slow_down`
+- deliberately short-lived device code -> `expired_token`
+
+The installed/production broker, PAM and SDDM configuration were not
+changed during this validation; disposable Keycloak/broker test
+instances used isolated loopback ports. Full reproducibility notes,
+transport caveats and evidence are in `docs/keycloak-validation.md`.
+
+The support statement is intentionally version-specific: **Keycloak
+26.7.3 is TESTED with the documented configuration**. Other Keycloak
+versions/configurations remain expected-but-unverified until separately
+validated.
