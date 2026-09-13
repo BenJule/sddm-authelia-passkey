@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.0] - 2026-09-13
+
+### Changed
+- `password`'s login button and password field are now also gated on
+  `mechanismModel.mechanism("password").ready`, alongside the existing
+  username-selected check - the same single source of truth already
+  used for `eidp`/`passkey` since v2.11.0. `password.ready` is always
+  `true` today, so this is another pure, byte-identical refactor,
+  proven with the same 26-case visual regression methodology
+  (`CHANGED=0` for all cases in a real `debian:13` container).
+- `smartcard` deliberately received no UI wiring: unlike `passkey`
+  (ambient, real PAM path) or `eidp` (real capability signal + real
+  backend), `smartcard` has neither a capability signal nor a backend
+  action to bind a button to. See `docs/generic-mechanism-model.md`.
+
 ## [2.11.0] - 2026-09-13
 
 ### Added

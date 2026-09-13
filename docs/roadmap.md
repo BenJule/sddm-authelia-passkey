@@ -214,6 +214,19 @@ regression suite (mirrored into the test harness, re-run in a real
 remains genuinely unwired (`password`/`smartcard` are represented in
 the model but not yet UI-driven by it).
 
+### v2.12.0 - Password wired through the mechanism model (implemented)
+
+`password`'s login button and password field are now also gated on
+`mechanismModel.mechanism("password").ready`, alongside the existing
+username-selected check - the same single source of truth already used
+for `eidp`/`passkey` since v2.11.0. `password.ready` is always `true`
+today, so this is another pure, byte-identical refactor (proven the
+same way as v2.11.0: the 26-case visual regression suite, mirrored
+onto the test harness, re-run in a real `debian:13` container,
+`CHANGED=0` for every case). `smartcard` deliberately received no UI
+wiring - see `docs/generic-mechanism-model.md` for why (no capability
+signal, no backend action, nothing real to bind a button to).
+
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Direction: this project's OIDC integration becomes one provider within
@@ -228,10 +241,13 @@ three external blockers only resolvable outside this project's own
 code - no real Keycloak instance for provider-conformance testing, no
 physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
 compiled passkey/libfido2 support. As of v2.11.0, the mechanism data
-model itself is real (see above) - what remains is wiring
-`password`/`smartcard` through it and the three external blockers. See
-the private roadmap for the full, honest gap assessment; this
-milestone will not be marked closed until it actually is.
+model itself is real (see above); as of v2.12.0, `password` is also
+wired through it (`eidp`/`passkey`/`password` all real; `smartcard`
+deliberately not, since nothing real exists to wire). What remains is
+the larger generic SDDM Rich UI/mechanism-selection surface and the
+three external blockers. See the private roadmap for the full, honest
+gap assessment; this milestone will not be marked closed until it
+actually is.
 
 ## Security invariants (apply across every milestone above)
 

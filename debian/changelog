@@ -1,3 +1,14 @@
+sddm-authelia-passkey (2.12.0-1) unstable; urgency=medium
+
+  * Wire password's login button/field through MechanismModel.qml
+    (mechanism("password").ready), same single source of truth already
+    used for eidp/passkey. Always true today, so a pure byte-identical
+    refactor - proven via the 26-case visual regression suite in a real
+    debian:13 container (CHANGED=0). smartcard deliberately not wired:
+    no capability signal or backend action exists to bind a button to.
+
+ -- Benjamin Lütker <benjamin.luetker@gmail.com>  Sun, 13 Sep 2026 06:23:18 +0200
+
 sddm-authelia-passkey (2.11.0-1) unstable; urgency=medium
 
   * Introduce MechanismModel.qml: a single, documented Mechanism data
