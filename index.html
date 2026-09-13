@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" data-color-mode="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SDDM Authelia Passkey — passwordless SDDM login with Authelia/OIDC Device Authorization, WebAuthn/passkeys, safe password fallback and optional KWallet integration.">
+  <meta property="og:title" content="SDDM Authelia Passkey">
+  <meta property="og:description" content="Passwordless SDDM login with passkeys, provider-neutral OIDC Device Authorization and a fail-safe password fallback.">
+  <meta property="og:url" content="https://benjule.github.io/sddm-authelia-passkey/">
+  <meta property="og:type" content="website">
+  <title>SDDM Authelia Passkey · BenJule</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#fff;--bg2:#f6f8fa;--fg:#1f2328;--muted:#656d76;--border:#d0d7de;--accent:#0969da;--accent2:#ddf4ff;--header:#24292f;--headerfg:#fff;--success:#1a7f37;--warn:#9a6700;--shadow:0 3px 12px rgba(140,149,159,.18)}
+    @media(prefers-color-scheme:dark){:root{--bg:#0d1117;--bg2:#161b22;--fg:#e6edf3;--muted:#8d96a0;--border:#30363d;--accent:#58a6ff;--accent2:rgba(31,111,235,.15);--header:#161b22;--headerfg:#e6edf3;--success:#3fb950;--warn:#d29922;--shadow:0 3px 12px rgba(0,0,0,.4)}}
+    [data-color-mode="light"]{--bg:#fff;--bg2:#f6f8fa;--fg:#1f2328;--muted:#656d76;--border:#d0d7de;--accent:#0969da;--accent2:#ddf4ff;--header:#24292f;--headerfg:#fff;--success:#1a7f37;--warn:#9a6700;--shadow:0 3px 12px rgba(140,149,159,.18)}
+    [data-color-mode="dark"]{--bg:#0d1117;--bg2:#161b22;--fg:#e6edf3;--muted:#8d96a0;--border:#30363d;--accent:#58a6ff;--accent2:rgba(31,111,235,.15);--header:#161b22;--headerfg:#e6edf3;--success:#3fb950;--warn:#d29922;--shadow:0 3px 12px rgba(0,0,0,.4)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--fg);background:var(--bg)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    .topnav{position:sticky;top:0;z-index:10;height:56px;padding:0 24px;background:var(--header);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}.brand{color:var(--headerfg);font-weight:700}.links{display:flex;gap:4px;align-items:center}.links a,.theme{color:var(--headerfg);opacity:.8;padding:6px 10px;border-radius:6px}.links a:hover{background:rgba(255,255,255,.08);text-decoration:none;opacity:1}.theme{background:transparent;border:1px solid rgba(255,255,255,.2);cursor:pointer}
+    .hero{padding:68px 24px 58px;text-align:center;background:linear-gradient(135deg,var(--header),#1d2a3b);color:#fff;border-bottom:1px solid var(--border)}.eyebrow{display:inline-flex;gap:8px;align-items:center;padding:5px 13px;border:1px solid rgba(255,255,255,.14);border-radius:99px;background:rgba(255,255,255,.06);font-size:12px;margin-bottom:18px}.dot{width:7px;height:7px;border-radius:50%;background:#3fb950}.hero h1{font-size:42px;line-height:1.15;margin:0 0 12px}.hero p{max-width:720px;margin:0 auto 26px;color:rgba(255,255,255,.72);font-size:17px}.badges{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-bottom:28px}.badges img{height:20px}.actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px}.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:6px;font-weight:600;border:1px solid rgba(255,255,255,.18)}.btn.primary{background:#1f6feb;color:#fff;border-color:#1f6feb}.btn.secondary{color:#fff;background:rgba(255,255,255,.08)}
+    .container{max-width:1040px;margin:0 auto;padding:0 24px}.section{padding:48px 0;border-bottom:1px solid var(--border)}.label{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);font-weight:700}.section h2{font-size:24px;margin:6px 0}.desc{color:var(--muted);max-width:720px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:24px}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;transition:.15s}.card:hover{box-shadow:var(--shadow);border-color:var(--accent)}.card h3{margin:0 0 7px;font-size:15px}.card p{margin:0;color:var(--muted);font-size:13px}.icon{font-size:22px;margin-bottom:10px}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px}.stat{text-align:center;padding:20px;border:1px solid var(--border);background:var(--bg2);border-radius:10px}.stat strong{display:block;font-size:27px;color:var(--accent)}.stat span{color:var(--muted);font-size:12px}
+    pre{overflow:auto;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px}code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:center;margin-top:24px}.flow div{padding:15px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;text-align:center;font-weight:600}.flow .arrow{border:0;background:transparent;color:var(--muted);font-size:20px;padding:0}
+    .roadmap{margin-top:24px}.milestone{display:grid;grid-template-columns:130px 1fr;gap:16px;padding:16px 0;border-bottom:1px solid var(--border)}.milestone:last-child{border-bottom:0}.milestone .version{font-weight:700;color:var(--accent)}.milestone p{margin:0;color:var(--muted)}.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-left:6px;background:var(--accent2);color:var(--accent)}.pill.done{background:rgba(46,160,67,.14);color:var(--success)}.pill.next{background:rgba(210,153,34,.14);color:var(--warn)}
+    footer{padding:34px 24px;text-align:center;color:var(--muted)}@media(max-width:760px){.topnav{height:auto;padding:12px 16px;align-items:flex-start}.links{flex-wrap:wrap;justify-content:flex-end}.hero{padding-top:48px}.hero h1{font-size:32px}.flow{grid-template-columns:1fr}.flow .arrow{transform:rotate(90deg)}.milestone{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a class="brand" href="#top">🔐 SDDM Authelia Passkey</a>
+    <div class="links">
+      <a href="#features">Features</a><a href="#install">Install</a><a href="#architecture">Architecture</a><a href="https://github.com/users/BenJule/projects/2">Project</a><a href="#roadmap">Roadmap</a><a href="#security">Security</a><a href="https://github.com/BenJule/sddm-authelia-passkey">GitHub</a>
+      <button class="theme" id="theme">◐ Theme</button>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="eyebrow"><span class="dot"></span> stable in the validated Debian 13 reference environment</div>
+    <h1>SDDM Authelia Passkey</h1>
+    <p>Approve your Linux login on a phone with a passkey. OIDC Device Authorization handles the remote approval, while the normal password path remains intact as the fail-safe fallback.</p>
+    <div class="badges">
+      <img alt="build" src="https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml/badge.svg">
+      <img alt="tests" src="https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml/badge.svg">
+      <img alt="security" src="https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml/badge.svg">
+      <img alt="release" src="https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey">
+    </div>
+    <div class="actions">
+      <a class="btn primary" href="#install">Install on Debian 13</a>
+      <a class="btn secondary" href="https://github.com/BenJule/sddm-authelia-passkey/releases/latest">Latest release</a>
+      <a class="btn secondary" href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/roadmap.md">Roadmap</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="section">
+      <div class="label">Overview</div><h2>Passwordless approval without sacrificing recovery</h2>
+      <p class="desc">The broker performs the long-running OIDC device flow outside SDDM. A native PAM module consumes a root-owned, short-lived, single-use approval marker. If no valid approval exists, authentication falls through to the normal password path.</p>
+      <div class="stats"><div class="stat"><strong>v2.12</strong><span>current release line</span></div><div class="stat"><strong>26</strong><span>visual regression cases</span></div><div class="stat"><strong>3</strong><span>theme deployment modes</span></div><div class="stat"><strong>0</strong><span>password fallback removals</span></div></div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="label">Features</div><h2>Security-first login plumbing</h2><p class="desc">Built for a login stack where failure must be boring, explicit and recoverable.</p>
+      <div class="grid">
+        <div class="card"><div class="icon">📱</div><h3>Smartphone / passkey approval</h3><p>OIDC Device Authorization with WebAuthn/passkey verification at the identity provider.</p></div>
+        <div class="card"><div class="icon">🔑</div><h3>Password stays intact</h3><p>The PAM integration is additive. Missing or failed approval keeps the normal password path available.</p></div>
+        <div class="card"><div class="icon">🧭</div><h3>Provider-neutral OIDC</h3><p>Authelia by default, with generic discovery-based support for standards-compliant providers.</p></div>
+        <div class="card"><div class="icon">🧬</div><h3>Identity binding</h3><p>OIDC proves authentication; NSS/SSSD remains authoritative for the Unix identity.</p></div>
+        <div class="card"><div class="icon">🗝️</div><h3>Optional FIDO2/U2F</h3><p>Local hardware-key login through the upstream pam_u2f path, kept separate from remote OIDC.</p></div>
+        <div class="card"><div class="icon">🧰</div><h3>Recovery tooling</h3><p>Preflight, postflight, doctor, rollback and break-glass tooling designed to avoid login lockout.</p></div>
+        <div class="card"><div class="icon">👛</div><h3>KWallet hand-off</h3><p>Optional best-effort KWallet unlock over a separate root-only AF_UNIX secret service.</p></div>
+        <div class="card"><div class="icon">🛡️</div><h3>Supply-chain controls</h3><p>Signed Debian packages, checksums, SBOMs, CodeQL, dependency review and hardened build flags.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="label">Installation</div><h2>Debian 13 APT repository</h2><p class="desc">Install the signed package from the project APT mirror, then run the documented preflight before enabling PAM integration.</p>
+      <pre><code>curl -fsSL https://apt.s3-dev.ovh/trixie-KEY.gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/sddm-authelia-passkey-repo.gpg
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/sddm-authelia-passkey-repo.gpg] https://apt.s3-dev.ovh trixie main" | sudo tee /etc/apt/sources.list.d/sddm-authelia-passkey.list
+sudo apt update
+sudo apt install sddm-authelia-passkey</code></pre>
+      <p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/installation.md">Read the full installation guide →</a></p>
+    </section>
+
+    <section class="section" id="architecture">
+      <div class="label">Architecture</div><h2>Authentication proof and Unix identity stay separate</h2>
+      <div class="flow"><div>SDDM Theme</div><div class="arrow">→</div><div>OIDC Broker</div><div class="arrow">→</div><div>Authelia / IdP</div></div>
+      <div class="flow"><div>Approval marker</div><div class="arrow">→</div><div>PAM module</div><div class="arrow">→</div><div>Linux session</div></div>
+      <p class="desc">The broker never becomes a Unix identity store. NSS/SSSD resolves the account, while the broker only supplies an authentication proof bound to the selected identity.</p>
+      <p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/architecture.md">Full architecture and trust-boundary documentation →</a></p>
+    </section>
+
+    <section class="section" id="roadmap">
+      <div class="label">Roadmap</div><h2>Toward a generic authentication mechanism framework</h2><p class="desc">The shipped v2.x milestones progressively generalise provider handling, identity binding, mechanism modelling and failure policy. v3.0.0 remains the closure gate.</p>
+      <div class="roadmap">
+        <div class="milestone"><div class="version">v2.1–v2.8 <span class="pill done">done</span></div><p>Provider-neutral OIDC, identity hardening, diagnostics, capability discovery, conformance testing, failure policy and transaction binding.</p></div>
+        <div class="milestone"><div class="version">v2.9–v2.12 <span class="pill done">done</span></div><p>Mechanism offering, visual regression, generic mechanism data model and password wiring.</p></div>
+        <div class="milestone"><div class="version">v3.0.0 <span class="pill next">next</span></div><p>Generic authentication mechanism framework, richer SDDM mechanism-selection UX and closure of the remaining validation blockers.</p></div>
+      </div>
+      <p><a href="https://github.com/users/BenJule/projects/2">Open live development project →</a> · <a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/roadmap.md">Read the technical roadmap →</a></p>
+    </section>
+
+    <section class="section" id="security">
+      <div class="label">Security</div><h2>Designed around explicit trust boundaries</h2>
+      <div class="grid"><div class="card"><h3>Fail-safe PAM integration</h3><p>Unknown PAM stack shapes are refused instead of guessed, and password login remains the fallback invariant.</p></div><div class="card"><h3>Single-use marker model</h3><p>Approvals are short-lived, root-owned and consumed once, with transaction context bound to the request.</p></div><div class="card"><h3>Private vulnerability reporting</h3><p>Security reports go through GitHub Security Advisories rather than public issues.</p></div></div>
+      <p><a href="https://github.com/BenJule/sddm-authelia-passkey/security/advisories/new">Report a vulnerability privately →</a></p>
+    </section>
+
+    <section class="section">
+      <div class="label">Documentation</div><h2>Deep technical docs</h2>
+      <div class="grid"><div class="card"><h3>Installation</h3><p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/installation.md">Deployment and preflight</a></p></div><div class="card"><h3>Architecture</h3><p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/architecture.md">PAM flow and trust boundaries</a></p></div><div class="card"><h3>Threat model</h3><p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/threat-model.md">Security assumptions and invariants</a></p></div><div class="card"><h3>Validated environment</h3><p><a href="https://github.com/BenJule/sddm-authelia-passkey/blob/main/docs/validated-environment.md">What has actually been tested</a></p></div></div>
+    </section>
+  </main>
+
+  <footer>© BenJule · MIT licensed project code · <a href="https://github.com/BenJule/sddm-authelia-passkey">GitHub repository</a></footer>
+
+  <script>
+    const root=document.documentElement,btn=document.getElementById('theme');
+    const saved=localStorage.getItem('sap-theme'); if(saved) root.dataset.colorMode=saved;
+    btn.addEventListener('click',()=>{const cur=root.dataset.colorMode||'auto';const next=cur==='auto'?'dark':cur==='dark'?'light':'auto';root.dataset.colorMode=next;localStorage.setItem('sap-theme',next);btn.textContent='◐ '+next;});
+  </script>
+</body>
+</html>
