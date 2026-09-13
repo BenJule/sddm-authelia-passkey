@@ -1,192 +1,229 @@
-# sddm-authelia-passkey
+<div align="center">
 
-[![build](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml)
-[![test](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml)
-[![security](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml)
-[![package](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/package.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/package.yml)
-[![release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey?include_prereleases)](https://github.com/BenJule/sddm-authelia-passkey/releases)
-[![license](https://img.shields.io/github/license/BenJule/sddm-authelia-passkey)](LICENSE)
+# 🔐 SDDM Authelia Passkey
 
-**Status: stable.** No known P0/P1 bugs within the documented
-validated scope (see `docs/validated-environment.md`); `config.conf`,
-the admin CLI, and the shipped scripts' exit codes/status lines are
-covered by a stability commitment going forward (`docs/stability.md`).
-Proven end-to-end on one production host and one lab VM, including a
-real host reboot and a full password + smartphone/passkey login
-regression on both, plus extensive lab-VM verification of every
-optional feature (NSS/LDAP, FIDO2, generic OIDC providers, policy/
-recovery tooling) added since. Still a single-maintainer project not
-yet tested across multiple independent installs, hardware
-configurations, or a real distro/display-manager matrix - read
-`docs/threat-model.md`, `docs/security.md`, and
-`docs/validated-environment.md` before deploying.
+**Passwordless SDDM login with Authelia Device Authorization, WebAuthn/passkeys and a fail-safe password fallback.**
 
-Passwordless SDDM login via Authelia's OIDC Device Authorization Grant
-and WebAuthn/Passkey user verification - approve a login on your phone
-instead of typing a password, with the existing password login always
-kept as a fallback.
+[![Build](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/build.yml)
+[![Tests](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/test.yml)
+[![Native Theme](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/native-theme.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/native-theme.yml)
+[![CodeQL](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/codeql.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/codeql.yml)
+[![Security](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml/badge.svg)](https://github.com/BenJule/sddm-authelia-passkey/actions/workflows/security.yml)
+[![Release](https://img.shields.io/github/v/release/BenJule/sddm-authelia-passkey)](https://github.com/BenJule/sddm-authelia-passkey/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Platform](https://img.shields.io/badge/platform-Debian%2013%20%7C%20KDE%20Plasma%206%20%7C%20SDDM%200.21-informational)
 
-## Features
+[Installation](#-installation) · [Features](#-features) · [Architecture](#-architecture) · [Security](#-security) · [Documentation](#-documentation) · [Contributing](#-contributing)
 
-- Login via QR code + Passkey (fingerprint/PIN/whatever your
-  authenticator uses) instead of a typed password.
-- Password login is never removed, weakened, or made conditional - the
-  PAM integration is purely additive and falls through unchanged when no
-  approval is present.
-- Optional KWallet auto-unlock on a successful smartphone/passkey login
-  (`kwallet_auto_unlock`, off by default), using `systemd-creds` so the
-  wallet password is never stored in plaintext.
-- Rate limiting, single-use/short-TTL approval markers, and a
-  server-side allowlist independent of any group membership.
-- Optional native FIDO2/U2F hardware security keys (`docs/fido2.md`),
-  optionally restricted to a group.
-- A read-only admin CLI (`sddm-authelia-passkey-admin`) and an
-  emergency `break-glass.sh` recovery path independent of any backup
-  lookup - see `docs/rollback.md`.
+<br>
 
-## Architecture
+<img src="tests/native/visual/baselines/1280x720@1.00/approved.png" alt="Native SDDM theme with approved smartphone login" width="900">
 
-See `docs/architecture.md` for the full diagram and design rationale
-(including why a separate broker process is unavoidable given SDDM's PAM
-architecture). See `docs/roadmap.md` for the direction beyond the
-current release (OIDC as authentication proof, SSSD/NSS as the
-authoritative Unix identity, generic provider support).
+</div>
 
-## Theme
+---
 
-Three deployment modes are supported side by side, switchable at any
-time (`sddm-authelia-passkey-admin apply-mode`/`migrate`, never
-selected automatically by install or upgrade):
+Approve an SDDM login on your phone with a passkey instead of typing your Linux password. The project uses the OIDC Device Authorization Grant for the out-of-band approval and keeps the existing password path structurally intact as the fallback.
 
-- **Native Theme** (recommended as of v2.0.0) - an original, from-scratch
-  Qt6 SDDM theme with no dependency on Debian Breeze source. See
-  `docs/native-theme.md`.
-- **Compatibility Theme** - small patches against the existing
-  `sddm-theme-debian-breeze` package.
-- **Backend/PAM only** - no theme change at all.
+**Status: stable within the documented validated scope.** The current reference environment is Debian 13 (Trixie), SDDM 0.21.x, KDE Plasma 6, Authelia 4.39+ and systemd 257+. The project is still single-maintainer and has not yet been validated across a broad independent hardware and distribution matrix. See [Validated Environment](docs/validated-environment.md), [Security](docs/security.md) and the [Threat Model](docs/threat-model.md) before deploying.
 
-See `docs/theme-installation-modes.md`, `docs/theme-migration.md`, and
-`docs/validated-environment.md`'s theme deployment mode matrix.
+## ✨ What this project adds
 
-## Tested configuration
+| Area | Details |
+|------|---------|
+| **Passwordless SDDM login** | QR/device flow with WebAuthn/passkey approval on a phone or authenticator |
+| **Safe password fallback** | The PAM integration is additive; absent, invalid or expired approval falls through to the normal password path |
+| **Identity binding** | Exact-match identity checks with local accounts or opt-in NSS/SSSD backed accounts |
+| **Provider abstraction** | Authelia by default, plus standards-compliant OIDC Device Authorization providers through discovery |
+| **Native hardware keys** | Optional FIDO2/U2F support through upstream `pam_u2f` |
+| **KWallet integration** | Optional auto-unlock using a dedicated root-only secret service and `systemd-creds` |
+| **Three theme modes** | Native Qt6 theme, compatibility theme, or backend/PAM-only mode |
+| **Recovery tooling** | Read-only preflight/admin checks, postflight validation, rollback and independent break-glass recovery |
+| **Supply-chain controls** | Signed `.deb` releases, SBOMs, CodeQL, dependency review and a signed Debian APT mirror |
+| **Visual regression** | Deterministic Native Theme screenshot coverage across 26 visual cases |
 
-| Component | Version |
-| --- | --- |
+## 📦 Installation
+
+### Debian 13 APT repository
+
+```bash
+curl -fsSL https://apt.s3-dev.ovh/trixie-KEY.gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/sddm-authelia-passkey-repo.gpg
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/sddm-authelia-passkey-repo.gpg] https://apt.s3-dev.ovh trixie main" | sudo tee /etc/apt/sources.list.d/sddm-authelia-passkey.list
+sudo apt update
+sudo apt install sddm-authelia-passkey
+```
+
+The APT repository mirrors the same signed package published on [GitHub Releases](https://github.com/BenJule/sddm-authelia-passkey/releases). Direct `.deb` installation is also supported. See [Release Signing](docs/release-signing.md) for verification instructions.
+
+### Required post-install steps
+
+1. Copy and edit `/etc/sddm-authelia-passkey/config.conf.example` as `/etc/sddm-authelia-passkey/config.conf`.
+2. Configure at least `authelia_base_url`, `allowed_verification_host` and the local account policy.
+3. Run the read-only preflight:
+
+   ```bash
+   sudo /usr/share/sddm-authelia-passkey/preflight.sh
+   ```
+
+4. Enable the PAM integration:
+
+   ```bash
+   sudo /usr/share/sddm-authelia-passkey/enable-pam.sh
+   ```
+
+5. Start the broker:
+
+   ```bash
+   sudo systemctl enable --now sddm-authelia-passkey-broker.service
+   ```
+
+6. Run the postflight check and choose an explicit theme mode:
+
+   ```bash
+   sudo /usr/share/sddm-authelia-passkey/postflight.sh
+   sudo sddm-authelia-passkey-admin apply-mode native
+   ```
+
+7. Log out and test a normal password login **first**, then test the smartphone/passkey flow.
+
+Nothing in the installer restarts SDDM automatically. See the full [Installation Guide](docs/installation.md) before changing a production login stack.
+
+## 🚀 Features
+
+**Authentication**
+
+- OIDC Device Authorization Grant (RFC 8628)
+- WebAuthn/passkey user verification through the identity provider
+- Single-use, short-TTL approval markers
+- Server-side account allowlist and exact username binding
+- Generic OIDC provider mode in addition to Authelia
+- Optional FIDO2/U2F hardware security keys through `pam_u2f`
+- Password login remains available and unchanged as the fallback
+
+**Desktop and identity**
+
+- Native Qt6 SDDM theme with responsive and accessibility-tested states
+- Compatibility mode for Debian Breeze
+- Backend/PAM-only deployment mode with no theme change
+- Optional branding, avatar and local hostname/domain presentation
+- Local-account or NSS/SSSD-backed identity resolution
+- Optional KWallet auto-unlock
+
+**Operations and recovery**
+
+- `sddm-authelia-passkey-admin` read-only status and configuration checks
+- Fail-safe PAM preflight that refuses unknown stack shapes instead of guessing
+- Idempotent enable/disable and migration tooling
+- Independent rollback and break-glass paths
+- Signed Debian packages, checksums and SBOM release assets
+- Automated build, test, package, theme, CodeQL and security workflows
+
+## 🧩 Architecture
+
+Authentication proof and Unix identity are deliberately separate:
+
+```text
+OIDC / Authelia / generic provider
+        │
+        │ device authorization + passkey approval
+        ▼
+      broker
+        │
+        │ root-owned, single-use approval marker
+        ▼
+ pam_authelia_passkey.so
+        │
+        ├── valid marker ─────────────▶ PAM_SUCCESS
+        │                                │
+        │                                └── optional KWallet hand-off
+        │
+        └── no valid marker ──────────▶ normal common-auth/password path
+
+Unix account identity is resolved separately through local NSS/SSSD policy.
+```
+
+The broker performs the long-running device flow outside SDDM's PAM conversation. The PAM module only answers the final question: whether a valid approval marker already exists for the exact selected account.
+
+See [Architecture](docs/architecture.md) for the full Mermaid diagrams, PAM control flow and trust-boundary rationale.
+
+## 🎨 Theme modes
+
+| Mode | Purpose |
+|------|---------|
+| **Native** | Original Qt6 SDDM theme with the complete project UX |
+| **Compatibility** | Small additive patches against Debian Breeze |
+| **Backend only** | Authentication integration without changing the active SDDM theme |
+
+Switch modes explicitly with `sddm-authelia-passkey-admin apply-mode`. Installation and upgrades do not silently choose a mode for you.
+
+## ✅ Validated environment
+
+| Component | Validated version |
+|-----------|-------------------|
 | OS | Debian 13 (Trixie) |
 | Display manager | SDDM 0.21.x |
 | Desktop | KDE Plasma 6 |
-| Identity provider | Authelia 4.39+ (OIDC, Device Authorization Grant) |
+| Identity provider | Authelia 4.39+ |
 | Init system | systemd 257+ |
 
-Other distributions/versions are unsupported/experimental - the
-installer will refuse to touch PAM rather than guess on an unrecognized
-stack. See `docs/installation.md`.
+Other distributions, display managers and older stacks are unsupported or experimental unless documented otherwise. The safety policy is to refuse an unknown PAM shape rather than attempt a speculative modification.
 
-## Limitations
+## 🔄 Development and release flow
 
-- Only proven on the configuration above; not yet validated on other
-  distributions, display managers, or desktop environments.
-- Requires an Authelia instance you control and can configure an OIDC
-  client on - it does not work against arbitrary/unmodified identity
-  providers.
-- KWallet auto-unlock is KDE-specific and optional; it is off by default
-  and a failure there can never turn a successful login into a failed
-  one (see `docs/architecture.md`).
-- Signed `.deb` packages are published on GitHub Releases and are
-  additionally mirrored to the project's internal Debian 13 (Trixie)
-  APT repository; see `docs/installation.md` and
-  `docs/apt-repository.md`.
-- Multi-user support: `allowed_users` may list more than one account,
-  each with independent flows, approval markers, and KWallet
-  credentials, bound to whichever account SDDM's own existing user
-  selector (avatar list or manual username entry) currently has
-  selected - see `docs/architecture.md`'s "Multi-user readiness"
-  section. Tested via unit tests, real PAM integration tests against
-  local test accounts, and manual verification of the theme change on
-  the lab VM. Only one real human/production Authelia identity has been
-  used in end-to-end testing so far; multi-user proof beyond that uses
-  synthetic local accounts and unit-level identity mocks, not two real
-  people.
-- LDAP/Active Directory accounts: `account_source=nss` (opt-in,
-  `local` remains the default) authorizes any account this host's own
-  NSS/SSSD setup can resolve, instead of requiring a static
-  `allowed_users` entry - see `docs/architecture.md`'s "LDAP/Active
-  Directory accounts (NSS)" section. This project never talks to
-  LDAP/AD/SSSD directly and implements no directory-credential caching
-  of its own.
-- Native FIDO2/U2F hardware security keys (YubiKey, Nitrokey, SoloKey,
-  etc.): optional, off by default, via the upstream `pam_u2f.so`
-  (`libpam-u2f`) - never reimplemented by this project - see
-  `docs/fido2.md`. Verified: PAM stacking arithmetic, idempotent enable/
-  disable round-trip, and the full existing smartphone/passkey
-  regression suite still passing with it present but unenrolled, all on
-  VM124. Not verified: an actual live authentication against physical
-  FIDO2 hardware - none was available in this environment; the
-  CTAP2/USB-HID protocol handling is `pam_u2f`/`libfido2`'s own,
-  separately-maintained implementation.
-- Provider abstraction: `provider_kind=oidc` (default remains
-  `authelia`, unchanged) supports any standards-compliant OIDC Device
-  Authorization Grant provider - Keycloak, Authentik, generic OIDC - via
-  discovery-based capability detection, with no provider-specific logic
-  in the QML theme. See `docs/architecture.md`'s "Provider abstraction"
-  section. Verified against a mock server shaped like Keycloak's real
-  endpoint layout; not verified against a real, live Keycloak or
-  Authentik deployment.
+```text
+feature/fix branch ──PR──▶ main ──tag/release──▶ signed .deb + SBOM + APT mirror
+```
 
-## Requirements
+- Changes are developed on focused branches and reviewed through pull requests.
+- Build, test, native-theme, package and security workflows validate the repository continuously.
+- Tagged releases publish the Debian package and verification assets on GitHub Releases.
+- The APT deployment workflow independently verifies release state, package metadata, checksum and maintainer signature before publishing.
 
-- An Authelia instance (or compatible OIDC provider) with Device
-  Authorization Grant support and WebAuthn/Passkey configured.
-- Go 1.24+ and a C toolchain with `libpam0g-dev`, to build.
+See [Development](docs/development.md), [Testing](docs/testing.md), [Supply Chain](docs/supply-chain.md) and [APT Repository](docs/apt-repository.md).
 
-## Installation
+## 🔒 Security
 
-Signed `.deb` releases are published on
-[GitHub Releases](https://github.com/BenJule/sddm-authelia-passkey/releases)
-(verify before installing - see `docs/release-signing.md`). Building
-from source is also supported. See `docs/installation.md` for both
-paths.
+Security is part of the design rather than an optional layer:
 
-## Configuration
+- Password authentication remains the unchanged fallback path.
+- Approval markers are root-owned, short-lived and single-use.
+- Provider identity is exact-matched to the selected Unix account.
+- KWallet hand-off uses a separate root-only AF_UNIX channel and short-lived marker.
+- The broker's local API is loopback-only; the approval marker remains the PAM trust boundary.
+- Unknown PAM layouts are refused instead of modified heuristically.
+- CodeQL, dependency review, hardened compiler/linker flags and release verification are part of CI/release handling.
 
-See `docs/configuration.md` and `config/examples/config.conf.example`.
+Please report vulnerabilities privately through [GitHub Security Advisories](https://github.com/BenJule/sddm-authelia-passkey/security/advisories/new). Do **not** open a public security issue. See [SECURITY.md](SECURITY.md), [Security Design](docs/security.md) and the [Threat Model](docs/threat-model.md).
 
-## Password fallback
+## 📚 Documentation
 
-Always available, always unchanged - see `docs/architecture.md`'s "PAM
-control flow" section for exactly why the password path is structurally
-unaffected by this project's PAM integration.
+| Topic | Documentation |
+|-------|---------------|
+| Installation | [docs/installation.md](docs/installation.md) |
+| Configuration | [docs/configuration.md](docs/configuration.md) |
+| Architecture | [docs/architecture.md](docs/architecture.md) |
+| Native Theme | [docs/native-theme.md](docs/native-theme.md) |
+| Theme modes and migration | [docs/theme-installation-modes.md](docs/theme-installation-modes.md) |
+| Branding | [docs/branding.md](docs/branding.md) |
+| FIDO2/U2F | [docs/fido2.md](docs/fido2.md) |
+| KWallet | [docs/kwallet.md](docs/kwallet.md) |
+| Accessibility | [docs/accessibility.md](docs/accessibility.md) |
+| Upgrade | [docs/upgrade.md](docs/upgrade.md) |
+| Rollback and recovery | [docs/rollback.md](docs/rollback.md) |
+| Release signing | [docs/release-signing.md](docs/release-signing.md) |
+| Supply chain | [docs/supply-chain.md](docs/supply-chain.md) |
+| Validated environment | [docs/validated-environment.md](docs/validated-environment.md) |
 
-## KWallet (optional)
+## 🤝 Contributing
 
-See `docs/kwallet.md`.
+Contributions are welcome. Keep each pull request focused, include tests for new behavior and document any security-boundary change. Changes touching PAM must preserve the invariant that a missing or failed passkey approval falls through to the existing password path.
 
-## Security
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) before opening a change.
 
-See `docs/security.md`, `docs/threat-model.md`, and `SECURITY.md`. For
-what has actually been exercised end-to-end vs. merely expected to work,
-see `docs/validated-environment.md`. For SBOM/dependency/provenance
-status, see `docs/supply-chain.md`.
+## 📄 License
 
-## Accessibility
+The project's own code is licensed under the **MIT License**. Optional compatibility-theme integration is shipped as small patches against Debian Breeze rather than as a vendored copy. See [LICENSE](LICENSE) and the theme [provenance notes](theme/native/PROVENANCE.md).
 
-See `docs/accessibility.md`.
+## 🙏 Acknowledgements
 
-## Upgrading
-
-See `docs/upgrade.md`.
-
-## Rollback
-
-See `docs/rollback.md`.
-
-## Development
-
-See `docs/development.md` and `docs/testing.md`.
-
-## License
-
-MIT for this project's own code (see `LICENSE`). The optional theme
-integration ships as small patches against `sddm-theme-debian-breeze`
-(KDE, GPL/LGPL) rather than a vendored copy - see
-`theme/debian-breeze-authelia-passkey-patch/README.md`.
+Built around open standards and upstream components including [SDDM](https://github.com/sddm/sddm), [Authelia](https://www.authelia.com/), KDE/Plasma, Linux PAM, `pam_u2f`, WebAuthn and OpenID Connect.
