@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Questions and installation help
+    url: https://github.com/BenJule/sddm-authelia-passkey/discussions/categories/q-a
+    about: Use Discussions for support and configuration questions that are not confirmed bugs.
+  - name: Early design ideas
+    url: https://github.com/BenJule/sddm-authelia-passkey/discussions/categories/ideas
+    about: Discuss a proposal before turning it into a concrete feature request.
   - name: Security vulnerability
     url: https://github.com/BenJule/sddm-authelia-passkey/security/advisories/new
-    about: Please report security vulnerabilities privately (see SECURITY.md) - do not open a public issue.
+    about: Report security vulnerabilities privately and do not open a public issue.
