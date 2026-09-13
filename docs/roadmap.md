@@ -1,15 +1,12 @@
 # Roadmap: generic OIDC broker toward a general authentication mechanism framework
 
-This documents the direction beyond v2.1.0, following the real-hardware
-validation findings in `docs/validated-environment.md`. Only v2.1.0 is
-fully implemented as of this writing; v2.2.0 onward are architecture/
-design preparation only (see each milestone's linked doc, where one
-exists) - not implemented, per this project's own standing rule against
-premature large migrations.
+This documents the direction beyond v2.1.0 and the evidence accumulated while
+moving from a single-provider login integration toward a generic authentication
+mechanism framework. Milestones v2.1.0 through v2.14.0 are implemented as
+described below; v3.0.0 remains gated on the explicit public closure issues.
 
-The native-theme track (v1.8.0-v2.0.0, see `docs/native-theme.md`) is a
-separate, already-completed line of work; this roadmap is specifically
-about the broker/authentication side of the project going forward.
+The native-theme track (v1.8.0-v2.0.0, see `docs/native-theme.md`) began as a
+separate line of work and is now one part of the v3 mechanism-framework gate.
 
 Operational planning is tracked in the public [SDDM Authelia Passkey Development](https://github.com/users/BenJule/projects/2) GitHub Project. The active release gate is the **v3.0.0 - Generic authentication mechanism framework** milestone; this document remains the detailed technical source of truth.
 
@@ -65,11 +62,11 @@ direction.
 Fixed `verification_uri` validation to be genuinely provider-agnostic
 in path/query while staying origin-bound via already-validated
 discovery metadata, instead of hardcoding Authelia's URL shape. Added
-discovery-document issuer verification. Real-validated against a live
-Authentik instance and a live Samba AD domain (see
-`docs/validated-environment.md`); Keycloak and physical FIDO2 hardware
-remain explicitly not tested (no instance/device available), not
-silently waived.
+discovery-document issuer verification. Real validation initially
+covered a live Authentik instance and a live Samba AD domain; Keycloak
+was deliberately left NOT TESTED at that time. That provider gap has
+since been closed by the real Keycloak 26.7.3 validation recorded in
+`docs/keycloak-validation.md`.
 
 ### v2.2.0 - Identity binding & local-shadowing protection (implemented)
 
@@ -104,11 +101,8 @@ endpoint (`oidc_ready`, `fido2_wired`, `smartcard_ready` - always
 flow, driving a small informational hint in the native theme only -
 never a flow-control or security decision. See
 `docs/capability-negotiation.md`. The full generic mechanism-selection
-presentation (password / passkey / eIdP / smartcard as standardized,
-negotiated mechanisms, conceptually similar to modern SSSD PAM
-mechanism-selection UX, with dedicated PIN/touch/key-connected and
-smartcard UI states) remains design-only, deferred to a later
-iteration.
+presentation was intentionally deferred and subsequently implemented in
+increments through v2.14.0.
 
 ### v2.5.0 - Native SSSD passkey integration (investigated, blocked)
 
@@ -136,15 +130,17 @@ conformance check against the currently configured provider (discovery,
 issuer binding, device endpoint, `verification_uri` trust origin, JWKS
 reachability, RFC 8628 `authorization_pending`), reusing the exact same
 production dispatch functions every real login flow uses - never a
-reimplementation. See `docs/provider-conformance.md`. Real (not mocked)
-validation against Authelia and Authentik, `provider_kind`
-special-casing kept to only the places a real, unavoidable provider
-difference exists - standards-conformant behavior stays in the generic
-code path (the same principle v2.1.0 applied to `verification_uri`).
-Real validation against Keycloak remains deferred - no real instance is
-available in this environment - and a full multi-provider conformance
-lab (negative/malformed fixtures, `slow_down`/`access_denied` coverage,
-an automatically-derived public support matrix) remains design-only.
+reimplementation. See `docs/provider-conformance.md`.
+
+Real provider validation now exists for Authelia, Authentik and
+**Keycloak 26.7.3**. The Keycloak closure run used the generic
+`provider_kind=oidc` path with no Keycloak-specific authentication
+branch and additionally observed real `slow_down`, `expired_token`,
+invalid-device-code and invalid-client failures plus a human-approved
+end-to-end flow. See `docs/keycloak-validation.md`. A larger automated
+multi-provider/version matrix and additional live provider-specific
+negative paths remain future quality work, not blockers disguised as
+completed validation.
 
 ### v2.7.0 - Offline & failure policy (implemented)
 
@@ -189,108 +185,72 @@ login screen. See `docs/mechanism-selection.md` for the real scope,
 including why hardware-key login has no selectable UI action to bind
 at all (`pam_u2f.so` tries silently ahead of both other paths in PAM,
 so there is no "start passkey login" action a button could trigger).
-Not the full generic mechanism-selection framework v3.0.0 envisions -
-see that milestone for what remains.
 
 ### v2.10.0 - Visual regression coverage for mechanism offering (implemented)
 
 Extended the v1.15.0 Native Theme visual regression framework with two
 new deterministic baseline states covering v2.9.0's capability-driven
 mechanism offering (`smartphone_unreachable`, `fido2_available`) - now
-18 states / 26 cases total. No functional/shipped theme code changed;
-baselines were generated in a real `debian:13` container matching CI
-exactly, with all 24 pre-existing baselines confirmed byte-identical
-against the harness change first, proving zero regression.
+18 states / 26 cases total at that milestone. No functional/shipped
+theme code changed; baselines were generated in a real `debian:13`
+container matching CI exactly, with all pre-existing baselines confirmed
+byte-identical before the new states were accepted.
 
 ### v2.11.0 - Generic mechanism data model, first real interface (implemented)
 
 Introduced `theme/native/components/MechanismModel.qml`: a single,
 shared, documented `Mechanism` data model (`password`/`eidp`/`passkey`/
-`smartcard`, each with `kind`/`available`/`ready`/`statusHint`) that now
-backs the v2.9.0 smartphone button/hint-label bindings, replacing two
-separate raw property reads with one named lookup. A pure,
-byte-identical refactor: proven with the existing 26-case visual
-regression suite (mirrored into the test harness, re-run in a real
-`debian:13` container) showing `CHANGED=0` across every case. See
-`docs/generic-mechanism-model.md` for the full interface and what
-remains genuinely unwired (`password`/`smartcard` are represented in
-the model but not yet UI-driven by it).
+`smartcard`, each with `kind`/`available`/`ready`/`statusHint`) backing
+the smartphone button/hint-label bindings instead of separate raw
+property reads. See `docs/generic-mechanism-model.md`.
 
 ### v2.12.0 - Password wired through the mechanism model (implemented)
 
-`password`'s login button and password field are now also gated on
+`password`'s login button and password field are also gated on
 `mechanismModel.mechanism("password").ready`, alongside the existing
-username-selected check - the same single source of truth already used
-for `eidp`/`passkey` since v2.11.0. `password.ready` is always `true`
-today, so this is another pure, byte-identical refactor (proven the
-same way as v2.11.0: the 26-case visual regression suite, mirrored
-onto the test harness, re-run in a real `debian:13` container,
-`CHANGED=0` for every case). `smartcard` deliberately received no UI
-wiring - see `docs/generic-mechanism-model.md` for why (no capability
-signal, no backend action, nothing real to bind a button to).
+username-selected check. `smartcard` deliberately received no UI wiring:
+it has neither a real capability signal nor a backend action to bind.
 
 ### v2.13.0 - First visible mechanism-selection UI (implemented)
 
-The native theme now shows a small, always-visible "Anmeldemethode"
-selector row (data-driven from `MechanismModel.selectableMechanisms`
-via a `Repeater` - never a second, hardcoded id list), letting the
-user explicitly pick between `password` and `eidp` before either
-mechanism's own controls are shown. Unlike v2.9.0-v2.12.0, this is
-**not** a pixel-identical change - it is the first genuinely visible
-step of the Rich UI, reviewed diff-by-diff rather than proven as a
-no-op (`docs/generic-mechanism-model.md` has the full before/after
-review). The actual selection/fallback state machine lives in a new,
-separately unit-tested `MechanismSelector.qml` (`Main.qml` itself
-cannot be unit-tested - it depends on SDDM's own global context). Still
-no smartcard entry and no manually-triggered passkey button - both for
-the same structural reasons as before (see `docs/mechanism-selection.md`).
+The native theme shows an always-visible "Anmeldemethode" selector row
+data-driven from `MechanismModel.selectableMechanisms` via a `Repeater`,
+letting the user explicitly pick between `password` and `eidp` before
+either mechanism's controls are shown. The selection/fallback state
+machine lives in separately unit-tested `MechanismSelector.qml`. Passkey
+remains ambient and smartcard remains unoffered for structural reasons.
 
 ### v2.14.0 - Mechanism selector interaction & responsive UX (implemented)
 
-Hardens the v2.13.0 selector into a real, fully operable login control
-(see [#85](https://github.com/BenJule/sddm-authelia-passkey/issues/85)):
-`Left`/`Right` moves focus to and selects the neighboring selectable
-mechanism (a disabled one is skipped, never focused); `Tab`/`Shift+Tab`
-and `Enter`/`Space` needed no new code (`QQC2.Button`'s own standard
-behavior); the automatic `eidp`-unready fallback now also returns
-keyboard focus to the password field; `ResponsiveMetrics.qml` gained a
-`selectorStacked` property (derived from its own existing
-`loginCardWidth`/`cardContentMargin`, not a new unrelated pixel value)
-so the two selector buttons stack vertically once the login card is
-too narrow for them side by side - a real, tested code path (new
-`selector_narrow_layout` visual baseline) even though today's
-supported/validated viewport range never actually reaches that
-breakpoint. No new authentication mechanism, no smartcard/FIDO2/
-Keycloak work. See `docs/generic-mechanism-model.md` for the full
-detail and verification, including the real VM124 keyboard-interaction
-check and why the literal key-press behavior is verified there rather
-than via a new synthetic unit-test harness pattern.
+Hardens the v2.13.0 selector into a fully operable login control (see
+[#85](https://github.com/BenJule/sddm-authelia-passkey/issues/85)):
+keyboard selection, safe readiness fallback, restored password focus,
+responsive stacked layout, accessibility coverage and 30-case visual
+regression are implemented. SmartphoneLoginPanel was also made compact
+and state-coherent so QR/waiting and confirmed states cannot contradict
+each other. No authentication authority moved into QML.
 
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
 
 Operational tracking: [#85 mechanism-selection UI](https://github.com/BenJule/sddm-authelia-passkey/issues/85), [#86 real Keycloak validation](https://github.com/BenJule/sddm-authelia-passkey/issues/86), [#87 physical FIDO2/U2F validation](https://github.com/BenJule/sddm-authelia-passkey/issues/87), [#88 SSSD native-passkey blocker](https://github.com/BenJule/sddm-authelia-passkey/issues/88), and [#89 final closure gate](https://github.com/BenJule/sddm-authelia-passkey/issues/89).
 
-Direction: this project's OIDC integration becomes one provider within
-a more general SDDM/PAM authentication-mechanism model (password /
-passkey / eIdP / smartcard / future mechanisms), rather than staying a
-single-purpose "SDDM OIDC" project. Defined as the closure gate for
-this whole phase of work, requiring every milestone above to be fully
-green. As of v2.9.0, two things keep it from honestly closing: a
-generic, standardized mechanism data model/UI still needs real design
-and implementation work (not itself blocked, just not yet done), and
-three external blockers only resolvable outside this project's own
-code - no real Keycloak instance for provider-conformance testing, no
-physical FIDO2/U2F hardware, and Debian 13's own SSSD package lacking
-compiled passkey/libfido2 support. As of v2.11.0, the mechanism data
-model itself is real (see above); as of v2.12.0, `password` is also
-wired through it; as of v2.13.0, a real, visible selector UI exists
-letting the user choose between `password`/`eidp`; as of v2.14.0, that
-selector is keyboard-operable and responsively laid out, not just
-pointer-clickable (`smartcard` deliberately still not wired, since
-nothing real exists to wire). What remains is the rest of the generic
-SDDM Rich UI surface and the three external blockers. See the private
-roadmap for the full, honest gap assessment; this milestone will not
-be marked closed until it actually is.
+Direction: this project's OIDC integration is one provider within a more
+general SDDM/PAM authentication-mechanism model (password / passkey /
+eIdP / smartcard / future mechanisms), rather than a single-purpose
+"SDDM OIDC" project.
+
+The **real-Keycloak external blocker is resolved**: Keycloak 26.7.3 was
+validated on 2026-09-13 through production broker code, including the
+real approval path and live RFC 8628 negative/edge responses. See
+`docs/keycloak-validation.md` and issue #86.
+
+v3.0.0 still cannot honestly close while its remaining explicit gates
+are unresolved. In particular, physical FIDO2/U2F hardware validation
+(#87) has not occurred, Debian 13's packaged SSSD native-passkey support
+remains blocked/requires re-evaluation (#88), #85 retains its explicit
+post-v2.14 full-login regression closure criterion until that evidence is
+recorded, and #89 is the final release/regression gate. No unavailable
+external dependency is silently counted as green.
 
 ## Security invariants (apply across every milestone above)
 

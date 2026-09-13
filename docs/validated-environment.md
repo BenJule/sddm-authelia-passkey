@@ -1,10 +1,10 @@
 # Validated environment
 
 This documents what has actually been exercised end-to-end, as opposed
-to what is merely expected to work. No private hostnames, IP addresses,
-usernames, or infrastructure topology are included below - see
-`docs/threat-model.md` and `docs/security.md` for the design rationale
-instead of specific deployment details.
+to what is merely expected to work. No private credentials, account
+secrets, device codes or transient session identifiers are included
+below - see `docs/threat-model.md` and `docs/security.md` for the design
+rationale instead of deployment secrets.
 
 ## Platform
 
@@ -53,9 +53,10 @@ of) the production cutover above:
   without `fido2_required_group` set), the full existing
   `pam-flow-test.sh` suite re-run unchanged on top with no credential
   enrolled.
-- **Provider abstraction (v0.7.0)**: unit-tested against a mock server
-  shaped like Keycloak/Authentik's real endpoint layout; a real live
-  Keycloak/Authentik instance has not been stood up in this environment.
+- **Provider abstraction (v0.7.0)**: originally unit-tested against a mock
+  server shaped like Keycloak/Authentik's endpoint layout. This historical
+  milestone predated the later real-provider validation described below;
+  mock coverage is no longer the only evidence for those providers.
 - **Policy/recovery/admin CLI (v0.8.0)**: `disable-pam.sh`,
   `break-glass.sh` (disable, idempotency, `--restore`), and the admin
   CLI's subcommands all exercised against the real live PAM stack and
@@ -76,34 +77,41 @@ and `account_source=nss` group-based authorization) have therefore been
 exercised on the lab VM, even though production has only ever run a
 single-allowed-user configuration (see above).
 
-- **Real infrastructure (v2.1.0)**: this milestone specifically requires
+- **Real infrastructure (v2.1.0 onward)**: this track specifically requires
   never marking an integration TESTED without a real, live instance
   behind it - not a mock, and not a simulation.
-  - **Authelia**: real - this project's own lab (VM124) and production
-    deployments both run continuously against a real, live Authelia
-    instance; this predates v2.1.0 and is exercised throughout this
-    entire document.
-  - **Samba AD / SSSD**: real - VM124 configured with SSSD against a
-    real Samba AD domain controller over LDAPS (no StartTLS mixing,
-    certificate validation proven both to succeed with the correct CA
-    and fail with an untrusted one), using a dedicated low-privilege
-    bind account and the directory's real RFC2307 POSIX attributes
-    (not a synthetic SID-based mapping). `account_source=nss` proven
-    end-to-end against a real AD-only identity (fake user still 403,
-    the real identity correctly authorized). This is a validation
-    exercise, not a permanent VM124 configuration - the lab VM's
-    `config.conf` and SSSD setup were restored/left in a documented
-    state rather than being a new standing baseline (see the
-    private roadmap tracking issue for the exact end state).
+  - **Authelia**: real - this project's lab and production deployments
+    run continuously against a real, live Authelia instance; this
+    predates v2.1.0 and is exercised throughout this document.
+  - **Samba AD / SSSD**: real - the lab VM was configured with SSSD
+    against a real Samba AD domain controller over LDAPS (no StartTLS
+    mixing, certificate validation proven both to succeed with the
+    correct CA and fail with an untrusted one), using a dedicated
+    low-privilege bind account and the directory's real RFC2307 POSIX
+    attributes (not a synthetic SID-based mapping).
+    `account_source=nss` was proven end-to-end against a real AD-only
+    identity: an invented user remained rejected and the real identity
+    was correctly authorized. This was a validation exercise, not a new
+    permanent lab baseline.
   - **Authentik**: real - an isolated lab OAuth2/OIDC application
-    (Device Code grant, public client, explicit RS256 signing key,
-    minimal scopes) on a real, live Authentik instance, discovered and
-    validated read-only before any mutation. This is what surfaced the
-    `verification_uri` origin-validation gap fixed in this release (see
-    `docs/architecture.md`'s "Provider abstraction" section) - real
-    infrastructure validation catching what mock-based tests could not.
-  - **Keycloak**: not tested - no real Keycloak instance exists in this
-    environment. Not simulated, not counted as validated.
+    (Device Code grant, public client, explicit signing key, minimal
+    scopes) on a real, live Authentik instance. This surfaced the
+    `verification_uri` origin-validation gap fixed in the provider
+    abstraction hardening: real infrastructure validation caught a
+    problem that mock-only tests had not.
+  - **Keycloak 26.7.3**: **TESTED** on 2026-09-13 against a real,
+    disposable Keycloak 26.7.3 server using the official container
+    image. The public OIDC client had RFC 8628 Device Authorization
+    enabled and requested only `openid profile`; `preferred_username`
+    carried the authentication identity. The production broker's
+    `provider-test` passed discovery, issuer binding, device endpoint,
+    JWKS, trusted-origin, verification-URI and `authorization_pending`
+    checks. A human-approved real device flow then completed through
+    token + userinfo, exact username matching and root-owned `0600`
+    approval-marker creation with the expected local/NSS UID. Real
+    negative/edge responses also observed: invalid device code
+    (`invalid_grant`), nonexistent client rejection, `slow_down`, and
+    provider-side `expired_token`. See `docs/keycloak-validation.md`.
   - **FIDO2 hardware**: not tested - no physical FIDO2/U2F security key
     is available in this environment. PAM-stacking behavior (v0.6.0/
     v0.8.0 above) is real; a live authentication with actual hardware is
@@ -135,23 +143,23 @@ this recommendation.
 
 ## What is not yet validated
 
-- Only one production host and one lab VM have been exercised - not
-  multiple independent installs, hardware configurations, or Authelia
-  versions within the supported range.
+- Only one production host and one principal lab VM have been exercised
+  for the full SDDM/PAM integration - not a matrix of independent
+  installs and hardware configurations.
 - No multi-user (`allowed_users` with more than one account)
   configuration has been exercised **in production** - only on the lab
-  VM (see above). Production remains a single-allowed-user deployment.
+  VM. Production remains a single-allowed-user deployment.
 - A real "VM matrix" (multiple distributions, display managers, or
-  desktop environments run in parallel/automated) does not exist - every
-  lab-VM test above ran sequentially, by hand or via CI, against the one
-  supported combination (Debian 13 / SDDM / KDE Plasma 6). Claims of
-  cross-platform compatibility beyond that combination would be
-  guessing, not verification.
-- Real physical FIDO2/U2F hardware, a real live Keycloak/Authentik/generic
-  OIDC provider, and a real Samba AD/SSSD directory beyond local NSS
-  calls remain unverified - see `docs/fido2.md` and
-  `docs/architecture.md`'s "Provider abstraction" section for the exact
-  scope of what was and wasn't tested for each.
+  desktop environments run in parallel/automated) does not exist. Claims
+  of cross-platform compatibility beyond Debian 13 / SDDM / KDE Plasma 6
+  would therefore be guessing, not verification.
+- Real physical FIDO2/U2F hardware is still unverified. Keycloak 26.7.3,
+  Authentik and Authelia now all have real-provider evidence, but other
+  generic OIDC providers and other versions/configurations of those
+  products remain unverified unless explicitly listed as TESTED.
+- Debian 13's packaged SSSD native-passkey path remains blocked as
+  documented in `docs/sssd-native-passkey.md`; this is distinct from the
+  shipped `pam_u2f.so` hardware-key path.
 - Fresh, from-scratch installation by someone without prior knowledge of
   this project's development history has not been independently
   observed - `docs/installation.md` is audited for completeness (see

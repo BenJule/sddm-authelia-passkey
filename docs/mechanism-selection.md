@@ -68,10 +68,13 @@ or implies smartcard support.
   existing v1.15.0 visual regression framework, bringing it to 18
   states / 26 cases. See `docs/visual-regression.md`.
 
-These, along with the three external blockers the private roadmap
-tracks (no real Keycloak instance, no physical FIDO2 key, and Debian
-13's SSSD package lacking compiled passkey support), are why v3.0.0
-itself remains a gate rather than something this increment closes.
+At the time v2.9.0 shipped, the v3 gate also tracked three external
+blockers: no real Keycloak instance, no physical FIDO2 key, and Debian
+13's SSSD package lacking compiled passkey support. The **Keycloak
+blocker is now resolved** by the real Keycloak 26.7.3 validation in
+`docs/keycloak-validation.md`. Physical FIDO2/U2F hardware validation
+and the packaged-SSSD native-passkey blocker remain open, alongside the
+explicit final v3 regression gates tracked in GitHub issues #85/#87/#88/#89.
 
 ## Update (v2.11.0)
 
