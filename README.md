@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Platform](https://img.shields.io/badge/platform-Debian%2013%20%7C%20KDE%20Plasma%206%20%7C%20SDDM%200.21-informational)
 
-[Installation](#-installation) · [Features](#-features) · [Architecture](#-architecture) · [Security](#-security) · [Documentation](#-documentation) · [Contributing](#-contributing)
+[Website](https://benjule.github.io/sddm-authelia-passkey/) · [Installation](#-installation) · [Features](#-features) · [Architecture](#-architecture) · [Roadmap](https://github.com/users/BenJule/projects/2) · [Security](#-security) · [Documentation](#-documentation) · [Contributing](#-contributing)
 
 <br>
 
@@ -181,6 +181,8 @@ feature/fix branch ──PR──▶ main ──tag/release──▶ signed .deb
 
 See [Development](docs/development.md), [Testing](docs/testing.md), [Supply Chain](docs/supply-chain.md) and [APT Repository](docs/apt-repository.md).
 
+Active work is tracked in the public [SDDM Authelia Passkey Development](https://github.com/users/BenJule/projects/2) project and grouped by GitHub release milestones; [docs/roadmap.md](docs/roadmap.md) remains the detailed technical roadmap.
+
 ## 🔒 Security
 
 Security is part of the design rather than an optional layer:
@@ -213,6 +215,8 @@ Please report vulnerabilities privately through [GitHub Security Advisories](htt
 | Release signing | [docs/release-signing.md](docs/release-signing.md) |
 | Supply chain | [docs/supply-chain.md](docs/supply-chain.md) |
 | Validated environment | [docs/validated-environment.md](docs/validated-environment.md) |
+| Live development roadmap | [GitHub Project](https://github.com/users/BenJule/projects/2) |
+| Technical roadmap | [docs/roadmap.md](docs/roadmap.md) |
 
 ## 🤝 Contributing
 

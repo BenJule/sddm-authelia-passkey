@@ -11,6 +11,8 @@ The native-theme track (v1.8.0-v2.0.0, see `docs/native-theme.md`) is a
 separate, already-completed line of work; this roadmap is specifically
 about the broker/authentication side of the project going forward.
 
+Operational planning is tracked in the public [SDDM Authelia Passkey Development](https://github.com/users/BenJule/projects/2) GitHub Project. The active release gate is the **v3.0.0 - Generic authentication mechanism framework** milestone; this document remains the detailed technical source of truth.
+
 ## Target architecture
 
 ```
@@ -228,6 +230,8 @@ wiring - see `docs/generic-mechanism-model.md` for why (no capability
 signal, no backend action, nothing real to bind a button to).
 
 ### v3.0.0 - Generic authentication mechanism framework (gated, not yet closeable)
+
+Operational tracking: [#85 mechanism-selection UI](https://github.com/BenJule/sddm-authelia-passkey/issues/85), [#86 real Keycloak validation](https://github.com/BenJule/sddm-authelia-passkey/issues/86), [#87 physical FIDO2/U2F validation](https://github.com/BenJule/sddm-authelia-passkey/issues/87), [#88 SSSD native-passkey blocker](https://github.com/BenJule/sddm-authelia-passkey/issues/88), and [#89 final closure gate](https://github.com/BenJule/sddm-authelia-passkey/issues/89).
 
 Direction: this project's OIDC integration becomes one provider within
 a more general SDDM/PAM authentication-mechanism model (password /

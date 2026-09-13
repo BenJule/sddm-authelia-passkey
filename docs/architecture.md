@@ -97,7 +97,7 @@ sequenceDiagram
     participant KWallet as kwallet-secretd (optional)
 
     User->>Theme: click "Smartphone-Login"
-    Note over Theme,Broker: username omitted; broker auto-resolves it<br/>when exactly one allowed_user is configured
+    Note over Theme,Broker: username omitted; broker auto-resolves it when exactly one allowed_user is configured
     Theme->>Broker: POST /start
     Broker->>Authelia: POST /api/oidc/device-authorization
     Authelia-->>Broker: user_code, verification_uri_complete
@@ -109,7 +109,7 @@ sequenceDiagram
     Broker->>Authelia: GET /api/oidc/userinfo (verify username claim)
     Broker->>Broker: write approval marker (root:root, 0600, TTL)
     Theme->>Theme: poll /status, sees "approved" + resolved username
-    Note over Theme: idempotent: a stale/duplicate response for a<br/>session that's no longer current is ignored
+    Note over Theme: idempotent; stale or duplicate responses for a session that is no longer current are ignored
     Theme->>PAM: sddm.login(resolvedUsername, "", sessionButton.currentIndex)
     PAM->>PAM: consume approval marker, verify TTL
     PAM-->>User: login succeeds
