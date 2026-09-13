@@ -1,0 +1,29 @@
+title: "[Q&A] "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installation / upgrade
+        - Native Theme / UX
+        - OIDC provider setup
+        - PAM / authentication
+        - Identity / NSS / SSSD
+        - FIDO2 / U2F
+        - KWallet
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Explain what you are trying to achieve and what you have already checked.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant versions and deployment mode. Do not include credentials or private keys.
