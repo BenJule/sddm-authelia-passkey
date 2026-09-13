@@ -1,0 +1,45 @@
+name: scorecard
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@9af89fc71515a100421586dfdb3dc9c984fbf411
+        with:
+          egress-policy: audit
+
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc
+        with:
+          results_file: scorecard.json
+          results_format: json
+          publish_results: false
+
+      - name: Add score to job summary
+        shell: bash
+        run: |
+          score="$(python3 - <<'PY'
+          import json
+          with open('scorecard.json', encoding='utf-8') as f:
+              data = json.load(f)
+          print(data.get('score', 'unknown'))
+          PY
+          )"
+          printf '## OpenSSF Scorecard\n\nOverall score: **%s / 10**\n' "$score" >> "$GITHUB_STEP_SUMMARY"
