@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -120,7 +120,7 @@ jobs:
     needs: build-and-lintian
     container: debian:13
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: deb-package
           path: /tmp/pkg
@@ -184,7 +184,7 @@ jobs:
     needs: build-and-lintian
     container: debian:13
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: deb-package
           path: /tmp/pkg
