@@ -29,7 +29,7 @@ jobs:
       - name: Install git (must run before checkout in a container job)
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install remaining build dependencies
         run: |
