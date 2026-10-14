@@ -18,7 +18,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends git ca-certificates
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -167,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install SDDM Qt6 greeter + Xvfb + Qt6 QML modules
         run: |
@@ -261,7 +261,7 @@ jobs:
     container: debian:13
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install visual regression dependencies
         run: |
@@ -285,7 +285,7 @@ jobs:
 
       - name: Upload visual regression diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: native-visual-regression-diagnostics
           path: out/visual-regression
@@ -295,7 +295,7 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
